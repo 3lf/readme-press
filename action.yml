@@ -46,8 +46,6 @@ runs:
       uses: actions/setup-node@v7
       with:
         node-version: 22
-        cache: npm
-        cache-dependency-path: ${{ github.action_path }}/npm-shrinkwrap.json
 
     - name: Install PDF tools
       shell: bash
