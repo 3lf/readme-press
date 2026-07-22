@@ -1,6 +1,6 @@
 {
   "name": "readme-press",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Turn a long Markdown README into a professionally typeset, release-ready PDF book.",
   "license": "MIT",
   "type": "module",
@@ -22,6 +22,7 @@
   "files": [
     "action.yml",
     "bin/",
+    "docs/assets/",
     "src/",
     "themes/",
     "npm-shrinkwrap.json",
@@ -37,8 +38,8 @@
     "test:action": "action-validator action.yml",
     "test:syntax": "node --check bin/readme-press.mjs && node --check src/build.mjs && node --check src/config.mjs && node --check src/cover.mjs && node --check src/mermaid.mjs && node --check src/qa.mjs && node --check src/release.mjs && node --check src/template.mjs && node --check src/transform.mjs",
     "fixture:prepare": "node test/prepare-fixture.mjs",
-    "fixture:build": "npm run fixture:prepare && node bin/readme-press.mjs build --config test/fixtures/basic/readme-press.config.mjs --quality all --release-version v0.1.0",
-    "fixture:qa": "node bin/readme-press.mjs qa --config test/fixtures/basic/readme-press.config.mjs --quality all --release-version v0.1.0 --render-all",
+    "fixture:build": "npm run fixture:prepare && node bin/readme-press.mjs build --config test/fixtures/basic/readme-press.config.mjs --quality all --release-version v0.1.0 && node bin/readme-press.mjs build --config test/fixtures/persian/readme-press.config.mjs --quality all --release-version v0.1.0",
+    "fixture:qa": "node bin/readme-press.mjs qa --config test/fixtures/basic/readme-press.config.mjs --quality all --release-version v0.1.0 --render-all && node bin/readme-press.mjs qa --config test/fixtures/persian/readme-press.config.mjs --quality all --release-version v0.1.0 --render-all",
     "test:integration": "npm run fixture:build && npm run fixture:qa",
     "pack:check": "npm pack --dry-run"
   },
@@ -69,13 +70,20 @@
       "uuid": "11.1.1"
     }
   },
-  "main": "index.js",
   "directories": {
     "test": "test"
   },
   "devDependencies": {
     "@action-validator/cli": "^0.6.0"
   },
-  "keywords": [],
-  "author": ""
+  "keywords": [
+    "markdown",
+    "pdf",
+    "book",
+    "typesetting",
+    "github-actions",
+    "rtl",
+    "vivliostyle"
+  ],
+  "author": "Ali Najafi"
 }
