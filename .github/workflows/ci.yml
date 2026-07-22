@@ -40,6 +40,9 @@ jobs:
           npm run pack:check
           npm audit --audit-level=low
 
+      - name: Prepare the integration fixture
+        run: npm run fixture:prepare
+
       - name: Exercise the public action contract
         uses: ./
         with:

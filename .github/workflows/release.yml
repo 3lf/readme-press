@@ -73,6 +73,9 @@ jobs:
           npm run pack:check
           npm audit --audit-level=low
 
+      - name: Prepare the release fixture
+        run: npm run fixture:prepare
+
       - name: Exercise the public action and build example PDFs
         uses: ./
         with:
