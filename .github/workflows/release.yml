@@ -93,8 +93,8 @@ jobs:
           mkdir -p release-assets smoke
           archive="readme-press-$VERSION.tar.gz"
           git archive --format=tar.gz --prefix="readme-press-$VERSION/" --output="release-assets/$archive" HEAD
-          cp dist-test/fixture-book.pdf release-assets/readme-press-example.pdf
-          cp dist-test/fixture-book-high-quality.pdf release-assets/readme-press-example-high-quality.pdf
+          cp test/fixtures/basic/dist-test/fixture-book.pdf release-assets/readme-press-example.pdf
+          cp test/fixtures/basic/dist-test/fixture-book-high-quality.pdf release-assets/readme-press-example-high-quality.pdf
           cd release-assets
           sha256sum "$archive" readme-press-example.pdf readme-press-example-high-quality.pdf > SHA256SUMS.txt
           cd ..
