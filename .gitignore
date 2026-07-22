@@ -4,5 +4,5 @@ dist-test/
 .readme-press-cache/
 tmp/
 *.tgz
-test/fixtures/basic/figure.png
+test/fixtures/*/figure.png
 .DS_Store

@@ -4,9 +4,12 @@ import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const output = resolve(here, 'fixtures/basic/figure.png');
-await mkdir(dirname(output), { recursive: true });
-await sharp({
+const outputs = [
+  resolve(here, 'fixtures/basic/figure.png'),
+  resolve(here, 'fixtures/persian/figure.png'),
+];
+
+const figure = await sharp({
   create: {
     width: 900,
     height: 540,
@@ -24,4 +27,9 @@ await sharp({
     },
   ])
   .png({ compressionLevel: 9 })
-  .toFile(output);
+  .toBuffer();
+
+for (const output of outputs) {
+  await mkdir(dirname(output), { recursive: true });
+  await sharp(figure).toFile(output);
+}

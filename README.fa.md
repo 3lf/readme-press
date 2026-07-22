@@ -1,55 +1,90 @@
 <div dir="rtl">
 
 <p align="center">
+  <img src="docs/assets/readme-press-hero.png" alt="تبدیل یک سند Markdown به دو نسخه کتاب PDF با موتور صفحه‌آرایی" width="100%">
+</p>
+
+<h1 align="center">معرفی README Press</h1>
+
+<p align="center">
+  <strong>همون READMEای که نگه می‌داری رو به کتاب PDF حرفه‌ای و آماده انتشار تبدیل کن.</strong>
+</p>
+
+<p align="center">
   <a href="./README.md">English</a> · <strong>فارسی</strong>
 </p>
 
-# معرفی README Press 📚
+<p align="center" dir="ltr">
+  <a href="https://github.com/3lf/readme-press/actions/workflows/ci.yml"><img alt="CI status" src="https://github.com/3lf/readme-press/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/3lf/readme-press/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/3lf/readme-press?display_name=tag&sort=semver"></a>
+  <a href="./LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-17365D"></a>
+  <img alt="Node.js 22 or newer" src="https://img.shields.io/badge/node-%E2%89%A522-17365D">
+</p>
 
-ابزار README Press یه فایل Markdown بلند رو به کتاب PDF حرفه‌ای و آماده انتشار تبدیل می‌کنه.
+<p align="center">
+  <a href="#شروع-سریع">شروع سریع</a> ·
+  <a href="#خروجی-واقعی-رو-ببین">نمونه‌های PDF</a> ·
+  <a href="./action.yml">مرجع Action</a> ·
+  <a href="https://github.com/3lf/readme-press/releases/latest">آخرین انتشار</a>
+</p>
 
-این موتور برای پروژه‌هایی ساخته شده که `README.md` منبع اصلی محتواشونه. ساختار چاپ، تایپوگرافی، کاور، کیفیت تصاویر و بررسی‌های انتشار توی فایل تنظیمات می‌مونن؛ بنابراین لازم نیست متن اصلی رو با جزئیات مخصوص PDF شلوغ کنی.
+ابزار README Press برای پروژه‌هاییه که یک فایل Markdown بلند، منبع اصلی محتواشونه. متن روی GitHub خوانا و مرتب می‌مونه؛ تنظیمات صفحه، تایپوگرافی، کاور، کیفیت تصویر و بررسی‌های انتشار هم به فایل پیکربندی منتقل می‌شن.
 
-اولین پیاده‌سازی واقعی README Press برای یه کتاب فارسی و راست‌به‌چپ ساخته شد. به همین خاطر پشتیبانی از متن‌های دوجهته، فونت‌های محلی و QA تصویری از روز اول جزو هسته موتور بودن. حالا موتور عمومیه و می‌تونه کتاب‌های چپ‌به‌راست، راست‌به‌چپ یا ترکیبی رو از پروژه‌های Markdown سازگار بسازه.
+اولین استفاده واقعی این موتور، ساخت یه کتاب فارسی و راست‌به‌چپ بود. به همین خاطر متن دوجهته، فونت محلی، ترکیب فارسی و لاتین و QA تصویری صفحه‌به‌صفحه از اول جزو هسته پروژه بودن. همین خط تولید حالا کتاب‌های چپ‌به‌راست، راست‌به‌چپ و ترکیبی رو می‌سازه.
 
-## چه چیزهایی تحویل می‌گیری؟ ✨
+## خروجی واقعی رو ببین
+
+<p align="center">
+  <a href="https://github.com/3lf/readme-press/releases/latest">
+    <img src="docs/assets/readme-press-preview.png" alt="صفحه‌های واقعی PDF انگلیسی و فارسی ساخته‌شده با README Press" width="92%">
+  </a>
+</p>
+
+<p align="center"><sub>این‌ها رندر واقعی خط تولید انگلیسی و فارسی هستن، نه تصویر تقریبی از خروجی.</sub></p>
+
+| نمونه | نسخه عادی | نسخه باکیفیت |
+|---|---|---|
+| کتاب انگلیسی و چپ‌به‌راست | [دریافت PDF](https://github.com/3lf/readme-press/releases/latest/download/readme-press-example.pdf) | [دریافت PDF](https://github.com/3lf/readme-press/releases/latest/download/readme-press-example-high-quality.pdf) |
+| کتاب فارسی و راست‌به‌چپ | [دریافت PDF](https://github.com/3lf/readme-press/releases/latest/download/readme-press-example-fa.pdf) | [دریافت PDF](https://github.com/3lf/readme-press/releases/latest/download/readme-press-example-fa-high-quality.pdf) |
+
+## این موتور چطور کار می‌کنه؟
+
+<table>
+  <tr>
+    <td width="33%"><strong>قدم اول: نوشتن Markdown</strong><br>فایل README روی GitHub مفید می‌مونه و تنها منبع محتواست.</td>
+    <td width="33%"><strong>قدم دوم: تعریف کتاب</strong><br>یه فایل کوچیک، مشخصات، فصل‌ها، قالب، خروجی‌ها و بررسی‌های پروژه رو تعریف می‌کنه.</td>
+    <td width="33%"><strong>قدم سوم: ساخت و انتشار</strong><br>یک پایپلاین هر دو نسخه رو می‌سازه، همه صفحه‌ها رو بررسی می‌کنه و فایل‌های انتشار رو تحویل می‌ده.</td>
+  </tr>
+</table>
+
+خط تولید آماده پروژه این امکانات رو داره:
 
 - **پردازش Markdown گیت‌هاب:** همراه با مقصدهای پایدار و سازگار با انکرهای GitHub
 - **ساختار قابل تنظیم:** برای مقدمه، بخش‌ها، فصل‌ها و عمق دلخواه فهرست مطالب
-- **پشتیبانی درست از RTL:** برای فارسی و بقیه زبان‌های راست‌به‌چپ، حتی وقتی متن فارسی و لاتین کنار هم میان
+- **پشتیبانی درست از متن دوجهته:** برای فارسی و بقیه زبان‌های راست‌به‌چپ، حتی وقتی فارسی و لاتین کنار هم میان
 - **رندر کامل محتوا:** شامل کد با Shiki، نمودار Mermaid، ایموجی محلی، جدول، callout و تصویر
-- **خروجی قابل جستجو:** با بدنه تگ‌شده Vivliostyle و کاور امن برای چاپ با کیفیت ۳۰۰ DPI
 - **ناوبری کامل:** شامل bookmark، مقصد داخلی، لینک ریپو، QR code و فوتر قابل ردیابی
-- **دو کیفیت خروجی:** نسخه عادی با تصاویر JPEG بهینه و نسخه باکیفیت با PNG بدون افت
-- **بررسی عمومی PDF:** برای ابعاد، فونت، لینک، مقصد داخلی، کیفیت تصویر، رندر همه صفحه‌ها و برابری دو نسخه
-- **فایل‌های انتشار تکرارپذیر:** شامل manifest، هش SHA-256 و متن آماده Release
+- **دو کیفیت از یک منبع:** نسخه عادی با تصاویر JPEG بهینه و نسخه باکیفیت با تصاویر بدون افت
+- **بررسی کامل PDF:** برای ابعاد، فونت، لینک، مقصد داخلی، کیفیت تصویر، رندر همه صفحه‌ها و برابری دو نسخه
+- **انتشار تکرارپذیر:** همراه با manifest، هش SHA-256 و متن کوتاه Release
 
-قالب آماده موتور `lapis-rtl` نام داره. هر پروژه می‌تونه به‌جاش stylesheet، کاور، فونت، تنظیمات Mermaid و بررسی‌های مخصوص خودش رو معرفی کنه.
+قالب آماده `lapis-rtl` همراه موتور ارائه می‌شه. هر پروژه می‌تونه stylesheet، کاور، فونت و تنظیمات Mermaid خودش رو جایگزین کنه یا بدون fork کردن موتور، QA مخصوص محتوای خودش رو اضافه کنه.
 
-## پیش‌نیازها 🧰
+## شروع سریع
 
-- **نسخه Node.js:** نسخه ۲۲ یا جدیدتر
-- **ابزار qpdf:** برای ساخت PDF بهینه و linearized
-- **ابزارهای Poppler:** شامل `pdfinfo`، `pdffonts`، `pdftotext`، `pdfimages` و `pdftoppm`
-
-روی Ubuntu این ابزارها رو با فرمان زیر نصب کن:
-
-```bash
-sudo apt-get update
-sudo apt-get install -y poppler-utils qpdf
-```
-
-روی macOS هم این فرمان کافیه:
-
-```bash
-brew install poppler qpdf
-```
-
-## استفاده در GitHub Actions 🚀
-
-برای خروجی قابل تکرار، همیشه نسخه مشخصی از Action رو pin کن:
+یه workflow دستی به ریپویی اضافه کن که README اصلی داخلشه:
 
 ```yaml
+name: Release book
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Release version, for example v1.0.0
+        required: true
+        type: string
+
 jobs:
   book:
     runs-on: ubuntu-latest
@@ -57,40 +92,18 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v7
-
-      - name: Build and fully verify both PDF qualities
-        uses: 3lf/readme-press@v0.1.1
+      - uses: 3lf/readme-press@v0.1.2
         with:
           command: pipeline
           config: book/readme-press.config.mjs
-          release-version: v1.0.0
+          release-version: ${{ inputs.version }}
           source-commit: ${{ github.sha }}
           render-all: true
 ```
 
-این Action وابستگی‌های قفل‌شده خودش رو نصب می‌کنه، هر دو کیفیت رو می‌سازه، همه صفحه‌ها رو رندر می‌کنه، QA عمومی و بررسی‌های مخصوص پروژه رو اجرا می‌کنه و در پایان checksum و متن Release تحویل می‌ده.
+وقتی Action رو به یه تگ مشخص pin می‌کنی، ساخت محلی و CI از یه نسخه بررسی‌شده موتور استفاده می‌کنن. Action وابستگی‌های قفل‌شده خودش رو نصب می‌کنه، هر دو کیفیت PDF رو می‌سازه، QA عمومی و بررسی‌های مخصوص پروژه رو اجرا می‌کنه و اطلاعات Release رو آماده می‌کنه.
 
-## اجرای محلی 🛠️
-
-همون tagی رو clone کن که توی CI استفاده می‌شه تا وابستگی‌ها و نتیجه ساخت محلی با سرور یکی بمونه:
-
-```bash
-git clone --branch v0.1.1 --depth 1 https://github.com/3lf/readme-press.git .readme-press
-npm ci --prefix .readme-press
-node .readme-press/bin/readme-press.mjs version
-```
-
-بعد از داخل ریپوی کتاب، CLI رو با فایل تنظیمات پروژه اجرا کن:
-
-```bash
-node .readme-press/bin/readme-press.mjs build \
-  --config book/readme-press.config.mjs \
-  --quality all
-```
-
-نسخه‌های `v0.1.x` به شکل GitHub Action و سورس قفل‌شده منتشر می‌شن. انتشار توی npm فعلاً عقب افتاده تا زنجیره ابزار PDF بتونه همون گراف وابستگی بررسی‌شده رو توی نصب‌های پایین‌دستی هم حفظ کنه.
-
-## کمترین تنظیمات لازم ⚙️
+## کمترین تنظیمات لازم
 
 کنار README اصلی یه فایل `readme-press.config.mjs` بساز:
 
@@ -123,16 +136,21 @@ export default {
 };
 ```
 
-قرارداد ساختار متن عمداً کوچیک نگه داشته شده:
+قرارداد متن عمداً ساده‌ست: یه تیتر مقدمه، یه تیتر برای فهرست دست‌نویس GitHub و تیترهای سطح یک فصل‌ها بعد از فهرست. تیتر شروع هر بخش هم ساختار نسخه چاپی رو مشخص می‌کنه.
 
-- **مقدمه:** یک تیتر سطح یک برای شروع کتاب
-- **فهرست وب:** یک تیتر سطح یک برای فهرست دست‌نویس GitHub
-- **فصل‌ها:** تیترهای سطح یک بعد از فهرست
-- **بخش‌ها:** یک تیتر فصل تنظیم‌شده برای شروع هر بخش
+## اجرای محلی
 
-## ساخت کتاب 🏗️
+در حال حاضر README Press به‌شکل GitHub Action نسخه‌بندی‌شده و سورس قفل‌شده منتشر می‌شه. همون تگی رو بگیر که CI استفاده می‌کنه:
 
-برای ساخت نسخه عادی، باکیفیت یا هر دو نسخه از این فرمان‌ها استفاده کن:
+انتشار روی npm فعلاً عمداً عقب افتاده. نصب تمیز در یه پروژه دیگه، overrideهای وابستگی نسخه بررسی‌شده Action رو نگه نمی‌داره و در نتیجه زنجیره متفاوتی از ابزارهای PDF می‌سازه. تا وقتی این مرز بسته‌بندی درست نشده، از Action نسخه‌بندی‌شده یا سورس قفل‌شده استفاده کن.
+
+```bash
+git clone --branch v0.1.2 --depth 1 https://github.com/3lf/readme-press.git .readme-press
+npm ci --prefix .readme-press
+node .readme-press/bin/readme-press.mjs version
+```
+
+بعدش نسخه عادی، باکیفیت یا هر دو رو بساز:
 
 ```bash
 node .readme-press/bin/readme-press.mjs build --config readme-press.config.mjs --quality normal
@@ -140,18 +158,17 @@ node .readme-press/bin/readme-press.mjs build --config readme-press.config.mjs -
 node .readme-press/bin/readme-press.mjs build --config readme-press.config.mjs --quality all
 ```
 
-برای ساخت یه کاندید انتشار دقیق، شماره نسخه رو هم بده:
+این ابزارها باید روی سیستم نصب باشن:
 
-```bash
-node .readme-press/bin/readme-press.mjs build \
-  --config readme-press.config.mjs \
-  --quality all \
-  --release-version v1.0.0
-```
+- **نسخه Node.js:** نسخه ۲۲ یا جدیدتر
+- **ابزار qpdf:** برای ساخت PDF خطی و آماده انتشار
+- **ابزارهای Poppler:** شامل `pdfinfo`، `pdffonts`، `pdftotext`، `pdfimages` و `pdftoppm`
 
-شماره نسخه داخل شناسنامه کتاب، metadata فایل PDF و `manifest.json` ثبت می‌شه.
+روی Ubuntu از فرمان `sudo apt-get install -y poppler-utils qpdf` و روی macOS از `brew install poppler qpdf` استفاده کن.
 
-اگه می‌خوای ساخت، QA کامل و آماده‌سازی فایل‌های انتشار با یک فرمان انجام بشه، پایپلاین رو اجرا کن:
+## بررسی و آماده‌سازی انتشار
+
+برای ساخت و بررسی کامل یه commit مشخص، پایپلاین رو اجرا کن:
 
 ```bash
 node .readme-press/bin/readme-press.mjs pipeline \
@@ -161,21 +178,9 @@ node .readme-press/bin/readme-press.mjs pipeline \
   --render-all
 ```
 
-## بررسی خروجی ✅
+گزینه `render-all` از Poppler می‌خواد همه صفحه‌های هر دو نسخه رو رندر کنه. اگه رندر خراب باشه، تصویرها یکی نباشن، ساختار PDF ایراد داشته باشه، لینک یا فونتی گم شده باشه، صفحه‌بندی دو نسخه فرق کنه یا بررسی مخصوص پروژه شکست بخوره، QA متوقف می‌شه.
 
-برای بررسی هر دو کیفیت و رندر تک‌تک صفحه‌ها این فرمان رو اجرا کن:
-
-```bash
-node .readme-press/bin/readme-press.mjs qa \
-  --config readme-press.config.mjs \
-  --quality all \
-  --release-version v1.0.0 \
-  --render-all
-```
-
-گزینه `render-all` از Poppler می‌خواد همه صفحه‌های همه نسخه‌های انتخاب‌شده رو به تصویر تبدیل کنه. اگه رندر صفحه، تطابق تصویر بدون افت، ساختار PDF، برابری دو کیفیت، لینک‌ها، فونت‌ها یا قواعد پروژه ایراد داشته باشن، QA شکست می‌خوره.
-
-هر پروژه می‌تونه بدون fork کردن موتور، بررسی‌های مخصوص خودش رو اضافه کنه:
+هر پروژه می‌تونه بررسی‌های مخصوص خودش رو بدون دست‌زدن به موتور اضافه کنه:
 
 ```javascript
 export default defineConfig({
@@ -190,28 +195,11 @@ export default defineConfig({
 });
 ```
 
-ماژول QA باید یه تابع پیش‌فرض با ورودی `{ config, manifest, check }` export کنه. از این بخش برای قواعد ویرایشی، واژه‌ها، تعداد دقیق فصل‌ها یا بررسی‌های صفحه‌بندی مخصوص پروژه استفاده کن. بررسی ساختار PDF و رندر عمومی باید داخل خود README Press بمونه.
+ماژول QA یه تابع پیش‌فرض با ورودی `{ config, manifest, check }` صادر می‌کنه. بررسی ساختار و رندر PDF باید داخل README Press بمونه؛ قواعد ویرایشی، واژه‌ها، تعداد فصل‌ها و قرارداد صفحه‌بندی مخصوص پروژه رو داخل همین ماژول بذار.
 
-## آماده‌سازی فایل‌های انتشار 📦
+## قرارداد قالب سفارشی
 
-```bash
-node .readme-press/bin/readme-press.mjs release validate v1.0.0
-node .readme-press/bin/readme-press.mjs release prepare \
-  --config readme-press.config.mjs \
-  --version v1.0.0 \
-  --commit FULL_GIT_COMMIT
-```
-
-این مرحله هر دو خروجی رو با manifest تطبیق می‌ده و فایل‌های زیر رو می‌سازه:
-
-- **فایل checksum:** فایل `SHA256SUMS.txt`
-- **متن انتشار:** فایل `release-notes.md`
-
-اگه شماره نسخه معتبر نباشه، commit منبع فرق کنه، فایلی گم شده باشه، هش عوض شده باشه یا تعداد صفحه‌های دو کیفیت یکی نباشه، آماده‌سازی Release متوقف می‌شه.
-
-## قرارداد قالب سفارشی 🎨
-
-برای انتخاب قالب خودت، مسیر stylesheet و کاور رو توی تنظیمات بده:
+قالب و کاور دلخواهت رو داخل تنظیمات انتخاب کن:
 
 ```javascript
 theme: {
@@ -223,25 +211,11 @@ cover: {
 }
 ```
 
-پوشه قالب می‌تونه `fonts/`، فایل `mermaid.config.json` و فایل `puppeteer-ci.json` داشته باشه. کاور باید یه عنصر با کلاس `.cover` ارائه بده. فیلدهای اختیاری `data-readme-press` هم اجازه می‌دن موتور اطلاعات زیر رو تزریق کنه:
+پوشه قالب می‌تونه فونت‌ها، `mermaid.config.json` و `puppeteer-ci.json` رو نگه داره. کاور باید یه عنصر با کلاس `.cover` داشته باشه. فیلدهای اختیاری `data-readme-press` هم اجازه می‌دن نام مجموعه، عنوان، زیرعنوان، نویسنده، تاریخ‌ها و نشانی ریپو به‌صورت خودکار وارد کاور بشن.
 
-- **نام مجموعه:** فیلد `series`
-- **پیشوند عنوان:** فیلد `title-prefix`
-- **عنوان اصلی:** فیلد `title`
-- **شعار کوتاه:** فیلد `tagline`
-- **نام نویسنده:** فیلد `author`
-- **تاریخ محلی:** فیلد `date-local`
-- **تاریخ لاتین:** فیلد `date-latin`
-- **یادداشت ریپو:** فیلد `repository-note`
-- **نشانی ریپو:** فیلد `repository`
+قالب داخلی فونت‌های Estedad، Vazirmatn و JetBrains Mono رو با مجوز SIL Open Font License همراه خودش داره. خود README Press هم با [مجوز MIT](./LICENSE) منتشر شده.
 
-## مجوز فونت‌ها 🔤
-
-قالب داخلی `lapis-rtl` فونت‌های Estedad، Vazirmatn و JetBrains Mono رو همراه خودش داره. متن مجوز SIL Open Font License هر فونت داخل `themes/lapis-rtl/licenses/` نگهداری می‌شه. خود README Press هم با مجوز MIT منتشر شده.
-
-## توسعه موتور 🧪
-
-قبل از فرستادن تغییر، همه بررسی‌های محلی رو اجرا کن:
+## مشارکت در توسعه
 
 ```bash
 npm ci
@@ -254,6 +228,6 @@ npm audit --audit-level=low
 go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 .github/workflows/ci.yml .github/workflows/release.yml
 ```
 
-فیکسچر یکپارچه (Integration Fixture) هر دو کیفیت رو می‌سازه، metadata انتشار رو بررسی می‌کنه، تصاویر بدون افت رو پیکسل‌به‌پیکسل مقایسه می‌کنه، همه صفحه‌ها رو با Poppler رندر می‌کنه و ساختار نهایی PDF رو می‌سنجه.
+تست یکپارچه هر دو کیفیت نمونه انگلیسی و فارسی رو می‌سازه، تک‌تک صفحه‌ها رو رندر می‌کنه، ساختار PDF و لینک‌ها رو بررسی می‌کنه، پیکسل تصاویر بدون افت رو مقایسه می‌کنه و اطلاعات Release رو اعتبارسنجی می‌کنه.
 
 </div>

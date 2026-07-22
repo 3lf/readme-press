@@ -8,7 +8,7 @@ on:
         description: Semantic version matching package.json
         required: true
         type: string
-        default: v0.1.1
+        default: v0.1.2
 
 concurrency:
   group: readme-press-release
@@ -85,6 +85,15 @@ jobs:
           source-commit: ${{ github.sha }}
           render-all: true
 
+      - name: Build and verify the Persian RTL example
+        uses: ./
+        with:
+          command: pipeline
+          config: test/fixtures/persian/readme-press.config.mjs
+          release-version: ${{ steps.version.outputs.version }}
+          source-commit: ${{ github.sha }}
+          render-all: true
+
       - name: Build and smoke-test the locked source archive
         env:
           VERSION: ${{ steps.version.outputs.version }}
@@ -95,8 +104,15 @@ jobs:
           git archive --format=tar.gz --prefix="readme-press-$VERSION/" --output="release-assets/$archive" HEAD
           cp test/fixtures/basic/dist-test/fixture-book.pdf release-assets/readme-press-example.pdf
           cp test/fixtures/basic/dist-test/fixture-book-high-quality.pdf release-assets/readme-press-example-high-quality.pdf
+          cp test/fixtures/persian/dist-test/fixture-book-fa.pdf release-assets/readme-press-example-fa.pdf
+          cp test/fixtures/persian/dist-test/fixture-book-fa-high-quality.pdf release-assets/readme-press-example-fa-high-quality.pdf
           cd release-assets
-          sha256sum "$archive" readme-press-example.pdf readme-press-example-high-quality.pdf > SHA256SUMS.txt
+          sha256sum "$archive" \
+            readme-press-example.pdf \
+            readme-press-example-high-quality.pdf \
+            readme-press-example-fa.pdf \
+            readme-press-example-fa-high-quality.pdf \
+            > SHA256SUMS.txt
           cd ..
           tar -xzf "release-assets/$archive" -C smoke
           npm ci --prefix "smoke/readme-press-$VERSION"
@@ -118,6 +134,8 @@ jobs:
             release-assets/readme-press-*.tar.gz
             release-assets/readme-press-example.pdf
             release-assets/readme-press-example-high-quality.pdf
+            release-assets/readme-press-example-fa.pdf
+            release-assets/readme-press-example-fa-high-quality.pdf
             release-assets/SHA256SUMS.txt
 
   draft-release:
@@ -146,10 +164,12 @@ jobs:
             release-assets/readme-press-*.tar.gz \
             release-assets/readme-press-example.pdf \
             release-assets/readme-press-example-high-quality.pdf \
+            release-assets/readme-press-example-fa.pdf \
+            release-assets/readme-press-example-fa-high-quality.pdf \
             release-assets/SHA256SUMS.txt \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
             --title "README Press $VERSION" \
             --draft \
             --generate-notes \
-            --notes "Patch release with bilingual English and Persian documentation plus RTL-safe trailing callout markers. It includes the versioned GitHub Action, locked source archive, normal and high-quality example PDFs, full-page structural QA, and deterministic release metadata."
+            --notes "README Press $VERSION includes the versioned Action, verified English and Persian example PDFs, the locked source archive, and SHA-256 checksums."
