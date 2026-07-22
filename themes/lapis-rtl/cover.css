@@ -1,0 +1,85 @@
+@font-face {
+  font-family: "Estedad";
+  src: url("fonts/Estedad-Variable.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: block;
+}
+
+@font-face {
+  font-family: "Vazirmatn";
+  src: url("fonts/Vazirmatn-Variable.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: block;
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("fonts/JetBrainsMono-Regular.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("fonts/JetBrainsMono-Bold.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 700;
+  font-display: block;
+}
+
+:root {
+  --cover-width: 17cm;
+  --cover-height: 24cm;
+  --display: "Estedad", "Vazirmatn", sans-serif;
+  --text: "Vazirmatn", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+@page {
+  size: 17cm 24cm;
+  margin: 0;
+}
+
+html,
+body {
+  width: var(--cover-width);
+  height: var(--cover-height);
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+body {
+  direction: rtl;
+  font-family: var(--text);
+  text-rendering: geometricPrecision;
+  -webkit-font-smoothing: antialiased;
+}
+
+.cover {
+  position: relative;
+  width: var(--cover-width);
+  height: var(--cover-height);
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.latin {
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+.repo-url {
+  direction: ltr;
+  unicode-bidi: isolate;
+  font-family: var(--mono);
+}

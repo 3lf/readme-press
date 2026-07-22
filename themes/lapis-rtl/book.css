@@ -1,0 +1,1023 @@
+/* ==========================================================================
+   README Press lapis RTL theme
+   Production print stylesheet for long right-to-left Markdown books.
+   Hierarchy: lapis cover; parchment TOC, transitions, chapters, and body;
+   dark-lajvard code panels. Trim: وزیری 17×24cm. Engine: Vivliostyle.
+   ========================================================================== */
+
+@font-face {
+  font-family: 'Estedad';
+  src: url('fonts/static/Estedad-400.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Estedad';
+  src: url('fonts/static/Estedad-550.ttf') format('truetype');
+  font-weight: 550;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Estedad';
+  src: url('fonts/static/Estedad-650.ttf') format('truetype');
+  font-weight: 650;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Estedad';
+  src: url('fonts/static/Estedad-700.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Estedad';
+  src: url('fonts/static/Estedad-750.ttf') format('truetype');
+  font-weight: 750;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Estedad';
+  src: url('fonts/static/Estedad-800.ttf') format('truetype');
+  font-weight: 800;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Estedad';
+  src: url('fonts/static/Estedad-850.ttf') format('truetype');
+  font-weight: 850;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Estedad';
+  src: url('fonts/static/Estedad-900.ttf') format('truetype');
+  font-weight: 900;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Vazirmatn';
+  src: url('fonts/static/Vazirmatn-400.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Vazirmatn';
+  src: url('fonts/static/Vazirmatn-550.ttf') format('truetype');
+  font-weight: 550;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Vazirmatn';
+  src: url('fonts/static/Vazirmatn-650.ttf') format('truetype');
+  font-weight: 650;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Vazirmatn';
+  src: url('fonts/static/Vazirmatn-700.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Vazirmatn';
+  src: url('fonts/static/Vazirmatn-750.ttf') format('truetype');
+  font-weight: 750;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Vazirmatn';
+  src: url('fonts/static/Vazirmatn-800.ttf') format('truetype');
+  font-weight: 800;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Vazirmatn';
+  src: url('fonts/static/Vazirmatn-850.ttf') format('truetype');
+  font-weight: 850;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Vazirmatn';
+  src: url('fonts/static/Vazirmatn-900.ttf') format('truetype');
+  font-weight: 900;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('fonts/JetBrainsMono-Regular.woff2') format('woff2');
+  font-weight: 400;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('fonts/JetBrainsMono-Bold.woff2') format('woff2');
+  font-weight: 700;
+}
+
+:root {
+  /* day — parchment */
+  --bg:           #F4EDDC;
+  --bg-2:         #EDE4CC;
+  --surface:      #FBF7EA;
+  --surface-2:    #F4EDD9;
+  --lajvard:      #1C3F73;
+  --lajvard-deep: #13294B;
+  --firuzeh:      #166B7A;
+  --tala:         #805E10;
+  --tala-bright:  #C39A3E;
+  --tala-soft:    #DFC585;
+  --laki:         #93301F;
+  --ink:          #26200F;
+  --ink-soft:     #4A4128;
+  --muted:        #6F6249;
+  --line:         rgba(38, 32, 15, 0.14);
+  --line-strong:  rgba(38, 32, 15, 0.26);
+  --line-gold:    rgba(128, 94, 16, 0.42);
+
+  /* night؛ lapis code panels */
+  --night:        #0C1830;
+  --night-2:      #13294B;
+  --night-ink:    #EFE6CF;
+  --night-muted:  #9DB1CE;
+  --night-gold:   #D9B65C;
+  --night-line:   rgba(217, 182, 92, 0.35);
+
+  --font-display: 'Estedad', 'Vazirmatn', sans-serif;
+  --font-text: 'Vazirmatn', sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', ui-monospace, Consolas, monospace;
+}
+
+@counter-style persian {
+  system: numeric;
+  symbols: '\6F0' '\6F1' '\6F2' '\6F3' '\6F4' '\6F5' '\6F6' '\6F7' '\6F8' '\6F9';
+}
+
+/* ---------------- page masters ---------------- */
+
+@page {
+  size: 17cm 24cm;
+  margin: 19mm 16mm 19mm;
+  background: var(--bg);
+}
+
+@page :right {
+  @top-right {
+    content: string(chapter-title);
+    font-family: var(--font-display);
+    font-weight: 650;
+    font-size: 7.5pt;
+    color: var(--tala);
+  }
+  @bottom-right {
+    content: counter(page, persian) '  ◆';
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 8.5pt;
+    color: var(--tala);
+  }
+}
+
+@page :left {
+  @top-left {
+    content: string(chapter-title);
+    font-family: var(--font-display);
+    font-weight: 650;
+    font-size: 7.5pt;
+    color: var(--tala);
+  }
+  @bottom-left {
+    content: '◆  ' counter(page, persian);
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 8.5pt;
+    color: var(--tala);
+  }
+}
+
+/* Inserted parity pages are intentionally blank. Running furniture on them
+   makes the page look like missing content. */
+@page :blank {
+  @top-right { content: none; }
+  @top-left { content: none; }
+  @top-center { content: none; }
+  @bottom-right { content: none; }
+  @bottom-left { content: none; }
+  @bottom-center { content: none; }
+}
+
+/* front matter: quiet pages */
+@page front {
+  @top-right { content: none; }
+  @top-left { content: none; }
+  @bottom-right { content: none; }
+  @bottom-left { content: none; }
+}
+
+/* detailed table of contents: quiet continuation header */
+@page toc {
+  @top-right { content: none; }
+  @top-left { content: none; }
+  @top-center {
+    content: 'فهرست مطالب';
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 7.2pt;
+    color: var(--tala);
+  }
+  @bottom-right { content: none; }
+  @bottom-left { content: none; }
+}
+
+@page toc:first {
+  @top-center { content: none; }
+}
+
+/* ---------------- base ---------------- */
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html {
+  font-family: var(--font-text);
+  font-size: 10.4pt;
+  color: var(--ink);
+}
+
+.latin { font-family: var(--font-display); direction: ltr; unicode-bidi: isolate; }
+.latin-isolate { direction: ltr; unicode-bidi: isolate; }
+.latin-token { white-space: nowrap; }
+
+img.emoji {
+  display: inline-block;
+  width: 1.05em;
+  height: 1.05em;
+  vertical-align: -0.18em;
+  margin-inline: 0.06em;
+}
+
+/* ---------------- colophon (شناسنامه) ---------------- */
+
+.colophon {
+  page: front;
+  break-after: page;
+  height: 196mm;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.colophon-inner { max-width: 104mm; }
+.colophon-orn { color: var(--tala-bright); display: flex; justify-content: center; margin-bottom: 6mm; }
+.colophon-orn svg { width: 14mm; height: 14mm; }
+.colophon-kicker {
+  font-family: var(--font-display);
+  font-weight: 700; font-size: 10pt; color: var(--tala);
+  margin-bottom: 6mm;
+}
+.colophon-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2.6mm 6mm;
+  text-align: start;
+  font-size: 9.6pt;
+  line-height: 1.9;
+  border-block: 0.35mm solid var(--line-gold);
+  padding-block: 5mm;
+}
+.colophon-grid dt { font-family: var(--font-display); font-weight: 750; color: var(--tala); white-space: nowrap; }
+.colophon-grid dd { color: var(--ink); }
+.colophon-grid a { color: var(--lajvard); text-decoration: none; }
+.mono-link { font-family: var(--font-mono); font-size: 0.85em; direction: ltr; unicode-bidi: isolate; }
+.colophon-update {
+  margin-block-start: 5mm;
+  padding: 3.2mm 4mm;
+  border: 0.3mm solid var(--line-gold);
+  border-inline-start: 1mm solid var(--lajvard);
+  border-radius: 6pt;
+  background: color-mix(in srgb, var(--tala-bright) 7%, var(--surface));
+  text-align: start;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 24mm;
+  gap: 4mm;
+  align-items: center;
+}
+.colophon-update-copy { min-width: 0; }
+.colophon-update strong {
+  display: block;
+  color: var(--lajvard-deep);
+  font-family: var(--font-display);
+  font-size: 9pt;
+  font-weight: 800;
+}
+.colophon-update p {
+  margin-block: 1.2mm 0.8mm;
+  color: var(--ink-soft);
+  font-size: 8pt;
+  line-height: 1.75;
+}
+.colophon-update a { color: var(--lajvard); text-decoration: none; }
+.colophon-qr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1mm;
+  text-align: center;
+}
+.colophon-qr img {
+  display: block;
+  width: 22mm;
+  height: 22mm;
+  background: #fffdf7;
+  border: 0.25mm solid var(--line-gold);
+  border-radius: 4pt;
+}
+.colophon-qr span {
+  color: var(--lajvard-deep);
+  font-family: var(--font-display);
+  font-size: 6.4pt;
+  font-weight: 700;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+.colophon-note { margin-top: 3.5mm; font-size: 8.2pt; color: var(--muted); line-height: 1.8; }
+
+/* ---------------- table of contents ---------------- */
+
+.book-toc {
+  page: toc;
+  break-after: page;
+}
+.toc-intro {
+  text-align: center;
+  margin-block: 5mm 7mm;
+}
+.toc-eyebrow {
+  font-family: var(--font-text);
+  font-weight: 700;
+  font-size: 8pt;
+  color: var(--tala);
+  letter-spacing: 0;
+  margin-block-end: 1.2mm;
+}
+.book-toc .toc-head {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 21pt;
+  color: var(--lajvard-deep);
+  margin-block-end: 2.2mm;
+}
+.book-toc .toc-rule {
+  display: flex; align-items: center; justify-content: center; gap: 2.4mm;
+  margin-block-end: 3.2mm;
+}
+.book-toc .toc-rule .seg { height: 0.35mm; width: 22mm; background: linear-gradient(90deg, transparent, var(--line-gold), transparent); }
+.book-toc .toc-rule .dia { width: 1.8mm; height: 1.8mm; background: var(--tala-bright); transform: rotate(45deg); }
+.toc-deck {
+  max-width: 102mm;
+  margin-inline: auto;
+  color: var(--muted);
+  font-size: 8.7pt;
+  line-height: 1.9;
+}
+.toc-stats {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 2.2mm;
+  margin-block-start: 3.5mm;
+}
+.toc-stats span {
+  min-width: 30mm;
+  padding: 1.2mm 2.5mm;
+  border: 0.2mm solid var(--line-gold);
+  background: rgba(195, 154, 62, 0.055);
+  color: var(--ink-soft);
+  font-family: var(--font-display);
+  font-size: 7.2pt;
+}
+.toc-stats b { color: var(--lajvard-deep); font-size: 8.4pt; }
+
+.book-toc ol { list-style: none; }
+.toc-frontmatter {
+  margin-block: 1.5mm 5mm;
+  padding-block-end: 2.4mm;
+  border-block-end: 0.3mm solid var(--line-gold);
+  break-inside: avoid;
+}
+.toc-frontmatter .toc-chapter-head .kicker {
+  font-family: var(--font-display);
+  font-weight: 750;
+  font-size: 7.2pt;
+  color: var(--tala);
+  white-space: nowrap;
+}
+.toc-frontmatter .toc-chapter-head .t {
+  color: var(--lajvard-deep);
+  font-weight: 800;
+}
+.toc-part { margin-block-start: 4.8mm; break-inside: auto; }
+.toc-part-head {
+  display: flex; align-items: baseline; gap: 2.2mm;
+  text-decoration: none;
+  padding-block-end: 1.2mm;
+  border-block-end: 0.3mm solid var(--line-gold);
+  break-after: avoid;
+}
+.toc-part-head .pno {
+  font-family: var(--font-display);
+  font-weight: 750; font-size: 8pt; color: var(--tala-bright);
+  white-space: nowrap;
+}
+.toc-part-head .pt {
+  font-family: var(--font-display);
+  font-weight: 850; font-size: 11pt; color: var(--lajvard-deep);
+}
+.toc-part-head .dots { flex: 1; }
+.toc-part-head::after {
+  content: target-counter(attr(href), page, persian);
+  font-family: var(--font-display);
+  font-weight: 800; font-size: 9pt; color: var(--tala);
+  flex: none;
+}
+
+.toc-chapter { margin-block-start: 2mm; break-inside: auto; }
+.toc-chapter-head {
+  display: flex; align-items: baseline; gap: 2mm;
+  text-decoration: none; color: var(--ink);
+  break-after: avoid;
+}
+.toc-chapter-head .no {
+  font-family: var(--font-display);
+  font-weight: 750; font-size: 8.1pt; color: var(--tala-bright);
+  min-width: 5mm;
+}
+.toc-chapter-head .t {
+  font-family: var(--font-display);
+  font-size: 9pt;
+  font-weight: 650;
+  color: var(--ink);
+}
+.toc-chapter-head .dots,
+.toc-section .dots {
+  flex: 1; min-width: 6mm;
+  border-bottom: 0.3mm dotted var(--line-strong);
+  transform: translateY(-0.6mm);
+}
+.toc-chapter-head::after,
+.toc-section a::after {
+  content: target-counter(attr(href), page, persian);
+  font-family: var(--font-display);
+  font-weight: 700; color: var(--tala); font-size: 8pt;
+  flex: none;
+}
+
+.toc-sections {
+  margin-block-start: 1.1mm;
+  padding-inline-start: 7mm;
+}
+.toc-section {
+  margin-block-start: 0.9mm;
+  break-inside: avoid;
+}
+.toc-section a {
+  display: flex;
+  align-items: baseline;
+  gap: 1.5mm;
+  color: var(--ink-soft);
+  text-decoration: none;
+}
+.toc-section .section-mark {
+  width: 1.1mm;
+  height: 1.1mm;
+  border: 0.2mm solid var(--tala-bright);
+  transform: rotate(45deg) translateY(-0.2mm);
+  flex: none;
+}
+.toc-section .t {
+  font-size: 8.15pt;
+  line-height: 1.55;
+  color: var(--ink-soft);
+}
+
+/* ---------------- quiet part transition ---------------- */
+
+.chapter { break-before: page; }
+
+.part-transition {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 2mm 5mm;
+  min-height: 24mm;
+  margin-block: 0 5mm;
+  padding: 4mm 6mm 4mm 7mm;
+  border: 0.24mm solid var(--line-gold);
+  border-inline-start: 1.1mm solid var(--lajvard);
+  background:
+    linear-gradient(90deg, rgba(28, 63, 115, 0.075), transparent 58%),
+    rgba(251, 247, 234, 0.48);
+}
+.part-transition::after {
+  content: '';
+  position: absolute;
+  inset-inline-end: 6mm;
+  top: -1mm;
+  width: 1.8mm;
+  height: 1.8mm;
+  transform: rotate(45deg);
+  border: 0.2mm solid var(--tala-bright);
+  background: var(--bg);
+}
+.part-transition-meta {
+  display: flex;
+  align-items: center;
+  gap: 1.7mm;
+  grid-column: 1;
+  grid-row: 1;
+  color: var(--tala);
+  font-family: var(--font-display);
+  font-size: 7.4pt;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.part-transition-meta i {
+  width: 0.85mm;
+  height: 0.85mm;
+  transform: rotate(45deg);
+  background: var(--tala-bright);
+}
+.part-transition strong {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: end;
+  color: var(--lajvard-deep);
+  font-family: var(--font-display);
+  font-size: 15pt;
+  font-weight: 850;
+}
+
+/* ---------------- chapter opener (روز، نیم‌صفحه) ---------------- */
+
+.chapter-opener {
+  text-align: center;
+  padding-block: 10mm 7mm;
+  margin-block-end: 6mm;
+  border-block-end: 0.3mm solid var(--line-gold);
+  position: relative;
+}
+.chapter-part-start .chapter-opener { padding-block-start: 4mm; }
+.chapter-introduction .chapter-opener { padding-block-start: 16mm; }
+.chapter-opener bdi { white-space: nowrap; }
+.chapter-body :is(h2, h3, h4) bdi,
+.chapter-body :is(td, th) a bdi { white-space: nowrap; }
+.heading-mixed-term {
+  display: inline-block;
+  direction: rtl;
+  unicode-bidi: isolate;
+  white-space: nowrap;
+}
+.co-shamsa { color: var(--tala-bright); display: flex; justify-content: center; margin-bottom: 4.5mm; }
+.co-shamsa svg { width: 12mm; height: 12mm; }
+.co-eyebrow {
+  display: flex; align-items: center; justify-content: center; gap: 2.4mm;
+  font-family: var(--font-display);
+  font-weight: 700; font-size: 9pt; color: var(--tala);
+  margin-bottom: 3.5mm;
+}
+.co-eyebrow .dia { width: 1.3mm; height: 1.3mm; background: var(--tala-bright); transform: rotate(45deg); }
+.co-eyebrow-intro { letter-spacing: 0; }
+.chapter-opener h1 {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 19pt;
+  line-height: 1.5;
+  color: var(--lajvard-deep);
+  max-width: 118mm;
+  margin-inline: auto;
+  string-set: chapter-title content(text);
+}
+.co-rule {
+  display: flex; align-items: center; justify-content: center; gap: 2.4mm;
+  width: 46mm; margin: 6mm auto 0;
+}
+.co-rule .seg { height: 0.3mm; flex: 1; background: linear-gradient(90deg, transparent, var(--line-gold), transparent); }
+.co-rule .dia { width: 1.6mm; height: 1.6mm; background: var(--tala-bright); transform: rotate(45deg); flex: none; }
+
+/* The cheat sheet uses four focused tables. Its opener and cells are slightly
+   tighter so the decision guide stays on the opening page without shrinking
+   the type below a comfortable print size. */
+.chapter-cheat-sheet .chapter-opener {
+  padding-block: 5mm 4mm;
+  margin-block-end: 3mm;
+}
+.chapter-cheat-sheet .co-shamsa { margin-bottom: 2.5mm; }
+.chapter-cheat-sheet .co-shamsa svg { width: 10mm; height: 10mm; }
+.chapter-cheat-sheet .co-eyebrow { margin-bottom: 2mm; }
+.chapter-cheat-sheet .co-rule { margin-block-start: 4mm; }
+.chapter-cheat-sheet .chapter-body { line-height: 1.82; }
+.chapter-cheat-sheet .chapter-body > * + * { margin-block-start: 2mm; }
+.chapter-cheat-sheet .heading-table-group { padding-block-start: 3mm; }
+.chapter-cheat-sheet table { font-size: 8.1pt; line-height: 1.55; }
+.chapter-cheat-sheet thead th { font-size: 8pt; padding: 1.6mm 2.1mm; }
+.chapter-cheat-sheet tbody td { padding: 1.35mm 2.1mm; }
+
+/* ---------------- prose ---------------- */
+
+.chapter-body {
+  line-height: 1.98;
+  text-align: justify;
+}
+.chapter-body > * + * { margin-block-start: 3.2mm; }
+.chapter-body > .chapter-closing--prompting {
+  margin-block-start: 1mm;
+  line-height: 1.8;
+  break-before: avoid;
+}
+.chapter-body p { orphans: 2; widows: 2; }
+.chapter-body strong { font-weight: 800; color: var(--ink); }
+.chapter-body em { color: var(--ink-soft); }
+.chapter-body a {
+  color: var(--lajvard);
+  text-decoration: none;
+  background-image: linear-gradient(to top, rgba(28, 63, 115, 0.35) 0, rgba(28, 63, 115, 0.35) 0.5pt, transparent 0.5pt);
+  background-size: 100% 100%;
+}
+
+.chapter-body h2 {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 14pt;
+  line-height: 1.55;
+  color: var(--lajvard-deep);
+  margin-block-start: 8mm;
+  padding-inline-start: 5.5mm;
+  break-after: avoid;
+  break-inside: avoid;
+  page-break-inside: avoid;
+  display: block;
+  position: relative;
+  text-align: start;
+}
+.chapter-body h2::before {
+  content: '';
+  position: absolute;
+  inset-inline-start: 0;
+  inset-block-start: 0.78em;
+  width: 2.1mm; height: 2.1mm;
+  background: var(--tala-bright);
+  transform: translateY(-50%) rotate(45deg);
+}
+.chapter-body h3 {
+  font-family: var(--font-display);
+  font-weight: 750;
+  font-size: 11.8pt;
+  line-height: 1.6;
+  color: var(--ink);
+  margin-block-start: 6.5mm;
+  padding-inline-start: 4.6mm;
+  break-after: avoid;
+  break-inside: avoid;
+  page-break-inside: avoid;
+  display: block;
+  position: relative;
+  text-align: start;
+}
+.chapter-body h3::before {
+  content: '';
+  position: absolute;
+  inset-inline-start: 0;
+  inset-block-start: 0.8em;
+  width: 1.3mm; height: 1.3mm;
+  border-radius: 50%;
+  background: var(--tala-bright);
+  transform: translateY(-50%);
+}
+.chapter-body h4 {
+  font-family: var(--font-display);
+  font-weight: 750;
+  font-size: 10.4pt;
+  color: var(--tala);
+  margin-block-start: 4.5mm;
+  break-after: avoid;
+  break-inside: avoid;
+  page-break-inside: avoid;
+  text-align: start;
+}
+
+.heading-table-group {
+  display: flow-root;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.chapter-body ul, .chapter-body ol {
+  padding-inline-start: 6.5mm;
+}
+.chapter-body li { break-inside: avoid; }
+.chapter-body li + li { margin-block-start: 1.4mm; }
+.chapter-body li::marker { color: var(--tala-bright); font-weight: 700; }
+.chapter-body ol { list-style-type: persian; }
+.chapter-body li > ul, .chapter-body li > ol { margin-block-start: 1.4mm; }
+
+.chapter-body code {
+  font-family: var(--font-mono);
+  font-size: 0.84em;
+  unicode-bidi: isolate;
+  background: rgba(195, 154, 62, 0.13);
+  border-radius: 2.5pt;
+  padding: 0.4pt 2.5pt;
+  color: var(--ink);
+}
+
+/* ---------------- code panels (شب لاجوردی) ---------------- */
+
+.codeblock {
+  direction: ltr;
+  text-align: left;
+  unicode-bidi: isolate;
+  break-inside: avoid;
+  margin-block: 4mm;
+  position: relative;
+}
+.codeblock::before {
+  content: attr(data-lang);
+  position: absolute;
+  top: 0; right: 0;
+  font-family: var(--font-mono);
+  font-size: 6.4pt;
+  color: var(--night-muted);
+  padding: 1.6mm 2.6mm;
+}
+.codeblock pre {
+  background: var(--night) !important;
+  border: 0.35mm solid rgba(19, 41, 75, 0.5);
+  border-radius: 6pt;
+  padding: 3.4mm 3.8mm;
+  font-family: var(--font-mono);
+  font-size: 7.6pt;
+  line-height: 1.75;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+.codeblock code { background: none; padding: 0; font-size: inherit; color: inherit; }
+.codeblock--long { break-inside: auto; }
+.codeblock--long pre { break-inside: auto; }
+
+/* Persian prose examples (```text fences) stay on parchment */
+pre.example {
+  font-family: var(--font-text);
+  font-size: 9.2pt;
+  line-height: 1.9;
+  text-align: start;
+  background: var(--surface);
+  border: 0.35mm solid var(--line);
+  border-radius: 6pt;
+  padding: 3.2mm 3.8mm;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  break-inside: avoid;
+  margin-block: 4mm;
+}
+pre.example--long {
+  font-size: 8.35pt;
+  line-height: 1.72;
+  padding: 2.8mm 3.4mm;
+  break-inside: auto;
+  box-decoration-break: slice;
+  -webkit-box-decoration-break: slice;
+}
+
+/* Fenced text trees stay monospace on GitHub and become a real tree here. */
+.book-tree {
+  direction: rtl;
+  text-align: start;
+  break-inside: avoid;
+  margin-block: 4.5mm;
+  padding: 4mm 4.5mm;
+  border: 0.35mm solid var(--line);
+  border-radius: 8pt;
+  background:
+    linear-gradient(135deg, rgba(28, 63, 115, 0.04), transparent 48%),
+    var(--surface);
+}
+.book-tree-root {
+  padding: 2.4mm 3.2mm;
+  border-inline-start: 1mm solid var(--tala-bright);
+  border-radius: 5pt;
+  background: color-mix(in srgb, var(--lajvard) 6%, white);
+  color: var(--lajvard-deep);
+  font-family: var(--font-display);
+  font-size: 10.2pt;
+  font-weight: 800;
+}
+.book-tree-children {
+  margin-block-start: 1.4mm;
+  margin-inline-start: 7mm;
+}
+.book-tree-child {
+  display: grid;
+  grid-template-columns: 10mm minmax(0, 1fr);
+  min-height: 10mm;
+  align-items: stretch;
+}
+.book-tree-branch { position: relative; }
+.book-tree-branch::before {
+  content: '';
+  position: absolute;
+  inset-inline-start: 3.5mm;
+  inset-block: 0;
+  border-inline-start: 0.32mm solid var(--line-gold);
+}
+.book-tree-branch::after {
+  content: '';
+  position: absolute;
+  inset-inline-start: 3.5mm;
+  inset-block-start: 50%;
+  width: 6.5mm;
+  border-block-start: 0.32mm solid var(--line-gold);
+}
+.book-tree-child.is-last .book-tree-branch::before { inset-block-end: 50%; }
+.book-tree-node {
+  align-self: center;
+  padding: 1.7mm 2.8mm;
+  border: 0.25mm solid color-mix(in srgb, var(--lajvard) 13%, transparent);
+  border-radius: 5pt;
+  background: color-mix(in srgb, var(--surface) 78%, white);
+  line-height: 1.65;
+}
+.book-tree-node bdi { white-space: nowrap; }
+
+/* Copy-ready English prompts: exact text, compact editorial treatment. */
+.promptblock {
+  direction: ltr;
+  text-align: left;
+  unicode-bidi: isolate;
+  position: relative;
+  margin-block: 3.4mm;
+  break-inside: avoid;
+  border: 0.3mm solid color-mix(in srgb, var(--lajvard) 18%, transparent);
+  border-inline-start: 0.85mm solid var(--lajvard);
+  border-radius: 6pt;
+  background: color-mix(in srgb, var(--surface) 92%, white);
+}
+.promptblock::before {
+  content: 'PROMPT';
+  position: absolute;
+  inset-block-start: 1.7mm;
+  inset-inline-end: 3.4mm;
+  color: var(--tala);
+  font-family: var(--font-mono);
+  font-size: 5.8pt;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+.promptblock pre {
+  margin: 0;
+  padding: 4.8mm 3.8mm 3mm;
+  font-family: var(--font-mono);
+  font-size: 6.75pt;
+  line-height: 1.48;
+  font-variant-ligatures: none;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  text-align: left;
+  direction: ltr;
+  tab-size: 2;
+}
+.promptblock--long,
+.promptblock--long pre {
+  break-inside: auto;
+}
+
+/* This compact prompt is followed by three short directory-style sections. */
+.promptblock ~ h2 {
+  margin-block-start: 5mm;
+}
+
+/* ---------------- callouts ---------------- */
+
+.callout {
+  break-inside: avoid;
+  display: flex;
+  gap: 3mm;
+  border-radius: 7pt;
+  border: 0.35mm solid;
+  padding: 3mm 3.6mm;
+  margin-block: 4.5mm;
+  font-size: 9.4pt;
+  line-height: 1.9;
+  text-align: start;
+}
+.callout > .callout-icon { flex: none; width: 4.6mm; height: 4.6mm; margin-top: 1mm; }
+.callout > .callout-icon svg { width: 100%; height: 100%; display: block; }
+.callout > .callout-content { flex: 1; min-width: 0; }
+.callout > .callout-content > * + * { margin-block-start: 2mm; }
+.callout p { margin: 0; }
+.callout .codeblock { margin-block: 2.5mm; }
+.callout .codeblock pre { font-size: 7.1pt; }
+.callout--agent-loop-caption,
+.callout--model-selection-closing {
+  margin-block: 2mm;
+  padding: 2.3mm 3mm;
+  font-size: 9pt;
+  line-height: 1.7;
+}
+
+.callout-tip, .callout-note {
+  background: color-mix(in srgb, var(--lajvard) 5%, var(--surface));
+  border-color: color-mix(in srgb, var(--lajvard) 22%, transparent);
+}
+.callout-tip .callout-icon, .callout-note .callout-icon { color: var(--lajvard); }
+.callout-tip strong, .callout-note strong { color: var(--lajvard); }
+
+.callout-warn {
+  background: color-mix(in srgb, var(--laki) 5%, var(--surface));
+  border-color: color-mix(in srgb, var(--laki) 24%, transparent);
+}
+.callout-warn .callout-icon { color: var(--laki); }
+.callout-warn strong { color: var(--laki); }
+
+.callout-date, .callout-new {
+  background: color-mix(in srgb, var(--tala-bright) 8%, var(--surface));
+  border-color: var(--line-gold);
+}
+.callout-date .callout-icon, .callout-new .callout-icon { color: var(--tala); }
+.callout-date strong, .callout-new strong { color: var(--tala); }
+
+.callout-star {
+  background:
+    linear-gradient(90deg, rgba(195, 154, 62, 0.11), transparent 68%),
+    color-mix(in srgb, var(--lajvard) 3%, var(--surface));
+  border-color: color-mix(in srgb, var(--tala-bright) 48%, transparent);
+}
+.callout-star .callout-icon { color: var(--tala-bright); }
+.callout-star strong { color: var(--lajvard-deep); }
+
+/* ---------------- tables ---------------- */
+
+.table-wrap { break-inside: avoid; margin-block: 4.5mm; }
+.table-wrap--long { break-inside: auto; }
+.table-wrap--long table { break-inside: auto; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 8.7pt;
+  line-height: 1.7;
+}
+thead { display: table-header-group; }
+thead th {
+  font-family: var(--font-display);
+  font-weight: 750;
+  font-size: 8.5pt;
+  color: var(--tala);
+  background: color-mix(in srgb, var(--tala-bright) 11%, transparent);
+  border-bottom: 0.4mm solid var(--line-gold);
+  padding: 2mm 2.6mm;
+  text-align: start;
+}
+tbody td {
+  padding: 1.8mm 2.6mm;
+  border-bottom: 0.25mm solid var(--line);
+  vertical-align: top;
+  text-align: start;
+}
+tbody tr { break-inside: avoid; }
+tbody tr:last-child td { border-bottom: none; }
+tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--surface) 55%, transparent); }
+tbody td a { white-space: nowrap; }
+td code { font-size: 0.84em; }
+
+/* ---------------- diagrams (mermaid) ---------------- */
+
+figure.diagram {
+  break-inside: avoid;
+  margin-block: 5mm;
+  text-align: center;
+  padding: 3.5mm 2mm;
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+  border: 0.35mm solid var(--line);
+  border-radius: 7pt;
+}
+/* diagrams are <img> on purpose: inline SVG breaks in Vivliostyle RTL flow
+   (clipping, dropped markers, mirroring) */
+figure.diagram img { max-width: 100%; height: auto; }
+figure.diagram--agent-loop {
+  max-width: 96mm;
+  margin: 2.5mm auto;
+  padding: 2mm;
+}
+figure.diagram--agent-loop img { width: 100%; }
+figure.diagram--model-selection-path {
+  max-width: 90mm;
+  margin: 2.5mm auto;
+  padding: 2mm;
+}
+figure.diagram--model-selection-path img { width: 100%; }
+figure.diagram--tall {
+  padding-block: 2.5mm;
+  margin-block: 3.5mm;
+}
+figure.diagram--tall img {
+  width: auto;
+  max-width: 100%;
+  max-height: 142mm;
+}

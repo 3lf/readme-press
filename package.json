@@ -1,0 +1,80 @@
+{
+  "name": "readme-press",
+  "version": "0.1.0",
+  "description": "Turn a long Markdown README into a professionally typeset, release-ready PDF book.",
+  "license": "MIT",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/3lf/readme-press.git"
+  },
+  "homepage": "https://github.com/3lf/readme-press#readme",
+  "bugs": {
+    "url": "https://github.com/3lf/readme-press/issues"
+  },
+  "bin": {
+    "readme-press": "bin/readme-press.mjs"
+  },
+  "exports": {
+    ".": "./src/index.mjs",
+    "./config": "./src/config.mjs"
+  },
+  "files": [
+    "action.yml",
+    "bin/",
+    "src/",
+    "themes/",
+    "npm-shrinkwrap.json",
+    "LICENSE",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test test/unit.test.mjs",
+    "test:action": "action-validator action.yml",
+    "test:syntax": "node --check bin/readme-press.mjs && node --check src/build.mjs && node --check src/config.mjs && node --check src/cover.mjs && node --check src/mermaid.mjs && node --check src/qa.mjs && node --check src/release.mjs && node --check src/template.mjs && node --check src/transform.mjs",
+    "fixture:prepare": "node test/prepare-fixture.mjs",
+    "fixture:build": "npm run fixture:prepare && node bin/readme-press.mjs build --config test/fixtures/basic/readme-press.config.mjs --quality all --release-version v0.1.0",
+    "fixture:qa": "node bin/readme-press.mjs qa --config test/fixtures/basic/readme-press.config.mjs --quality all --release-version v0.1.0 --render-all",
+    "test:integration": "npm run fixture:build && npm run fixture:qa",
+    "pack:check": "npm pack --dry-run"
+  },
+  "dependencies": {
+    "@mermaid-js/mermaid-cli": "^11.16.0",
+    "@twemoji/svg": "^15.0.0",
+    "@vivliostyle/cli": "^11.1.0",
+    "mdast-util-to-string": "^4.0.0",
+    "pdf-lib": "^1.17.1",
+    "puppeteer": "^25.3.0",
+    "qrcode": "^1.5.4",
+    "rehype-raw": "^7.0.0",
+    "rehype-stringify": "^10.0.1",
+    "remark-gfm": "^4.0.1",
+    "remark-parse": "^11.0.0",
+    "remark-rehype": "^11.1.2",
+    "sharp": "^0.35.3",
+    "shiki": "^4.3.1",
+    "unified": "^11.0.5",
+    "unist-util-visit": "^5.1.0"
+  },
+  "overrides": {
+    "dompurify": "3.4.12",
+    "fast-uri": "3.1.4",
+    "prismjs": "1.30.0",
+    "trim": "0.0.3",
+    "press-ready": {
+      "uuid": "11.1.1"
+    }
+  },
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "devDependencies": {
+    "@action-validator/cli": "^0.6.0"
+  },
+  "keywords": [],
+  "author": ""
+}

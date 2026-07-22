@@ -1,0 +1,152 @@
+name: Release
+run-name: Prepare README Press ${{ inputs.version }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Semantic version matching package.json
+        required: true
+        type: string
+        default: v0.1.0
+
+concurrency:
+  group: readme-press-release
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Validate main and package version
+        id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUESTED_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
+            echo "Releases must run from main." >&2
+            exit 1
+          fi
+          version="$(node bin/readme-press.mjs release validate "$REQUESTED_VERSION")"
+          package_version="v$(node -p "require('./package.json').version")"
+          if [[ "$version" != "$package_version" ]]; then
+            echo "Requested $version does not match package.json $package_version." >&2
+            exit 1
+          fi
+          git fetch --force --tags origin
+          if git rev-parse --quiet --verify "refs/tags/$version" >/dev/null; then
+            echo "Tag $version already exists." >&2
+            exit 1
+          fi
+          if gh release view "$version" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $version already exists." >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install PDF validation tools
+        run: sudo apt-get update && sudo apt-get install -y poppler-utils qpdf
+
+      - name: Install and verify the locked engine
+        run: |
+          npm ci
+          npm run test:syntax
+          npm run test:action
+          npm test
+          go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 .github/workflows/ci.yml .github/workflows/release.yml
+          npm run pack:check
+          npm audit --audit-level=low
+
+      - name: Exercise the public action and build example PDFs
+        uses: ./
+        with:
+          command: pipeline
+          config: test/fixtures/basic/readme-press.config.mjs
+          release-version: ${{ steps.version.outputs.version }}
+          source-commit: ${{ github.sha }}
+          render-all: true
+
+      - name: Build and smoke-test the locked source archive
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets smoke
+          archive="readme-press-$VERSION.tar.gz"
+          git archive --format=tar.gz --prefix="readme-press-$VERSION/" --output="release-assets/$archive" HEAD
+          cp dist-test/fixture-book.pdf release-assets/readme-press-example.pdf
+          cp dist-test/fixture-book-high-quality.pdf release-assets/readme-press-example-high-quality.pdf
+          cd release-assets
+          sha256sum "$archive" readme-press-example.pdf readme-press-example-high-quality.pdf > SHA256SUMS.txt
+          cd ..
+          tar -xzf "release-assets/$archive" -C smoke
+          npm ci --prefix "smoke/readme-press-$VERSION"
+          npm audit --prefix "smoke/readme-press-$VERSION" --audit-level=low
+          installed="$(node "smoke/readme-press-$VERSION/bin/readme-press.mjs" version)"
+          expected="$(node -p "require('./package.json').version")"
+          if [[ "$installed" != "$expected" ]]; then
+            echo "Archived CLI version $installed does not match $expected." >&2
+            exit 1
+          fi
+
+      - name: Upload verified release assets
+        uses: actions/upload-artifact@v7
+        with:
+          name: readme-press-${{ steps.version.outputs.version }}
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            release-assets/readme-press-*.tar.gz
+            release-assets/readme-press-example.pdf
+            release-assets/readme-press-example-high-quality.pdf
+            release-assets/SHA256SUMS.txt
+
+  draft-release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: readme-press-${{ needs.build.outputs.version }}
+          path: release-assets
+
+      - name: Create the draft GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          set -euo pipefail
+          if gh release view "$VERSION" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $VERSION already exists." >&2
+            exit 1
+          fi
+          gh release create "$VERSION" \
+            release-assets/readme-press-*.tar.gz \
+            release-assets/readme-press-example.pdf \
+            release-assets/readme-press-example-high-quality.pdf \
+            release-assets/SHA256SUMS.txt \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "README Press $VERSION" \
+            --draft \
+            --generate-notes \
+            --notes "First public engine release for turning long Markdown READMEs into release-ready PDF books. It includes a versioned GitHub Action, a locked source archive, normal and high-quality example PDFs, full-page structural QA, and deterministic release metadata."

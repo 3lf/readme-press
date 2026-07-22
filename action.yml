@@ -1,0 +1,121 @@
+name: README Press
+description: Build and verify release-ready PDF books from a Markdown README
+author: 3lf
+
+branding:
+  icon: book-open
+  color: blue
+
+inputs:
+  command:
+    description: One of build, qa, or pipeline
+    required: false
+    default: pipeline
+  config:
+    description: Path to the README Press configuration, relative to the repository
+    required: true
+  quality:
+    description: Output quality for build or qa; pipeline always builds both qualities
+    required: false
+    default: all
+  release-version:
+    description: Semantic release version such as v1.0.0
+    required: false
+    default: ''
+  source-commit:
+    description: Full source commit recorded in release metadata
+    required: false
+    default: ''
+  render-all:
+    description: Render every PDF page during QA
+    required: false
+    default: 'true'
+  install-pdf-tools:
+    description: Install Poppler and qpdf when they are unavailable
+    required: false
+    default: 'true'
+  working-directory:
+    description: Consumer repository directory containing the config path
+    required: false
+    default: .
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Node.js
+      uses: actions/setup-node@v7
+      with:
+        node-version: 22
+        cache: npm
+        cache-dependency-path: ${{ github.action_path }}/npm-shrinkwrap.json
+
+    - name: Install PDF tools
+      shell: bash
+      env:
+        INSTALL_PDF_TOOLS: ${{ inputs.install-pdf-tools }}
+      run: |
+        set -euo pipefail
+        if [[ "$INSTALL_PDF_TOOLS" != "true" ]]; then
+          exit 0
+        fi
+        if command -v qpdf >/dev/null && command -v pdfinfo >/dev/null && command -v pdftoppm >/dev/null; then
+          exit 0
+        fi
+        case "$RUNNER_OS" in
+          Linux)
+            sudo apt-get update
+            sudo apt-get install -y poppler-utils qpdf
+            ;;
+          macOS)
+            brew install poppler qpdf
+            ;;
+          *)
+            echo "Automatic PDF tool installation is supported on Linux and macOS runners." >&2
+            exit 1
+            ;;
+        esac
+
+    - name: Install the locked engine
+      shell: bash
+      run: npm ci --prefix "$GITHUB_ACTION_PATH"
+
+    - name: Run README Press
+      shell: bash
+      env:
+        README_PRESS_COMMAND: ${{ inputs.command }}
+        README_PRESS_CONFIG: ${{ inputs.config }}
+        README_PRESS_QUALITY: ${{ inputs.quality }}
+        README_PRESS_RELEASE_VERSION: ${{ inputs.release-version }}
+        README_PRESS_SOURCE_COMMIT: ${{ inputs.source-commit }}
+        README_PRESS_RENDER_ALL: ${{ inputs.render-all }}
+        README_PRESS_WORKING_DIRECTORY: ${{ inputs.working-directory }}
+      run: |
+        set -euo pipefail
+        cd "$README_PRESS_WORKING_DIRECTORY"
+        args=("$README_PRESS_COMMAND" --config "$README_PRESS_CONFIG")
+        case "$README_PRESS_COMMAND" in
+          build|qa)
+            args+=(--quality "$README_PRESS_QUALITY")
+            ;;
+          pipeline)
+            if [[ -z "$README_PRESS_RELEASE_VERSION" ]]; then
+              echo "release-version is required for the pipeline command." >&2
+              exit 1
+            fi
+            args+=(--release-version "$README_PRESS_RELEASE_VERSION")
+            if [[ -n "$README_PRESS_SOURCE_COMMIT" ]]; then
+              args+=(--commit "$README_PRESS_SOURCE_COMMIT")
+            fi
+            ;;
+          *)
+            echo "Unknown README Press action command: $README_PRESS_COMMAND" >&2
+            exit 1
+            ;;
+        esac
+        if [[ -n "$README_PRESS_RELEASE_VERSION" && "$README_PRESS_COMMAND" != "pipeline" ]]; then
+          args+=(--release-version "$README_PRESS_RELEASE_VERSION")
+        fi
+        if [[ "$README_PRESS_RENDER_ALL" == "true" && "$README_PRESS_COMMAND" != "build" ]]; then
+          args+=(--render-all)
+        fi
+        node "$GITHUB_ACTION_PATH/bin/readme-press.mjs" "${args[@]}"

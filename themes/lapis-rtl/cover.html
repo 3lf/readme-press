@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>README Press book</title>
+  <link rel="stylesheet" href="cover.css">
+  <style>
+    :root {
+      --night: #06162c;
+      --lapis: #0a2544;
+      --lapis-soft: #103453;
+      --gold: #c6a15a;
+      --gold-bright: #ead08c;
+      --gold-muted: rgba(198, 161, 90, 0.34);
+      --ivory: #f4edda;
+      --ivory-soft: #d9cfb8;
+      --blue-soft: #91adc5;
+    }
+
+    body {
+      background: var(--night);
+      color: var(--ivory);
+    }
+
+    .classic-revised {
+      display: grid;
+      grid-template-rows: auto auto auto 1fr auto;
+      height: 100%;
+      padding: 17mm 18mm 14mm;
+      text-align: center;
+      background:
+        radial-gradient(64mm 58mm at 50% 27%, rgba(198, 161, 90, 0.15), transparent 71%),
+        radial-gradient(95mm 76mm at 50% 105%, rgba(38, 82, 126, 0.42), transparent 74%),
+        linear-gradient(156deg, var(--lapis-soft) -12%, var(--lapis) 43%, var(--night) 100%);
+    }
+
+    .classic-revised::before,
+    .classic-revised::after {
+      content: "";
+      position: absolute;
+      pointer-events: none;
+    }
+
+    .classic-revised::before {
+      inset: 8mm;
+      border: 0.34mm solid rgba(234, 208, 140, 0.48);
+    }
+
+    .classic-revised::after {
+      inset: 10.2mm;
+      border: 0.16mm solid rgba(198, 161, 90, 0.25);
+    }
+
+    .frame-points {
+      position: absolute;
+      inset: 8mm;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    .frame-points i {
+      position: absolute;
+      width: 2.3mm;
+      height: 2.3mm;
+      transform: rotate(45deg);
+      border: 0.28mm solid var(--gold-bright);
+      background: var(--lapis);
+      box-shadow: 0 0 0 0.65mm var(--lapis), 0 0 0 0.8mm rgba(198, 161, 90, 0.26);
+    }
+
+    .frame-points i:nth-child(1) { top: -1.15mm; right: -1.15mm; }
+    .frame-points i:nth-child(2) { top: -1.15mm; left: -1.15mm; }
+    .frame-points i:nth-child(3) { bottom: -1.15mm; right: -1.15mm; }
+    .frame-points i:nth-child(4) { bottom: -1.15mm; left: -1.15mm; }
+
+    .series {
+      position: relative;
+      z-index: 3;
+      display: inline-grid;
+      grid-template-columns: 15mm auto 15mm;
+      align-items: center;
+      gap: 3mm;
+      justify-self: center;
+      color: var(--gold);
+      font-family: var(--display);
+      font-size: 7.6pt;
+      font-weight: 620;
+      letter-spacing: 0.01em;
+    }
+
+    .series::before,
+    .series::after {
+      content: "";
+      height: 0.18mm;
+      background: linear-gradient(90deg, transparent, var(--gold-muted));
+    }
+
+    .series::after {
+      transform: rotate(180deg);
+    }
+
+    .shamsa {
+      position: relative;
+      z-index: 3;
+      justify-self: center;
+      width: 29mm;
+      height: 29mm;
+      margin-top: 20mm;
+      color: var(--gold-bright);
+      filter: drop-shadow(0 2mm 5mm rgba(0, 0, 0, 0.24));
+    }
+
+    .title-block {
+      position: relative;
+      z-index: 3;
+      margin-top: 12mm;
+    }
+
+    .title-block h1 {
+      display: grid;
+      justify-items: center;
+      gap: 2.4mm;
+      margin: 0;
+      font-family: var(--display);
+      line-height: 1.13;
+    }
+
+    .title-latin,
+    .title-fa {
+      font-size: 42pt;
+      font-variation-settings: "wght" 830;
+      font-weight: 830;
+    }
+
+    .title-latin {
+      direction: ltr;
+      unicode-bidi: isolate;
+      color: var(--gold-bright);
+      font-family: var(--display);
+      font-size: 48pt;
+      font-variation-settings: "wght" 900;
+      font-weight: 900;
+      letter-spacing: 0.018em;
+    }
+
+    .title-fa {
+      color: var(--ivory);
+      letter-spacing: -0.035em;
+      white-space: nowrap;
+    }
+
+    .title-divider {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 3mm;
+      width: 60mm;
+      margin: 9mm auto 7mm;
+      color: var(--gold);
+    }
+
+    .title-divider::before,
+    .title-divider::after {
+      content: "";
+      flex: 1;
+      height: 0.2mm;
+      background: linear-gradient(90deg, transparent, currentColor);
+    }
+
+    .title-divider::after {
+      transform: rotate(180deg);
+    }
+
+    .title-divider span {
+      width: 2.2mm;
+      height: 2.2mm;
+      transform: rotate(45deg);
+      border: 0.25mm solid currentColor;
+    }
+
+    .tagline {
+      max-width: 104mm;
+      margin: 0 auto;
+      color: var(--ivory-soft);
+      font-family: var(--display);
+      font-size: 13pt;
+      font-weight: 520;
+      line-height: 1.9;
+      text-wrap: balance;
+    }
+
+    .breathing-room {
+      position: relative;
+      min-height: 23mm;
+    }
+
+    .breathing-room::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      bottom: 10mm;
+      width: 1.3mm;
+      height: 1.3mm;
+      transform: translateX(-50%) rotate(45deg);
+      background: rgba(198, 161, 90, 0.72);
+    }
+
+    .footer {
+      position: relative;
+      z-index: 3;
+      display: grid;
+      justify-items: center;
+      gap: 2.2mm;
+      padding-top: 5.5mm;
+      border-top: 0.16mm solid rgba(198, 161, 90, 0.27);
+    }
+
+    .author {
+      margin: 0 0 1mm;
+      color: var(--ivory-soft);
+      font-family: var(--display);
+      font-size: 8.2pt;
+      font-weight: 560;
+    }
+
+    .dates {
+      display: flex;
+      align-items: center;
+      gap: 2.5mm;
+      color: var(--gold);
+      font-size: 6.9pt;
+    }
+
+    .dates .separator {
+      width: 1.1mm;
+      height: 1.1mm;
+      transform: rotate(45deg);
+      background: currentColor;
+      opacity: 0.72;
+    }
+
+    .dates .en-date {
+      font-family: var(--mono);
+      font-size: 6.3pt;
+    }
+
+    .release-card {
+      position: relative;
+      display: grid;
+      width: 116mm;
+      margin-top: 2.2mm;
+      padding: 2.8mm 5mm 2.6mm;
+      gap: 1.2mm;
+      border: 0.22mm solid rgba(234, 208, 140, 0.48);
+      background: rgba(234, 208, 140, 0.065);
+    }
+
+    .release-card::before {
+      content: "";
+      position: absolute;
+      top: -1.15mm;
+      right: 7mm;
+      width: 2.1mm;
+      height: 2.1mm;
+      transform: rotate(45deg);
+      border: 0.24mm solid var(--gold-bright);
+      background: var(--night);
+    }
+
+    .release-note {
+      margin: 0;
+      color: var(--ivory);
+      font-size: 8.1pt;
+      font-weight: 620;
+      line-height: 1.55;
+    }
+
+    .release-note strong {
+      color: var(--gold-bright);
+      font-weight: 780;
+    }
+
+    .repo-url {
+      color: var(--gold-bright);
+      font-size: 7.2pt;
+      font-weight: 700;
+      letter-spacing: 0.025em;
+    }
+  </style>
+</head>
+<body>
+  <main class="cover classic-revised" aria-label="Book cover">
+    <div class="frame-points" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+
+    <header class="series" data-readme-press="series">README Press</header>
+
+    <svg class="shamsa" viewBox="0 0 200 200" aria-hidden="true">
+      <g fill="none" stroke="currentColor" stroke-linejoin="round">
+        <circle cx="100" cy="100" r="82" stroke-width="1.4" opacity=".32"/>
+        <path d="M100 8L112 36L136 18L136 49L168 36L152 66L185 68L159 87L192 100L159 113L185 132L152 134L168 164L136 151L136 182L112 164L100 192L88 164L64 182L64 151L32 164L48 134L15 132L41 113L8 100L41 87L15 68L48 66L32 36L64 49L64 18L88 36Z" stroke-width="3"/>
+        <path d="M100 29L111 57L136 42L128 72L158 66L136 89L165 100L136 111L158 134L128 128L136 158L111 143L100 171L89 143L64 158L72 128L42 134L64 111L35 100L64 89L42 66L72 72L64 42L89 57Z" stroke="#79aeb8" stroke-width="2" opacity=".74"/>
+        <circle cx="100" cy="100" r="26" stroke-width="2.2"/>
+        <rect x="87" y="87" width="26" height="26" transform="rotate(45 100 100)" stroke="#79aeb8" stroke-width="1.8"/>
+      </g>
+      <circle cx="100" cy="100" r="6" fill="currentColor"/>
+    </svg>
+
+    <section class="title-block" aria-labelledby="classic-title-fa">
+      <h1>
+        <span class="title-latin" data-readme-press="title-prefix">README</span>
+        <span class="title-fa" id="classic-title-fa" data-readme-press="title">Press</span>
+      </h1>
+      <div class="title-divider" aria-hidden="true"><span></span></div>
+      <p class="tagline" data-readme-press="tagline">Turn Markdown into a professionally typeset book</p>
+    </section>
+
+    <div class="breathing-room" aria-hidden="true"></div>
+
+    <footer class="footer">
+      <p class="author" data-readme-press="author">Author</p>
+      <div class="dates">
+        <span data-readme-press="date-local">First edition</span>
+        <span class="separator" aria-hidden="true"></span>
+        <span class="en-date latin" data-readme-press="date-latin">2026</span>
+      </div>
+      <div class="release-card">
+        <p class="release-note" data-readme-press="repository-note">Get the latest edition from <strong>GitHub</strong>.</p>
+        <span class="repo-url" data-readme-press="repository">github.com/3lf/readme-press</span>
+      </div>
+    </footer>
+  </main>
+</body>
+</html>
