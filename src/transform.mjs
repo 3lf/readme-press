@@ -187,6 +187,16 @@ const CALLOUT_KINDS = {
   '⭐': { kind: 'star', label: 'حمایت' },
 };
 
+function boundaryCalloutEmoji(text) {
+  const markerLine = text.split(/\r?\n/u, 1)[0];
+  const matches = [...markerLine.matchAll(EMOJI_RE)];
+  const leading = matches.find((match) => match.index <= 2);
+  if (leading) return leading[0];
+  const trailing = matches.at(-1);
+  if (!trailing) return null;
+  return markerLine.slice(trailing.index + trailing[0].length).trim() ? null : trailing[0];
+}
+
 /* ---------------- mdast-level helpers ---------------- */
 
 function headingText(node) {
@@ -365,24 +375,30 @@ function cleanChapterMdast(nodes, ctx) {
     node.children = [{ type: 'text', value: clean }];
   });
 
-  // blockquote callouts: first text starts with a known emoji
+  // Blockquote callouts accept the original leading marker and an RTL-safe
+  // trailing marker. The latter lets GitHub choose direction from Persian text.
   visit(root, 'blockquote', (node) => {
-    const first = mdastToString(node).trim();
-    const m = first.match(EMOJI_RE);
-    if (!m || first.indexOf(m[0]) > 2) return;
-    const meta = CALLOUT_KINDS[m[0]] ?? { kind: 'note', label: 'نکته' };
+    const fullText = mdastToString(node).trim();
+    const firstBlockText = mdastToString(node.children?.[0] ?? node).trim();
+    const marker = boundaryCalloutEmoji(firstBlockText);
+    if (!marker) return;
+    const meta = CALLOUT_KINDS[marker] ?? { kind: 'note', label: 'نکته' };
     const className = ['callout', `callout-${meta.kind}`];
     for (const rule of ctx.contentRules.calloutClassRules) {
-      if (first.includes(rule.contains)) className.push(rule.className);
+      if (fullText.includes(rule.contains)) className.push(rule.className);
     }
     node.data = {
       hName: 'aside',
-      hProperties: { className, 'data-icon': m[0] },
+      hProperties: { className, 'data-icon': marker },
     };
-    // drop the leading emoji from the first text node (icon replaces it)
+    // Drop the source marker from whichever text node contains it. The icon
+    // column replaces it in the rendered book.
     visit(node, 'text', (t) => {
-      if (t.value.trimStart().startsWith(m[0])) {
-        t.value = t.value.replace(m[0], '').replace(/^\s*/, '');
+      if (t.value.includes(marker)) {
+        t.value = t.value
+          .replace(marker, '')
+          .replace(/^\s*/u, '')
+          .replace(/\s*$/u, '');
         return EXIT;
       }
     });

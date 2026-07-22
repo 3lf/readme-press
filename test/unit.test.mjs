@@ -16,7 +16,7 @@ import { unified } from 'unified';
 import remarkParse from 'remark-parse';
 import { loadConfig } from '../src/config.mjs';
 import { normalizeReleaseVersion, prepareRelease, verifyRenderedPages } from '../src/release.mjs';
-import { selectBook } from '../src/transform.mjs';
+import { selectBook, transformReadme } from '../src/transform.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -65,6 +65,41 @@ Body.
   assert.equal(result.chapters.length, 3);
   assert.equal(result.chapters[0].isIntroduction, true);
   assert.equal(result.chapters[1].isPartStart, true);
+});
+
+test('recognizes both leading and RTL-safe trailing callout markers', async () => {
+  const result = await transformReadme(`# Introduction
+
+> 💡 Legacy leading marker.
+
+> متن فارسی با شروع درست 💡
+
+> هشدار چندبخشی ⚠️
+> ادامه هشدار.
+
+# Contents
+
+- [Chapter](#chapter)
+
+# Chapter
+
+Body.
+`, {
+    repository: { url: 'https://github.com/example/book', branch: 'main' },
+    images: { classRules: [] },
+    contentRules: { calloutClassRules: [], paragraphClassRules: [] },
+    mermaid: {},
+    structure: {
+      introHeading: 'Introduction',
+      githubTocHeading: 'Contents',
+      parts: [{ title: 'Part one', startHeading: 'Chapter' }],
+    },
+    toc: { maxDepth: 2 },
+  });
+  const html = result.chapters.map((chapter) => chapter.html).join('\n');
+  assert.equal((html.match(/callout-tip/g) ?? []).length, 2);
+  assert.equal((html.match(/callout-warn/g) ?? []).length, 1);
+  assert.doesNotMatch(html, /Legacy leading marker\.\s*💡|متن فارسی با شروع درست\s*💡/u);
 });
 
 test('prepares checksums and neutral release notes from verified outputs', () => {
