@@ -18,7 +18,7 @@ Keep the source readable on GitHub and move print presentation into configuratio
 
 ![A generated test figure](figure.png)
 
-> 💡 A normal build optimizes PNG figures, while the high-quality build keeps their original pixels.
+> A normal build optimizes PNG figures, while the high-quality build keeps their original pixels. 💡
 
 ```javascript
 export default {

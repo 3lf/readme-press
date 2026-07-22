@@ -8,7 +8,7 @@ on:
         description: Semantic version matching package.json
         required: true
         type: string
-        default: v0.1.0
+        default: v0.1.1
 
 concurrency:
   group: readme-press-release
@@ -152,4 +152,4 @@ jobs:
             --title "README Press $VERSION" \
             --draft \
             --generate-notes \
-            --notes "First public engine release for turning long Markdown READMEs into release-ready PDF books. It includes a versioned GitHub Action, a locked source archive, normal and high-quality example PDFs, full-page structural QA, and deterministic release metadata."
+            --notes "Patch release with bilingual English and Persian documentation plus RTL-safe trailing callout markers. It includes the versioned GitHub Action, locked source archive, normal and high-quality example PDFs, full-page structural QA, and deterministic release metadata."

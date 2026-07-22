@@ -1,6 +1,6 @@
 {
   "name": "readme-press",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Turn a long Markdown README into a professionally typeset, release-ready PDF book.",
   "license": "MIT",
   "type": "module",
@@ -26,7 +26,8 @@
     "themes/",
     "npm-shrinkwrap.json",
     "LICENSE",
-    "README.md"
+    "README.md",
+    "README.fa.md"
   ],
   "engines": {
     "node": ">=22"

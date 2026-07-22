@@ -1,8 +1,14 @@
 # README Press
 
+<p align="center">
+  <strong>English</strong> · <a href="./README.fa.md">فارسی</a>
+</p>
+
 README Press turns a long Markdown README into a professionally typeset, release-ready PDF book.
 
 It is designed for repositories where the README remains the canonical source. Print structure, typography, covers, output quality, and release checks live in configuration instead of leaking into the Markdown.
+
+The first production implementation was built for a Persian-language, RTL-first book. That origin shaped README Press's bidirectional-text handling, local typography, and visual QA. The engine is now generic and can build LTR, RTL, or mixed-script books from any compatible Markdown project.
 
 ## What it provides
 
@@ -51,7 +57,7 @@ jobs:
       - uses: actions/checkout@v7
 
       - name: Build and fully verify both PDF qualities
-        uses: 3lf/readme-press@v0.1.0
+        uses: 3lf/readme-press@v0.1.1
         with:
           command: pipeline
           config: book/readme-press.config.mjs
@@ -67,7 +73,7 @@ The action installs the engine from its own audited lockfile, builds both varian
 Clone the same release tag so local and CI builds use the same engine and lockfile:
 
 ```bash
-git clone --branch v0.1.0 --depth 1 https://github.com/3lf/readme-press.git .readme-press
+git clone --branch v0.1.1 --depth 1 https://github.com/3lf/readme-press.git .readme-press
 npm ci --prefix .readme-press
 node .readme-press/bin/readme-press.mjs version
 ```
@@ -125,15 +131,15 @@ The source convention is intentionally small:
 ## Build
 
 ```bash
-npx readme-press build --config readme-press.config.mjs --quality normal
-npx readme-press build --config readme-press.config.mjs --quality high
-npx readme-press build --config readme-press.config.mjs --quality all
+node .readme-press/bin/readme-press.mjs build --config readme-press.config.mjs --quality normal
+node .readme-press/bin/readme-press.mjs build --config readme-press.config.mjs --quality high
+node .readme-press/bin/readme-press.mjs build --config readme-press.config.mjs --quality all
 ```
 
 For an exact release candidate:
 
 ```bash
-npx readme-press build \
+node .readme-press/bin/readme-press.mjs build \
   --config readme-press.config.mjs \
   --quality all \
   --release-version v1.0.0
@@ -154,7 +160,7 @@ node .readme-press/bin/readme-press.mjs pipeline \
 ## Verify
 
 ```bash
-npx readme-press qa \
+node .readme-press/bin/readme-press.mjs qa \
   --config readme-press.config.mjs \
   --quality all \
   --release-version v1.0.0 \
@@ -183,8 +189,8 @@ The QA module exports a default function receiving `{ config, manifest, check }`
 ## Prepare release artifacts
 
 ```bash
-npx readme-press release validate v1.0.0
-npx readme-press release prepare \
+node .readme-press/bin/readme-press.mjs release validate v1.0.0
+node .readme-press/bin/readme-press.mjs release prepare \
   --config readme-press.config.mjs \
   --version v1.0.0 \
   --commit FULL_GIT_COMMIT
