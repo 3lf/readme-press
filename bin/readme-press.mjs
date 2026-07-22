@@ -2,10 +2,6 @@
 
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { runBuild } from '../src/build.mjs';
-import { loadConfig } from '../src/config.mjs';
-import { runQa } from '../src/qa.mjs';
-import { normalizeReleaseVersion, prepareRelease, verifyRenderedPages } from '../src/release.mjs';
 
 function option(name, fallback) {
   const index = process.argv.indexOf(`--${name}`);
@@ -38,6 +34,7 @@ Usage:
 async function main() {
   const command = process.argv[2];
   if (command === 'build') {
+    const { runBuild } = await import('../src/build.mjs');
     await runBuild({
       configFile: option('config'),
       quality: option('quality', 'normal'),
@@ -46,6 +43,7 @@ async function main() {
     return;
   }
   if (command === 'qa') {
+    const { runQa } = await import('../src/qa.mjs');
     await runQa({
       configFile: option('config'),
       quality: option('quality'),
@@ -55,6 +53,17 @@ async function main() {
     return;
   }
   if (command === 'pipeline') {
+    const [
+      { runBuild },
+      { loadConfig },
+      { runQa },
+      { normalizeReleaseVersion, prepareRelease },
+    ] = await Promise.all([
+      import('../src/build.mjs'),
+      import('../src/config.mjs'),
+      import('../src/qa.mjs'),
+      import('../src/release.mjs'),
+    ]);
     const configFile = option('config');
     const releaseVersion = normalizeReleaseVersion(option('release-version'));
     const commit = option('commit');
@@ -79,10 +88,15 @@ async function main() {
   if (command === 'release') {
     const subcommand = process.argv[3];
     if (subcommand === 'validate') {
+      const { normalizeReleaseVersion } = await import('../src/release.mjs');
       console.log(normalizeReleaseVersion(process.argv[4]));
       return;
     }
     if (subcommand === 'prepare') {
+      const [{ loadConfig }, { prepareRelease }] = await Promise.all([
+        import('../src/config.mjs'),
+        import('../src/release.mjs'),
+      ]);
       const config = await loadConfig(option('config'));
       const result = prepareRelease({
         version: option('version'),
@@ -95,6 +109,7 @@ async function main() {
       return;
     }
     if (subcommand === 'verify-render') {
+      const { verifyRenderedPages } = await import('../src/release.mjs');
       const directories = options('directory');
       if (!directories.length) throw new Error('At least one --directory is required.');
       const pages = verifyRenderedPages({
