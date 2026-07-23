@@ -40,6 +40,9 @@ jobs:
           npm run pack:check
           npm audit --audit-level=low
 
+      - name: Test the packed package in a clean project
+        run: npm run test:package
+
       - name: Prepare the integration fixture
         run: npm run fixture:prepare
 

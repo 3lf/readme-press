@@ -191,6 +191,12 @@ export async function runQa({
     check(destinations.every((name) => name.asBytes().length <= 127), `${requested} destination names fit compatibility limit`);
     check(destinations.every((name) => !name.asString().startsWith('/viv-id-')), `${requested} build-server destinations were normalized`);
 
+    const outlineRoot = doc.catalog.lookup(PDFName.of('Outlines'), PDFDict);
+    const outlineCount = Math.abs(outlineRoot?.get(PDFName.of('Count'))?.asNumber?.() ?? 0);
+    const minimumOutlines = config.qa.minimumOutlines ?? 1;
+    check(outlineCount >= minimumOutlines, `${requested} PDF bookmarks`, String(outlineCount));
+    check(output.outlines?.items === outlineCount, `${requested} bookmark count matches manifest`);
+
     const links = linkAnnotationData(doc);
     check(!links.uris.some(({ uri }) => /localhost|127\.0\.0\.1|file:/i.test(uri)), `${requested} has no local build links`);
     if (config.cover.enabled) {

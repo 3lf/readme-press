@@ -90,7 +90,7 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v7
-      - uses: 3lf/readme-press@v0.1.2
+      - uses: 3lf/readme-press@v0.1.1
         with:
           command: pipeline
           config: book/readme-press.config.mjs
@@ -138,22 +138,19 @@ The source convention is deliberately small: one introduction heading, one hand-
 
 ## Run locally
 
-README Press is currently distributed as a versioned GitHub Action and a locked source release. Clone the same release tag used by CI:
-
-npm publication is deliberately deferred. A clean downstream npm install does not preserve the root dependency overrides used by the audited Action, so it currently resolves a different PDF toolchain. Use the versioned Action or locked source release until that packaging boundary is fixed.
+Install the current prerelease from npm:
 
 ```bash
-git clone --branch v0.1.2 --depth 1 https://github.com/3lf/readme-press.git .readme-press
-npm ci --prefix .readme-press
-node .readme-press/bin/readme-press.mjs version
+npm install --save-dev readme-press@beta
+npx readme-press version
 ```
 
 Build one edition or both:
 
 ```bash
-node .readme-press/bin/readme-press.mjs build --config readme-press.config.mjs --quality normal
-node .readme-press/bin/readme-press.mjs build --config readme-press.config.mjs --quality high
-node .readme-press/bin/readme-press.mjs build --config readme-press.config.mjs --quality all
+npx readme-press build --config readme-press.config.mjs --quality normal
+npx readme-press build --config readme-press.config.mjs --quality high
+npx readme-press build --config readme-press.config.mjs --quality all
 ```
 
 System requirements:
@@ -163,6 +160,8 @@ System requirements:
 - Poppler tools for full QA: `pdfinfo`, `pdffonts`, `pdftotext`, `pdfimages`, and `pdftoppm`
 
 Install the PDF tools on Ubuntu with `sudo apt-get install -y poppler-utils qpdf`, or on macOS with `brew install poppler qpdf`.
+
+npm 11 may ask you to review Puppeteer's browser-install script. If your project enforces a strict install-script policy, approve the installed Puppeteer dependency with `npm install-scripts approve puppeteer` before building.
 
 ## Verify and prepare a release
 
@@ -221,9 +220,10 @@ npm test
 npm run test:syntax
 npm run test:action
 npm run test:integration
+npm run test:package
 npm run pack:check
 npm audit --audit-level=low
-go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 .github/workflows/ci.yml .github/workflows/release.yml
+go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 .github/workflows/*.yml
 ```
 
-The integration suite builds and fully renders normal and high-quality English and Persian fixtures, checks their PDF containers and links, compares lossless image pixels, and validates release metadata.
+The integration suite builds and fully renders normal and high-quality English and Persian fixtures, checks their PDF containers and links, compares lossless image pixels, and validates release metadata. The package smoke test then packs the exact npm artifact, installs it in a clean project, audits the consumer dependency tree, and builds and verifies both PDF qualities through the installed CLI.

@@ -8,7 +8,7 @@ on:
         description: Semantic version matching package.json
         required: true
         type: string
-        default: v0.1.2
+        default: v0.1.3-beta.1
 
 concurrency:
   group: readme-press-release
@@ -69,7 +69,8 @@ jobs:
           npm run test:syntax
           npm run test:action
           npm test
-          go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 .github/workflows/ci.yml .github/workflows/release.yml
+          npm run test:package
+          go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 .github/workflows/*.yml
           npm run pack:check
           npm audit --audit-level=low
 

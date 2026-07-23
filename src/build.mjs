@@ -13,7 +13,9 @@ import { dirname, resolve } from 'node:path';
 import {
   PDFDict,
   PDFDocument,
+  PDFHexString,
   PDFName,
+  PDFNumber,
   StandardFonts,
   beginMarkedContent,
   endMarkedContent,
@@ -23,6 +25,7 @@ import QRCode from 'qrcode';
 import sharp from 'sharp';
 import { loadConfig } from './config.mjs';
 import { renderCover } from './cover.mjs';
+import { renderPagedHtml } from './render.mjs';
 import { normalizeReleaseVersion } from './release.mjs';
 import { buildDocument } from './template.mjs';
 import { transformReadme } from './transform.mjs';
@@ -59,6 +62,129 @@ function normalizeDestinationNames(doc) {
     }
   }
   return { names: mapping.size, references };
+}
+
+function encodeDestinationFragment(value) {
+  return [...value].map((character) => (
+    /^[A-Za-z0-9_-]$/.test(character)
+      ? character
+      : `:${character.codePointAt(0).toString(16).padStart(4, '0')}`
+  )).join('');
+}
+
+function destinationForSlug(dests, slug) {
+  const suffix = `:0023${encodeDestinationFragment(slug)}`;
+  return dests.keys().find((key) => key.asString().endsWith(suffix));
+}
+
+function localNumber(value, config) {
+  const plain = String(value);
+  if (config.metadata.numerals !== 'persian') return plain;
+  return plain.replace(/\d/g, (digit) => '۰۱۲۳۴۵۶۷۸۹'[Number(digit)]);
+}
+
+function outlineTree(result, config) {
+  const chapterNode = (chapter) => ({
+    title: chapter.isIntroduction
+      ? `${config.labels.introduction}: ${chapter.title}`
+      : `${localNumber(chapter.displayNumber, config)}. ${chapter.title}`,
+    slug: chapter.slug,
+    children: chapter.tocHeadings.map((heading) => ({
+      title: heading.text,
+      slug: heading.slug,
+      children: [],
+    })),
+  });
+  const nodes = result.chapters.filter((chapter) => chapter.isIntroduction).map(chapterNode);
+  const partNumbers = new Set();
+  for (const part of result.parts) {
+    partNumbers.add(part.number);
+    nodes.push({
+      title: `${config.labels.part} ${localNumber(part.number, config)}: ${part.title}`,
+      slug: `part-${part.number}`,
+      children: result.chapters
+        .filter((chapter) => chapter.partNumber === part.number)
+        .map(chapterNode),
+    });
+  }
+  nodes.push(...result.chapters
+    .filter((chapter) => !chapter.isIntroduction && !partNumbers.has(chapter.partNumber))
+    .map(chapterNode));
+  return nodes;
+}
+
+function addOutlines(doc, result, config) {
+  const dests = doc.catalog.lookup(PDFName.of('Dests'), PDFDict);
+  if (!dests) return { items: 0 };
+  const outlines = PDFDict.withContext(doc.context);
+  const outlinesRef = doc.context.register(outlines);
+  outlines.set(PDFName.of('Type'), PDFName.of('Outlines'));
+
+  const buildLevel = (nodes, parentRef) => {
+    const items = nodes
+      .map((node) => ({ ...node, destination: destinationForSlug(dests, node.slug) }))
+      .filter((node) => node.destination)
+      .map((node) => {
+        const dictionary = PDFDict.withContext(doc.context);
+        return { ...node, dictionary, ref: doc.context.register(dictionary) };
+      });
+
+    for (const [index, item] of items.entries()) {
+      item.dictionary.set(PDFName.of('Title'), PDFHexString.fromText(item.title));
+      item.dictionary.set(PDFName.of('Parent'), parentRef);
+      item.dictionary.set(PDFName.of('Dest'), item.destination);
+      if (index > 0) item.dictionary.set(PDFName.of('Prev'), items[index - 1].ref);
+      if (index + 1 < items.length) item.dictionary.set(PDFName.of('Next'), items[index + 1].ref);
+      const children = buildLevel(item.children, item.ref);
+      if (children.count) {
+        item.dictionary.set(PDFName.of('First'), children.first);
+        item.dictionary.set(PDFName.of('Last'), children.last);
+        item.dictionary.set(PDFName.of('Count'), PDFNumber.of(children.count));
+      }
+      item.descendants = children.count;
+    }
+
+    return {
+      count: items.reduce((total, item) => total + 1 + item.descendants, 0),
+      first: items[0]?.ref,
+      last: items.at(-1)?.ref,
+    };
+  };
+
+  const built = buildLevel(outlineTree(result, config), outlinesRef);
+  if (!built.count) return { items: 0 };
+  outlines.set(PDFName.of('First'), built.first);
+  outlines.set(PDFName.of('Last'), built.last);
+  outlines.set(PDFName.of('Count'), PDFNumber.of(built.count));
+  doc.catalog.set(PDFName.of('Outlines'), outlinesRef);
+  return { items: built.count };
+}
+
+function applyPageBoxes(doc, sizes) {
+  if (sizes.length + 1 === doc.getPageCount()) doc.removePage(sizes.length);
+  if (sizes.length !== doc.getPageCount()) {
+    throw new Error(`Rendered ${sizes.length} page boxes for a ${doc.getPageCount()}-page PDF.`);
+  }
+  for (const [index, size] of sizes.entries()) {
+    const page = doc.getPage(index);
+    const yOffset = page.getHeight() - size.mediaHeight;
+    page.setMediaBox(0, yOffset, size.mediaWidth, size.mediaHeight);
+    if (!Number.isFinite(size.bleedOffset) || !Number.isFinite(size.bleedSize)
+      || (!size.bleedOffset && !size.bleedSize)) continue;
+    page.setBleedBox(
+      size.bleedOffset,
+      yOffset + size.bleedOffset,
+      size.mediaWidth - size.bleedOffset * 2,
+      size.mediaHeight - size.bleedOffset * 2,
+    );
+    const trimOffset = size.bleedOffset + size.bleedSize;
+    page.setTrimBox(
+      trimOffset,
+      yOffset + trimOffset,
+      size.mediaWidth - trimOffset * 2,
+      size.mediaHeight - trimOffset * 2,
+    );
+  }
 }
 
 async function writeOptimizedFigure(source, target, quality) {
@@ -122,8 +248,10 @@ function htmlForQuality(html, images, quality) {
   return output;
 }
 
-async function finalizePdf(bodyPdf, coverPdf, outputPath, config) {
+async function finalizePdf(bodyPdf, coverPdf, outputPath, config, result, renderData) {
   const bodyDoc = await PDFDocument.load(readFileSync(bodyPdf));
+  applyPageBoxes(bodyDoc, renderData.pageSizeData);
+  const outlines = addOutlines(bodyDoc, result, config);
   if (coverPdf) {
     const coverDoc = await PDFDocument.load(readFileSync(coverPdf));
     const [coverPage] = await bodyDoc.copyPages(coverDoc, [0]);
@@ -161,6 +289,7 @@ async function finalizePdf(bodyPdf, coverPdf, outputPath, config) {
     sha256: createHash('sha256').update(bytes).digest('hex'),
     repositoryFooter,
     normalizedDestinations,
+    outlines,
     linearized,
   };
 }
@@ -251,18 +380,24 @@ export async function runBuild({ configFile, quality = 'normal', releaseVersion:
 
   const baseHtml = buildDocument(result, documentConfig);
   const outputs = {};
-  const vivliostyle = resolve(config.packageRoot, 'node_modules/.bin/vivliostyle');
   for (const requested of qualities) {
     const variant = variants[requested];
     const htmlPath = resolve(outputDir, variant.html);
     const bodyPdf = resolve(outputDir, variant.bodyPdf);
     const outputPath = resolve(outputDir, variant.pdf);
     writeFileSync(htmlPath, htmlForQuality(baseHtml, result.images, requested), 'utf8');
-    execFileSync(vivliostyle, ['build', htmlPath, '-o', bodyPdf], {
-      cwd: config.projectRoot,
-      stdio: ['ignore', 'inherit', 'inherit'],
+    const renderData = await renderPagedHtml({
+      htmlPath,
+      pdfPath: bodyPdf,
     });
-    const finalized = await finalizePdf(bodyPdf, coverPdf, outputPath, documentConfig);
+    const finalized = await finalizePdf(
+      bodyPdf,
+      coverPdf,
+      outputPath,
+      documentConfig,
+      result,
+      renderData,
+    );
     outputs[requested] = {
       quality: requested,
       imageMode: variant.imageMode,
