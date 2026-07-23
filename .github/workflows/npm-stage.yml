@@ -1,0 +1,84 @@
+name: Stage npm package
+run-name: Stage readme-press@${{ inputs.version }} for npm review
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Exact package.json version without a leading v
+        required: true
+        type: string
+      tag:
+        description: npm distribution tag
+        required: true
+        type: choice
+        default: latest
+        options:
+          - latest
+          - beta
+          - next
+
+concurrency:
+  group: readme-press-npm-stage
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  verify-and-stage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+
+      - name: Use the reviewed npm CLI
+        run: npm install --global npm@11.18.0
+
+      - name: Validate release inputs
+        env:
+          REQUESTED_TAG: ${{ inputs.tag }}
+          REQUESTED_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
+            echo "npm staging must run from main." >&2
+            exit 1
+          fi
+          package_name="$(node -p "require('./package.json').name")"
+          package_version="$(node -p "require('./package.json').version")"
+          if [[ "$package_version" != "$REQUESTED_VERSION" ]]; then
+            echo "Requested $REQUESTED_VERSION does not match package.json $package_version." >&2
+            exit 1
+          fi
+          if [[ "$package_version" == *-* && "$REQUESTED_TAG" == "latest" ]]; then
+            echo "Prerelease versions must use beta or next, not latest." >&2
+            exit 1
+          fi
+          npm view "$package_name" name >/dev/null
+          if npm view "$package_name@$package_version" version >/dev/null 2>&1; then
+            echo "$package_name@$package_version already exists on npm." >&2
+            exit 1
+          fi
+
+      - name: Install PDF validation tools
+        run: sudo apt-get update && sudo apt-get install -y poppler-utils qpdf
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Verify the source and packed consumer experience
+        run: npm run verify:publish
+
+      - name: Validate GitHub workflows
+        run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 .github/workflows/*.yml
+
+      - name: Stage the package on npm
+        run: npm stage publish --tag "${{ inputs.tag }}"

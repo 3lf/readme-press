@@ -92,7 +92,7 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v7
-      - uses: 3lf/readme-press@v0.1.2
+      - uses: 3lf/readme-press@v0.1.1
         with:
           command: pipeline
           config: book/readme-press.config.mjs
@@ -140,22 +140,19 @@ export default {
 
 ## اجرای محلی
 
-در حال حاضر README Press به‌شکل GitHub Action نسخه‌بندی‌شده و سورس قفل‌شده منتشر می‌شه. همون تگی رو بگیر که CI استفاده می‌کنه:
-
-انتشار روی npm فعلاً عمداً عقب افتاده. نصب تمیز در یه پروژه دیگه، overrideهای وابستگی نسخه بررسی‌شده Action رو نگه نمی‌داره و در نتیجه زنجیره متفاوتی از ابزارهای PDF می‌سازه. تا وقتی این مرز بسته‌بندی درست نشده، از Action نسخه‌بندی‌شده یا سورس قفل‌شده استفاده کن.
+نسخه آزمایشی فعلی رو از npm نصب کن:
 
 ```bash
-git clone --branch v0.1.2 --depth 1 https://github.com/3lf/readme-press.git .readme-press
-npm ci --prefix .readme-press
-node .readme-press/bin/readme-press.mjs version
+npm install --save-dev readme-press@beta
+npx readme-press version
 ```
 
 بعدش نسخه عادی، باکیفیت یا هر دو رو بساز:
 
 ```bash
-node .readme-press/bin/readme-press.mjs build --config readme-press.config.mjs --quality normal
-node .readme-press/bin/readme-press.mjs build --config readme-press.config.mjs --quality high
-node .readme-press/bin/readme-press.mjs build --config readme-press.config.mjs --quality all
+npx readme-press build --config readme-press.config.mjs --quality normal
+npx readme-press build --config readme-press.config.mjs --quality high
+npx readme-press build --config readme-press.config.mjs --quality all
 ```
 
 این ابزارها باید روی سیستم نصب باشن:
@@ -165,6 +162,8 @@ node .readme-press/bin/readme-press.mjs build --config readme-press.config.mjs -
 - **ابزارهای Poppler:** شامل `pdfinfo`، `pdffonts`، `pdftotext`، `pdfimages` و `pdftoppm`
 
 روی Ubuntu از فرمان `sudo apt-get install -y poppler-utils qpdf` و روی macOS از `brew install poppler qpdf` استفاده کن.
+
+ممکنه npm 11 ازت بخواد script نصب مرورگر Puppeteer رو بررسی کنی. اگه پروژه‌ات سیاست سخت‌گیرانه‌ای برای install scriptها داره، قبل از ساخت با فرمان `npm install-scripts approve puppeteer` نسخه نصب‌شده Puppeteer رو تأیید کن.
 
 ## بررسی و آماده‌سازی انتشار
 
@@ -223,11 +222,12 @@ npm test
 npm run test:syntax
 npm run test:action
 npm run test:integration
+npm run test:package
 npm run pack:check
 npm audit --audit-level=low
-go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 .github/workflows/ci.yml .github/workflows/release.yml
+go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 .github/workflows/*.yml
 ```
 
-تست یکپارچه هر دو کیفیت نمونه انگلیسی و فارسی رو می‌سازه، تک‌تک صفحه‌ها رو رندر می‌کنه، ساختار PDF و لینک‌ها رو بررسی می‌کنه، پیکسل تصاویر بدون افت رو مقایسه می‌کنه و اطلاعات Release رو اعتبارسنجی می‌کنه.
+تست یکپارچه هر دو کیفیت نمونه انگلیسی و فارسی رو می‌سازه، تک‌تک صفحه‌ها رو رندر می‌کنه، ساختار PDF و لینک‌ها رو بررسی می‌کنه، پیکسل تصاویر بدون افت رو مقایسه می‌کنه و اطلاعات Release رو اعتبارسنجی می‌کنه. تست بسته هم دقیقاً همون tarball مربوط به npm رو می‌سازه، داخل یه پروژه خالی نصبش می‌کنه، وابستگی‌های سمت مصرف‌کننده رو ممیزی می‌کنه و با CLI نصب‌شده هر دو کیفیت PDF رو می‌سازه و بررسی می‌کنه.
 
 </div>
