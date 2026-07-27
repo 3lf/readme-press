@@ -28,7 +28,7 @@ Usage:
   readme-press release validate v1.0.0
   readme-press release prepare --config readme-press.config.mjs --version v1.0.0 [--commit SHA]
   readme-press release verify-render --manifest path --directory normal --directory high
-  readme-press version`;
+  readme-press version | --version | -v`;
 }
 
 async function main() {
@@ -120,7 +120,7 @@ async function main() {
       return;
     }
   }
-  if (command === 'version') {
+  if (['version', '--version', '-v'].includes(command)) {
     const packageJson = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
     console.log(packageJson.version);
     return;

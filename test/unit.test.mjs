@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import {
   mkdtempSync,
@@ -19,6 +20,18 @@ import { normalizeReleaseVersion, prepareRelease, verifyRenderedPages } from '..
 import { selectBook, transformReadme } from '../src/transform.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+
+test('reports the package version through every supported CLI form', () => {
+  const cli = join(root, 'bin/readme-press.mjs');
+  const expected = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version;
+  for (const argument of ['version', '--version', '-v']) {
+    const actual = execFileSync(process.execPath, [cli, argument], {
+      cwd: root,
+      encoding: 'utf8',
+    }).trim();
+    assert.equal(actual, expected);
+  }
+});
 
 test('accepts stable and prerelease semantic versions', () => {
   assert.equal(normalizeReleaseVersion('v1.0.0'), 'v1.0.0');
