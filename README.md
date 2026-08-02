@@ -90,7 +90,7 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v7
-      - uses: 3lf/readme-press@v0.1.1
+      - uses: 3lf/readme-press@v0.1.3
         with:
           command: pipeline
           config: book/readme-press.config.mjs
@@ -138,10 +138,10 @@ The source convention is deliberately small: one introduction heading, one hand-
 
 ## Run locally
 
-Install the current prerelease from npm:
+Install the stable package from npm:
 
 ```bash
-npm install --save-dev readme-press@beta
+npm install --save-dev readme-press
 npx readme-press version
 ```
 

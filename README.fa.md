@@ -92,7 +92,7 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v7
-      - uses: 3lf/readme-press@v0.1.1
+      - uses: 3lf/readme-press@v0.1.3
         with:
           command: pipeline
           config: book/readme-press.config.mjs
@@ -140,10 +140,10 @@ export default {
 
 ## اجرای محلی
 
-نسخه آزمایشی فعلی رو از npm نصب کن:
+نسخه پایدار رو از npm نصب کن:
 
 ```bash
-npm install --save-dev readme-press@beta
+npm install --save-dev readme-press
 npx readme-press version
 ```
 

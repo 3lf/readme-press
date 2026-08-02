@@ -1,6 +1,6 @@
 {
   "name": "readme-press",
-  "version": "0.1.3-beta.2",
+  "version": "0.1.3",
   "description": "Turn a long Markdown README into a professionally typeset, release-ready PDF book.",
   "license": "MIT",
   "type": "module",
