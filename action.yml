@@ -15,7 +15,7 @@ inputs:
     description: Path to the README Press configuration, relative to the repository
     required: true
   quality:
-    description: Output quality for build or qa; pipeline always builds both qualities
+    description: Output edition for build or qa; pipeline builds every configured edition
     required: false
     default: all
   release-version:

@@ -52,6 +52,7 @@ export default defineConfig({
   toc: { maxDepth: 2 },
   outputs: {
     normal: 'fixture-book.pdf',
+    print: 'fixture-book-print.pdf',
     high: 'fixture-book-high-quality.pdf',
   },
   qa: {

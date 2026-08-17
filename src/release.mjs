@@ -53,10 +53,17 @@ export function prepareRelease({ version: rawVersion, manifestPath, outputDir, c
   }
 
   const dist = dirname(resolve(manifestPath));
-  const normal = requireOutput(manifest, 'normal', dist);
-  const high = requireOutput(manifest, 'high', dist);
-  if (normal.pageCount !== high.pageCount) {
-    throw new Error(`Quality variants have different page counts: ${normal.pageCount} and ${high.pageCount}.`);
+  const qualities = ['normal', 'print', 'high'].filter((quality) => manifest.outputs?.[quality]);
+  if (!qualities.includes('normal') || !qualities.includes('high')) {
+    throw new Error('Release manifests must contain normal and high outputs.');
+  }
+  const outputs = Object.fromEntries(qualities.map((quality) => [
+    quality,
+    requireOutput(manifest, quality, dist),
+  ]));
+  const pageCounts = new Set(Object.values(outputs).map((output) => output.pageCount));
+  if (pageCounts.size !== 1) {
+    throw new Error(`Edition variants have different page counts: ${[...pageCounts].join(', ')}.`);
   }
 
   const sourceCommit = commit || manifest.sourceCommit;
@@ -68,25 +75,29 @@ export function prepareRelease({ version: rawVersion, manifestPath, outputDir, c
   }
 
   mkdirSync(outputDir, { recursive: true });
-  const checksums = [normal, high]
+  const checksums = Object.values(outputs)
     .map((output) => `${output.sha256}  ${output.pdf}`)
     .join('\n');
   writeFileSync(resolve(outputDir, 'SHA256SUMS.txt'), `${checksums}\n`, 'utf8');
 
+  const hasPrint = Boolean(outputs.print);
   const copy = {
-    intro: `This release contains ${manifest.metadata?.title ?? 'the book'} in two quality variants built from the same source.`,
+    intro: `This release contains ${manifest.metadata?.title ?? 'the book'} in ${hasPrint ? 'three editions' : 'two quality variants'} built from the same source.`,
     filesTitle: 'Files',
     file: 'File',
     purpose: 'Purpose',
     pages: 'Pages',
     size: 'Size',
     normalPurpose: 'Normal edition for reading, downloading, and sharing',
-    highPurpose: 'High-quality edition with lossless source images for printing and archival use',
-    parity: 'The text, pagination, links, and document structure are identical. Only the image encoding differs.',
+    printPurpose: 'Print edition with lossless color figures and ink-efficient white backgrounds',
+    highPurpose: 'High-quality full-color edition with lossless source images for display and archival use',
+    parity: hasPrint
+      ? 'The content, pagination, links, and document structure are identical. Editions differ only in image encoding and the print palette.'
+      : 'The text, pagination, links, and document structure are identical. Only the image encoding differs.',
     validationTitle: 'Validation',
     validation: [
-      'Both PDFs passed README Press QA and `qpdf --check`.',
-      'The high-quality image inventory was compared with the source files.',
+      'Every PDF passed README Press QA and `qpdf --check`.',
+      'Lossless image inventories were compared with the source files.',
       '`SHA256SUMS.txt` is included for download verification.',
     ],
     sourceCommit: 'Source commit',
@@ -94,14 +105,17 @@ export function prepareRelease({ version: rawVersion, manifestPath, outputDir, c
     ...(release.copy ?? {}),
   };
   const commitUrl = `${manifest.repository?.url ?? ''}/commit/${sourceCommit}`;
+  const rows = qualities.map((quality) => {
+    const output = outputs[quality];
+    return `| \`${output.pdf}\` | ${copy[`${quality}Purpose`]} | ${output.pageCount} | ${formatMegabytes(output.bytes)} |`;
+  }).join('\n');
   const notes = `${copy.intro}
 
 ## ${copy.filesTitle}
 
 | ${copy.file} | ${copy.purpose} | ${copy.pages} | ${copy.size} |
 |---|---|---:|---:|
-| \`${normal.pdf}\` | ${copy.normalPurpose} | ${normal.pageCount} | ${formatMegabytes(normal.bytes)} |
-| \`${high.pdf}\` | ${copy.highPurpose} | ${high.pageCount} | ${formatMegabytes(high.bytes)} |
+${rows}
 
 ${copy.parity}
 
@@ -113,7 +127,14 @@ ${copy.validation.map((item) => `- ${item}`).join('\n')}
 `;
   writeFileSync(resolve(outputDir, 'release-notes.md'), notes, 'utf8');
 
-  return { version, normal, high, sourceCommit };
+  return {
+    version,
+    outputs,
+    normal: outputs.normal,
+    print: outputs.print,
+    high: outputs.high,
+    sourceCommit,
+  };
 }
 
 export function verifyRenderedPages({ manifestPath, directories }) {

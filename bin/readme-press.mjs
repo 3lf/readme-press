@@ -22,8 +22,8 @@ function usage() {
   return `README Press
 
 Usage:
-  readme-press build --config readme-press.config.mjs --quality normal|high|all [--release-version v1.0.0]
-  readme-press qa --config readme-press.config.mjs --quality normal|high|all [--release-version v1.0.0] [--render-all]
+  readme-press build --config readme-press.config.mjs --quality normal|high|print|all [--release-version v1.0.0]
+  readme-press qa --config readme-press.config.mjs --quality normal|high|print|all [--release-version v1.0.0] [--render-all]
   readme-press pipeline --config readme-press.config.mjs --release-version v1.0.0 --commit SHA [--render-all]
   readme-press release validate v1.0.0
   readme-press release prepare --config readme-press.config.mjs --version v1.0.0 [--commit SHA]
@@ -82,7 +82,7 @@ async function main() {
       commit,
       release: config.release,
     });
-    console.log(`Prepared ${result.version} release candidate with ${result.normal.pageCount} pages per quality.`);
+    console.log(`Prepared ${result.version} release candidate with ${result.normal.pageCount} pages per edition.`);
     return;
   }
   if (command === 'release') {
@@ -105,7 +105,7 @@ async function main() {
         commit: option('commit'),
         release: config.release,
       });
-      console.log(`Prepared ${result.version} release metadata for ${result.normal.pageCount} pages.`);
+      console.log(`Prepared ${result.version} release metadata for ${result.normal.pageCount} pages per edition.`);
       return;
     }
     if (subcommand === 'verify-render') {

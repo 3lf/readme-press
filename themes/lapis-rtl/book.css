@@ -1021,3 +1021,50 @@ figure.diagram--tall img {
   max-width: 100%;
   max-height: 142mm;
 }
+
+/* ---------------- ink-efficient print edition ---------------- */
+
+:root[data-readme-press-variant='print'] {
+  --bg: #FFFFFF;
+  --bg-2: #FFFFFF;
+  --surface: #FFFFFF;
+  --surface-2: #FFFFFF;
+  --night: #FFFFFF;
+  --night-2: #FFFFFF;
+  --night-ink: #171717;
+  --night-muted: #4B5563;
+  --night-gold: #5F4A18;
+  --night-line: rgba(23, 23, 23, 0.28);
+  --line: rgba(23, 23, 23, 0.18);
+  --line-strong: rgba(23, 23, 23, 0.34);
+}
+
+:root[data-readme-press-variant='print'] body,
+:root[data-readme-press-variant='print'] .colophon-update,
+:root[data-readme-press-variant='print'] .toc-stats span,
+:root[data-readme-press-variant='print'] .part-transition,
+:root[data-readme-press-variant='print'] .chapter-body code,
+:root[data-readme-press-variant='print'] .codeblock pre,
+:root[data-readme-press-variant='print'] pre.example,
+:root[data-readme-press-variant='print'] .book-tree,
+:root[data-readme-press-variant='print'] .book-tree-root,
+:root[data-readme-press-variant='print'] .book-tree-node,
+:root[data-readme-press-variant='print'] .promptblock,
+:root[data-readme-press-variant='print'] .callout,
+:root[data-readme-press-variant='print'] thead th,
+:root[data-readme-press-variant='print'] tbody tr:nth-child(even) td,
+:root[data-readme-press-variant='print'] figure.diagram {
+  background: #FFFFFF !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+
+:root[data-readme-press-variant='print'] .codeblock pre,
+:root[data-readme-press-variant='print'] .codeblock code,
+:root[data-readme-press-variant='print'] .codeblock span {
+  color: #171717 !important;
+}
+
+:root[data-readme-press-variant='print'] .codeblock pre {
+  border-color: var(--line-strong);
+}

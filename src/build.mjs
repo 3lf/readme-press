@@ -308,13 +308,17 @@ function sourceCommit(projectRoot) {
 }
 
 export async function runBuild({ configFile, quality = 'normal', releaseVersion: rawVersion } = {}) {
-  if (!['normal', 'high', 'all'].includes(quality)) {
-    throw new Error(`Unknown quality: ${quality}. Use normal, high, or all.`);
+  if (!['normal', 'high', 'print', 'all'].includes(quality)) {
+    throw new Error(`Unknown quality: ${quality}. Use normal, high, print, or all.`);
   }
   const config = await loadConfig(configFile);
+  const configuredQualities = ['normal', 'print', 'high'].filter((variant) => config.outputs[variant]);
+  if (quality !== 'all' && !configuredQualities.includes(quality)) {
+    throw new Error(`The ${quality} output is not configured.`);
+  }
   const releaseVersion = rawVersion ? normalizeReleaseVersion(rawVersion) : null;
   const documentConfig = { ...config, releaseVersion };
-  const qualities = quality === 'all' ? ['normal', 'high'] : [quality];
+  const qualities = quality === 'all' ? configuredQualities : [quality];
   const variants = {
     normal: {
       html: 'book.html',
@@ -327,6 +331,12 @@ export async function runBuild({ configFile, quality = 'normal', releaseVersion:
       bodyPdf: 'body-high-quality.pdf',
       pdf: config.outputs.high,
       imageMode: 'source-png-lossless',
+    },
+    print: {
+      html: 'book-print.html',
+      bodyPdf: 'body-print.pdf',
+      pdf: config.outputs.print,
+      imageMode: 'source-png-lossless-print-palette',
     },
   };
 
@@ -364,7 +374,7 @@ export async function runBuild({ configFile, quality = 'normal', releaseVersion:
       mkdirSync(dirname(target), { recursive: true });
       await writeOptimizedFigure(image.source, target, config.images.normalJpegQuality);
     }
-    if (qualities.includes('high')) {
+    if (qualities.some((variant) => variant === 'high' || variant === 'print')) {
       const target = resolve(outputDir, highQualityFigurePath(relativePath));
       mkdirSync(dirname(target), { recursive: true });
       cpSync(image.source, target);
@@ -372,27 +382,35 @@ export async function runBuild({ configFile, quality = 'normal', releaseVersion:
   }
 
   const repositoryQr = await writeRepositoryQr(outputDir, config.repository.url);
-  let coverPdf = null;
+  const coverPdfs = new Map();
   if (config.cover.enabled) {
-    coverPdf = resolve(outputDir, 'cover.pdf');
-    await renderCover(config.cover.file, coverPdf, documentConfig);
+    if (qualities.some((variant) => variant !== 'print')) {
+      const coverPdf = resolve(outputDir, 'cover.pdf');
+      await renderCover(config.cover.file, coverPdf, { ...documentConfig, outputVariant: 'normal' });
+      for (const variant of qualities.filter((value) => value !== 'print')) coverPdfs.set(variant, coverPdf);
+    }
+    if (qualities.includes('print')) {
+      const printCoverPdf = resolve(outputDir, 'cover-print.pdf');
+      await renderCover(config.cover.file, printCoverPdf, { ...documentConfig, outputVariant: 'print' });
+      coverPdfs.set('print', printCoverPdf);
+    }
   }
 
-  const baseHtml = buildDocument(result, documentConfig);
   const outputs = {};
   for (const requested of qualities) {
     const variant = variants[requested];
     const htmlPath = resolve(outputDir, variant.html);
     const bodyPdf = resolve(outputDir, variant.bodyPdf);
     const outputPath = resolve(outputDir, variant.pdf);
-    writeFileSync(htmlPath, htmlForQuality(baseHtml, result.images, requested), 'utf8');
+    const html = buildDocument(result, { ...documentConfig, outputVariant: requested });
+    writeFileSync(htmlPath, htmlForQuality(html, result.images, requested), 'utf8');
     const renderData = await renderPagedHtml({
       htmlPath,
       pdfPath: bodyPdf,
     });
     const finalized = await finalizePdf(
       bodyPdf,
-      coverPdf,
+      coverPdfs.get(requested) ?? null,
       outputPath,
       documentConfig,
       result,
@@ -409,7 +427,7 @@ export async function runBuild({ configFile, quality = 'normal', releaseVersion:
   }
 
   const packageJson = JSON.parse(readFileSync(resolve(config.packageRoot, 'package.json'), 'utf8'));
-  const primaryQuality = qualities.includes('normal') ? 'normal' : 'high';
+  const primaryQuality = qualities.includes('normal') ? 'normal' : qualities[0];
   const manifest = {
     engine: { name: packageJson.name, version: packageJson.version },
     configFile: config.configFile,

@@ -1,7 +1,7 @@
 <div dir="rtl">
 
 <p align="center">
-  <img src="docs/assets/readme-press-hero.png" alt="تبدیل یک سند Markdown به دو نسخه کتاب PDF با موتور صفحه‌آرایی" width="100%">
+  <img src="docs/assets/readme-press-hero.png" alt="تبدیل یک سند Markdown به نسخه‌های آماده انتشار کتاب PDF با موتور صفحه‌آرایی" width="100%">
 </p>
 
 <h1 align="center">معرفی README Press</h1>
@@ -42,10 +42,10 @@
 
 <p align="center"><sub>این‌ها رندر واقعی خط تولید انگلیسی و فارسی هستن، نه تصویر تقریبی از خروجی.</sub></p>
 
-| نمونه | نسخه عادی | نسخه باکیفیت |
-|---|---|---|
-| کتاب انگلیسی و چپ‌به‌راست | [دریافت PDF](https://github.com/3lf/readme-press/releases/latest/download/readme-press-example.pdf) | [دریافت PDF](https://github.com/3lf/readme-press/releases/latest/download/readme-press-example-high-quality.pdf) |
-| کتاب فارسی و راست‌به‌چپ | [دریافت PDF](https://github.com/3lf/readme-press/releases/latest/download/readme-press-example-fa.pdf) | [دریافت PDF](https://github.com/3lf/readme-press/releases/latest/download/readme-press-example-fa-high-quality.pdf) |
+| نمونه | نسخه عادی | نسخه مناسب چاپ | نسخه باکیفیت |
+|---|---|---|---|
+| کتاب انگلیسی و چپ‌به‌راست | [دریافت PDF](https://github.com/3lf/readme-press/releases/latest/download/readme-press-example.pdf) | [دریافت PDF](https://github.com/3lf/readme-press/releases/latest/download/readme-press-example-print.pdf) | [دریافت PDF](https://github.com/3lf/readme-press/releases/latest/download/readme-press-example-high-quality.pdf) |
+| کتاب فارسی و راست‌به‌چپ | [دریافت PDF](https://github.com/3lf/readme-press/releases/latest/download/readme-press-example-fa.pdf) | [دریافت PDF](https://github.com/3lf/readme-press/releases/latest/download/readme-press-example-fa-print.pdf) | [دریافت PDF](https://github.com/3lf/readme-press/releases/latest/download/readme-press-example-fa-high-quality.pdf) |
 
 ## این موتور چطور کار می‌کنه؟
 
@@ -53,7 +53,7 @@
   <tr>
     <td width="33%"><strong>قدم اول: نوشتن Markdown</strong><br>فایل README روی GitHub مفید می‌مونه و تنها منبع محتواست.</td>
     <td width="33%"><strong>قدم دوم: تعریف کتاب</strong><br>یه فایل کوچیک، مشخصات، فصل‌ها، قالب، خروجی‌ها و بررسی‌های پروژه رو تعریف می‌کنه.</td>
-    <td width="33%"><strong>قدم سوم: ساخت و انتشار</strong><br>یک پایپلاین هر دو نسخه رو می‌سازه، همه صفحه‌ها رو بررسی می‌کنه و فایل‌های انتشار رو تحویل می‌ده.</td>
+    <td width="33%"><strong>قدم سوم: ساخت و انتشار</strong><br>یک پایپلاین همه نسخه‌های تنظیم‌شده رو می‌سازه، تمام صفحه‌ها رو بررسی می‌کنه و فایل‌های انتشار رو تحویل می‌ده.</td>
   </tr>
 </table>
 
@@ -64,8 +64,8 @@
 - **پشتیبانی درست از متن دوجهته:** برای فارسی و بقیه زبان‌های راست‌به‌چپ، حتی وقتی فارسی و لاتین کنار هم میان
 - **رندر کامل محتوا:** شامل کد با Shiki، نمودار Mermaid، ایموجی محلی، جدول، callout و تصویر
 - **ناوبری کامل:** شامل bookmark، مقصد داخلی، لینک ریپو، QR code و فوتر قابل ردیابی
-- **دو کیفیت از یک منبع:** نسخه عادی با تصاویر JPEG بهینه و نسخه باکیفیت با تصاویر بدون افت
-- **بررسی کامل PDF:** برای ابعاد، فونت، لینک، مقصد داخلی، کیفیت تصویر، رندر همه صفحه‌ها و برابری دو نسخه
+- **سه خروجی از یک منبع:** نسخه عادی با تصاویر JPEG بهینه، نسخه مناسب چاپ با پس‌زمینه سفید و نسخه باکیفیت با تصاویر بدون افت
+- **بررسی کامل PDF:** برای ابعاد، فونت، لینک، مقصد داخلی، کیفیت تصویر، سفیدی پس‌زمینه نسخه چاپی، رندر همه صفحه‌ها و برابری نسخه‌ها
 - **انتشار تکرارپذیر:** همراه با manifest، هش SHA-256 و متن کوتاه Release
 
 قالب آماده `lapis-rtl` همراه موتور ارائه می‌شه. هر پروژه می‌تونه stylesheet، کاور، فونت و تنظیمات Mermaid خودش رو جایگزین کنه یا بدون fork کردن موتور، QA مخصوص محتوای خودش رو اضافه کنه.
@@ -101,7 +101,7 @@ jobs:
           render-all: true
 ```
 
-وقتی Action رو به یه تگ مشخص pin می‌کنی، ساخت محلی و CI از یه نسخه بررسی‌شده موتور استفاده می‌کنن. Action وابستگی‌های قفل‌شده خودش رو نصب می‌کنه، هر دو کیفیت PDF رو می‌سازه، QA عمومی و بررسی‌های مخصوص پروژه رو اجرا می‌کنه و اطلاعات Release رو آماده می‌کنه.
+وقتی Action رو به یه تگ مشخص pin می‌کنی، ساخت محلی و CI از یه نسخه بررسی‌شده موتور استفاده می‌کنن. Action وابستگی‌های قفل‌شده خودش رو نصب می‌کنه، همه نسخه‌های تنظیم‌شده PDF رو می‌سازه، QA عمومی و بررسی‌های مخصوص پروژه رو اجرا می‌کنه و اطلاعات Release رو آماده می‌کنه.
 
 ## کمترین تنظیمات لازم
 
@@ -131,12 +131,15 @@ export default {
   },
   outputs: {
     normal: "my-book.pdf",
+    print: "my-book-print.pdf",
     high: "my-book-high-quality.pdf"
   }
 };
 ```
 
 قرارداد متن عمداً ساده‌ست: یه تیتر مقدمه، یه تیتر برای فهرست دست‌نویس GitHub و تیترهای سطح یک فصل‌ها بعد از فهرست. تیتر شروع هر بخش هم ساختار نسخه چاپی رو مشخص می‌کنه.
+
+فیلد `outputs.print` اختیاریه؛ اگه حذفش کنی، همون خط تولید دو نسخه‌ای قبلی باقی می‌مونه. نسخه چاپی قالب داخلی، تصویرهای رنگی بدون افت رو نگه می‌داره ولی پس‌زمینه صفحه، کاور، پنل کد، جدول و callout رو سفید می‌کنه.
 
 ## اجرای محلی
 
@@ -147,10 +150,11 @@ npm install --save-dev readme-press
 npx readme-press version
 ```
 
-بعدش نسخه عادی، باکیفیت یا هر دو رو بساز:
+بعدش یه نسخه مشخص یا همه نسخه‌های تنظیم‌شده رو بساز:
 
 ```bash
 npx readme-press build --config readme-press.config.mjs --quality normal
+npx readme-press build --config readme-press.config.mjs --quality print
 npx readme-press build --config readme-press.config.mjs --quality high
 npx readme-press build --config readme-press.config.mjs --quality all
 ```
@@ -177,7 +181,7 @@ node .readme-press/bin/readme-press.mjs pipeline \
   --render-all
 ```
 
-گزینه `render-all` از Poppler می‌خواد همه صفحه‌های هر دو نسخه رو رندر کنه. اگه رندر خراب باشه، تصویرها یکی نباشن، ساختار PDF ایراد داشته باشه، لینک یا فونتی گم شده باشه، صفحه‌بندی دو نسخه فرق کنه یا بررسی مخصوص پروژه شکست بخوره، QA متوقف می‌شه.
+گزینه `render-all` از Poppler می‌خواد همه صفحه‌های تمام نسخه‌های تنظیم‌شده رو رندر کنه. اگه رندر خراب باشه، تصویرها یکی نباشن، پس‌زمینه نسخه چاپی سفید نباشه، ساختار PDF ایراد داشته باشه، لینک یا فونتی گم شده باشه، صفحه‌بندی نسخه‌ها فرق کنه یا بررسی مخصوص پروژه شکست بخوره، QA متوقف می‌شه.
 
 هر پروژه می‌تونه بررسی‌های مخصوص خودش رو بدون دست‌زدن به موتور اضافه کنه:
 
@@ -210,7 +214,7 @@ cover: {
 }
 ```
 
-پوشه قالب می‌تونه فونت‌ها، `mermaid.config.json` و `puppeteer-ci.json` رو نگه داره. کاور باید یه عنصر با کلاس `.cover` داشته باشه. فیلدهای اختیاری `data-readme-press` هم اجازه می‌دن نام مجموعه، عنوان، زیرعنوان، نویسنده، تاریخ‌ها و نشانی ریپو به‌صورت خودکار وارد کاور بشن.
+پوشه قالب می‌تونه فونت‌ها، `mermaid.config.json` و `puppeteer-ci.json` رو نگه داره. کاور باید یه عنصر با کلاس `.cover` داشته باشه. فیلدهای اختیاری `data-readme-press` هم اجازه می‌دن نام مجموعه، عنوان، زیرعنوان، نویسنده، تاریخ‌ها و نشانی ریپو به‌صورت خودکار وارد کاور بشن. موتور روی عنصر ریشه بدنه و کاور نسخه چاپی، ویژگی `data-readme-press-variant="print"` می‌ذاره تا قالب سفارشی هم بتونه رنگ‌بندی کم‌مصرف خودش رو تعریف کنه.
 
 قالب داخلی فونت‌های Estedad، Vazirmatn و JetBrains Mono رو با مجوز SIL Open Font License همراه خودش داره. خود README Press هم با [مجوز MIT](./LICENSE) منتشر شده.
 
@@ -228,6 +232,6 @@ npm audit --audit-level=low
 go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 .github/workflows/*.yml
 ```
 
-تست یکپارچه هر دو کیفیت نمونه انگلیسی و فارسی رو می‌سازه، تک‌تک صفحه‌ها رو رندر می‌کنه، ساختار PDF و لینک‌ها رو بررسی می‌کنه، پیکسل تصاویر بدون افت رو مقایسه می‌کنه و اطلاعات Release رو اعتبارسنجی می‌کنه. تست بسته هم دقیقاً همون tarball مربوط به npm رو می‌سازه، داخل یه پروژه خالی نصبش می‌کنه، وابستگی‌های سمت مصرف‌کننده رو ممیزی می‌کنه و با CLI نصب‌شده هر دو کیفیت PDF رو می‌سازه و بررسی می‌کنه.
+تست یکپارچه نسخه عادی، چاپی و باکیفیت نمونه‌های انگلیسی و فارسی رو می‌سازه، تک‌تک صفحه‌ها رو رندر می‌کنه، ساختار PDF و لینک‌ها رو بررسی می‌کنه، سفیدی پس‌زمینه چاپی و پیکسل تصاویر بدون افت رو می‌سنجه و اطلاعات Release رو اعتبارسنجی می‌کنه. تست بسته هم دقیقاً همون tarball مربوط به npm رو می‌سازه، داخل یه پروژه خالی نصبش می‌کنه، وابستگی‌های سمت مصرف‌کننده رو ممیزی می‌کنه و با CLI نصب‌شده هر سه نسخه PDF رو می‌سازه و بررسی می‌کنه.
 
 </div>

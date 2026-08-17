@@ -7,7 +7,7 @@ export default defineConfig({
     title: 'کتاب نمونه',
     titlePrefix: 'README Press',
     subtitle: 'نمونه فارسی خط تولید Markdown به کتاب',
-    tagline: 'تبدیل یه منبع خوانا به دو خروجی آماده انتشار',
+    tagline: 'تبدیل یه منبع خوانا به خروجی‌های آماده انتشار',
     author: 'README Press',
     edition: 'ویرایش اول · ۱۴۰۵',
     localDate: 'ویرایش اول',
@@ -52,6 +52,7 @@ export default defineConfig({
   toc: { maxDepth: 2 },
   outputs: {
     normal: 'fixture-book-fa.pdf',
+    print: 'fixture-book-fa-print.pdf',
     high: 'fixture-book-fa-high-quality.pdf',
   },
   qa: {

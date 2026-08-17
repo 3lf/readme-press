@@ -147,8 +147,9 @@ export function buildDocument({ parts, chapters }, config) {
     .map((chapter) => chapterSection(chapter, byPart.get(chapter.partNumber), parts.length, config))
     .join('\n');
 
+  const variant = config.outputVariant ?? 'normal';
   return `<!doctype html>
-<html lang="${config.metadata.language}" dir="${config.metadata.direction}">
+<html lang="${config.metadata.language}" dir="${config.metadata.direction}" data-readme-press-variant="${variant}">
 <head>
 <meta charset="utf-8">
 <title>${config.metadata.title}؛ ${config.metadata.edition}${config.releaseVersion ? `؛ ${config.releaseVersion}` : ''}</title>
