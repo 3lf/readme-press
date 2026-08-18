@@ -92,7 +92,7 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v7
-      - uses: 3lf/readme-press@v0.1.3
+      - uses: 3lf/readme-press@v0.2.0
         with:
           command: pipeline
           config: book/readme-press.config.mjs
