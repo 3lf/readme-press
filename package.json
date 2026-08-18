@@ -1,6 +1,6 @@
 {
   "name": "readme-press",
-  "version": "0.1.3",
+  "version": "0.2.0",
   "description": "Turn a long Markdown README into a professionally typeset, release-ready PDF book.",
   "license": "MIT",
   "type": "module",
@@ -50,7 +50,7 @@
     "@mermaid-js/mermaid-cli": "^11.16.0",
     "@twemoji/svg": "^15.0.0",
     "@vivliostyle/viewer": "^2.44.1",
-    "dompurify": "3.4.12",
+    "dompurify": "3.4.13",
     "mdast-util-to-string": "^4.0.0",
     "pdf-lib": "^1.17.1",
     "puppeteer": "^25.3.0",

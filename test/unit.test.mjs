@@ -48,8 +48,32 @@ test('loads and resolves a consumer configuration', async () => {
   const config = await loadConfig('test/fixtures/basic/readme-press.config.mjs', root);
   assert.equal(config.metadata.title, 'Press');
   assert.equal(config.outputs.normal, 'fixture-book.pdf');
+  assert.equal(config.outputs.print, 'fixture-book-print.pdf');
   assert.ok(config.sourcePath.endsWith('/test/fixtures/basic/README.md'));
   assert.ok(config.theme.stylesheet.endsWith('/themes/lapis-rtl/book.css'));
+});
+
+test('keeps print output opt-in for existing configurations', async () => {
+  const temporary = mkdtempSync(join(tmpdir(), 'readme-press-config-'));
+  try {
+    writeFileSync(join(temporary, 'README.md'), '# Introduction\n\n# Contents\n\n# Chapter\n');
+    writeFileSync(join(temporary, 'readme-press.config.mjs'), `export default {
+  source: 'README.md',
+  metadata: { title: 'Legacy', author: 'Author', edition: 'First edition' },
+  repository: { url: 'https://github.com/example/legacy' },
+  cover: { enabled: false },
+  structure: {
+    introHeading: 'Introduction',
+    githubTocHeading: 'Contents',
+    parts: [{ title: 'Part', startHeading: 'Chapter' }],
+  },
+  outputs: { normal: 'legacy.pdf', high: 'legacy-high.pdf' },
+};\n`);
+    const config = await loadConfig('readme-press.config.mjs', temporary);
+    assert.deepEqual(config.outputs, { normal: 'legacy.pdf', high: 'legacy-high.pdf' });
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
 });
 
 test('selects an introduction and configured parts without project knowledge', () => {
@@ -123,6 +147,7 @@ test('prepares checksums and neutral release notes from verified outputs', () =>
     const outputs = {};
     for (const [quality, name] of [
       ['normal', 'book.pdf'],
+      ['print', 'book-print.pdf'],
       ['high', 'book-high.pdf'],
     ]) {
       const bytes = Buffer.from(`${quality} pdf`);
@@ -146,8 +171,11 @@ test('prepares checksums and neutral release notes from verified outputs', () =>
 
     const result = prepareRelease({ version: 'v1.0.0', manifestPath, outputDir: dist, commit });
     assert.equal(result.normal.pageCount, 8);
+    assert.equal(result.print.pageCount, 8);
     assert.match(readFileSync(join(dist, 'SHA256SUMS.txt'), 'utf8'), /book-high\.pdf/);
+    assert.match(readFileSync(join(dist, 'SHA256SUMS.txt'), 'utf8'), /book-print\.pdf/);
     assert.match(readFileSync(join(dist, 'release-notes.md'), 'utf8'), /Example book/);
+    assert.match(readFileSync(join(dist, 'release-notes.md'), 'utf8'), /Print edition/);
     assert.match(readFileSync(join(dist, 'release-notes.md'), 'utf8'), /github\.com\/example\/book\/commit/);
     assert.throws(() => prepareRelease({
       version: 'v1.0.0',
@@ -184,4 +212,8 @@ test('verifies every requested render directory against the manifest', () => {
 test('production theme exposes one cover entrypoint', () => {
   const themeFiles = readdirSync(join(root, 'themes/lapis-rtl'));
   assert.deepEqual(themeFiles.filter((name) => name.endsWith('.html')), ['cover.html']);
+  const bookCss = readFileSync(join(root, 'themes/lapis-rtl/book.css'), 'utf8');
+  const coverCss = readFileSync(join(root, 'themes/lapis-rtl/cover.css'), 'utf8');
+  assert.match(bookCss, /data-readme-press-variant='print'/);
+  assert.match(coverCss, /data-readme-press-variant='print'/);
 });

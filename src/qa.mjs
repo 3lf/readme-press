@@ -71,6 +71,35 @@ async function verifyLosslessFigures(pdfPath, figurePaths) {
   }
 }
 
+async function pagesWithNonWhiteEdges(directory) {
+  const files = readdirSync(directory)
+    .filter((name) => /^page-\d+\.png$/.test(name))
+    .sort((a, b) => Number(a.match(/\d+/)[0]) - Number(b.match(/\d+/)[0]));
+  const failures = [];
+  for (const file of files) {
+    const { data, info } = await sharp(join(directory, file))
+      .removeAlpha()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+    const points = [
+      [1, 1],
+      [info.width - 2, 1],
+      [1, info.height - 2],
+      [info.width - 2, info.height - 2],
+      [Math.floor(info.width / 2), 1],
+      [Math.floor(info.width / 2), info.height - 2],
+      [1, Math.floor(info.height / 2)],
+      [info.width - 2, Math.floor(info.height / 2)],
+    ];
+    const white = points.every(([x, y]) => {
+      const offset = (y * info.width + x) * info.channels;
+      return data[offset] >= 248 && data[offset + 1] >= 248 && data[offset + 2] >= 248;
+    });
+    if (!white) failures.push(file);
+  }
+  return { checked: files.length, failures };
+}
+
 function parsePythonBlocks(markdown) {
   const blocks = [...markdown.matchAll(/^```python[^\n]*\n([\s\S]*?)^```\s*$/gm)]
     .map((match, index) => ({ index: index + 1, code: match[1] }));
@@ -108,10 +137,14 @@ export async function runQa({
   const manifestPath = resolve(config.outputDir, 'manifest.json');
   const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
   const requestedQuality = quality ?? manifest.requestedQuality ?? 'normal';
-  if (!['normal', 'high', 'all'].includes(requestedQuality)) {
-    throw new Error(`Unknown quality: ${requestedQuality}. Use normal, high, or all.`);
+  if (!['normal', 'high', 'print', 'all'].includes(requestedQuality)) {
+    throw new Error(`Unknown quality: ${requestedQuality}. Use normal, high, print, or all.`);
   }
-  const qualities = requestedQuality === 'all' ? ['normal', 'high'] : [requestedQuality];
+  const configuredQualities = ['normal', 'print', 'high'].filter((variant) => config.outputs[variant]);
+  if (requestedQuality !== 'all' && !configuredQualities.includes(requestedQuality)) {
+    throw new Error(`The ${requestedQuality} output is not configured.`);
+  }
+  const qualities = requestedQuality === 'all' ? configuredQualities : [requestedQuality];
   const expectedVersion = rawVersion ? normalizeReleaseVersion(rawVersion) : null;
   let failures = 0;
   const check = (condition, label, detail = '') => {
@@ -214,7 +247,7 @@ export async function runQa({
       if (requested === 'normal') {
         check(jpegCount === manifest.optimizedFigures.length, 'normal PDF uses JPEG for optimized figures', `${jpegCount}`);
       } else {
-        check(jpegCount === 0, 'high-quality PDF contains no JPEG figures', `${jpegCount}`);
+        check(jpegCount === 0, `${requested} PDF contains no JPEG figures`, `${jpegCount}`);
       }
     }
 
@@ -232,47 +265,68 @@ export async function runQa({
         execFileSync('pdftoppm', ['-r', '72', '-png', pdfPath, join(temporary, 'page')], { stdio: 'ignore' });
         const count = readdirSync(temporary).filter((name) => /^page-\d+\.png$/.test(name)).length;
         check(count === pageCount, `${requested} all-page Poppler render`, `${count} pages`);
+        if (requested === 'print') {
+          const edges = await pagesWithNonWhiteEdges(temporary);
+          check(
+            edges.failures.length === 0,
+            'print edition uses white page backgrounds',
+            edges.failures.length ? edges.failures.slice(0, 5).join(', ') : `${edges.checked} pages`,
+          );
+        }
       } finally {
         rmSync(temporary, { recursive: true, force: true });
       }
     }
   }
 
-  if (qualities.includes('high')) {
-    const high = data.get('high');
+  for (const qualityName of qualities.filter((variant) => variant === 'high' || variant === 'print')) {
+    const losslessOutput = data.get(qualityName);
     const lossless = await verifyLosslessFigures(
-      high.pdfPath,
+      losslessOutput.pdfPath,
       manifest.highQualityFigures.map((path) => resolve(config.outputDir, path)),
     );
     check(lossless.matched === manifest.highQualityFigures.length,
-      'high-quality figures are pixel-identical to source PNG files',
+      `${qualityName} figures are pixel-identical to source PNG files`,
       `${lossless.matched}/${manifest.highQualityFigures.length}`);
   }
 
-  if (qualities.length === 2) {
-    const normal = data.get('normal');
-    const high = data.get('high');
-    const normalDoc = docs.get('normal');
-    const highDoc = docs.get('high');
-    check(high.pageCount === normal.pageCount, 'quality variants have identical page counts', String(normal.pageCount));
-    check(high.output.sha256 !== normal.output.sha256, 'quality variants have distinct hashes');
-    const sameGeometry = highDoc.getPages().every((page, index) => {
-      const highSize = page.getSize();
-      const normalSize = normalDoc.getPage(index).getSize();
-      return Math.abs(highSize.width - normalSize.width) < 0.01
-        && Math.abs(highSize.height - normalSize.height) < 0.01;
-    });
-    check(sameGeometry, 'quality variants have identical page geometry');
-    check(linkAnnotationData(highDoc).count === linkAnnotationData(normalDoc).count,
-      'quality variants have identical link annotation counts');
-    check(high.output.normalizedDestinations?.names === normal.output.normalizedDestinations?.names
-      && high.output.normalizedDestinations?.references === normal.output.normalizedDestinations?.references,
-    'quality variants have identical destination counts');
-    const normalBbox = runTool('pdftotext', ['-bbox-layout', normal.pdfPath, '-']);
-    const highBbox = runTool('pdftotext', ['-bbox-layout', high.pdfPath, '-']);
-    if (normalBbox && highBbox) {
-      check(normalizeBbox(normalBbox) === normalizeBbox(highBbox),
-        'quality variants have pixel-aligned text boxes on every page');
+  if (qualities.length > 1) {
+    const baselineName = qualities.includes('normal') ? 'normal' : qualities[0];
+    const baseline = data.get(baselineName);
+    const baselineDoc = docs.get(baselineName);
+    const baselineBbox = runTool('pdftotext', ['-bbox-layout', baseline.pdfPath, '-']);
+    for (const comparedName of qualities.filter((variant) => variant !== baselineName)) {
+      const compared = data.get(comparedName);
+      const comparedDoc = docs.get(comparedName);
+      check(
+        compared.pageCount === baseline.pageCount,
+        `${comparedName} and ${baselineName} have identical page counts`,
+        String(baseline.pageCount),
+      );
+      check(compared.output.sha256 !== baseline.output.sha256, `${comparedName} and ${baselineName} have distinct hashes`);
+      const sameGeometry = comparedDoc.getPages().every((page, index) => {
+        const comparedSize = page.getSize();
+        const baselineSize = baselineDoc.getPage(index).getSize();
+        return Math.abs(comparedSize.width - baselineSize.width) < 0.01
+          && Math.abs(comparedSize.height - baselineSize.height) < 0.01;
+      });
+      check(sameGeometry, `${comparedName} and ${baselineName} have identical page geometry`);
+      check(
+        linkAnnotationData(comparedDoc).count === linkAnnotationData(baselineDoc).count,
+        `${comparedName} and ${baselineName} have identical link annotation counts`,
+      );
+      check(
+        compared.output.normalizedDestinations?.names === baseline.output.normalizedDestinations?.names
+          && compared.output.normalizedDestinations?.references === baseline.output.normalizedDestinations?.references,
+        `${comparedName} and ${baselineName} have identical destination counts`,
+      );
+      const comparedBbox = runTool('pdftotext', ['-bbox-layout', compared.pdfPath, '-']);
+      if (baselineBbox && comparedBbox) {
+        check(
+          normalizeBbox(baselineBbox) === normalizeBbox(comparedBbox),
+          `${comparedName} and ${baselineName} have pixel-aligned text boxes on every page`,
+        );
+      }
     }
   }
 

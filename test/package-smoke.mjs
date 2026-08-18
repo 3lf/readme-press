@@ -125,6 +125,7 @@ export default defineConfig({
   },
   outputs: {
     normal: 'clean-install.pdf',
+    print: 'clean-install-print.pdf',
     high: 'clean-install-high-quality.pdf',
   },
   qa: {
@@ -163,6 +164,8 @@ export default defineConfig({
     'Normal PDF was not created in the clean project.');
   requireFile(existsSync(join(consumer, 'dist/clean-install-high-quality.pdf')),
     'High-quality PDF was not created in the clean project.');
+  requireFile(existsSync(join(consumer, 'dist/clean-install-print.pdf')),
+    'Print PDF was not created in the clean project.');
 
   console.log(`Package smoke test passed: ${packed.entryCount} files, ${packed.size} packed bytes.`);
 } finally {

@@ -61,7 +61,12 @@ export async function loadConfig(configFile = 'readme-press.config.mjs', cwd = p
     normal: raw.outputs?.normal ?? 'book.pdf',
     high: raw.outputs?.high ?? 'book-high-quality.pdf',
   };
-  if (outputs.normal === outputs.high) throw new Error('Normal and high-quality output filenames must differ.');
+  if (raw.outputs?.print !== undefined) {
+    outputs.print = required(raw.outputs.print, 'outputs.print');
+  }
+  if (new Set(Object.values(outputs)).size !== Object.values(outputs).length) {
+    throw new Error('Output filenames must be unique.');
+  }
 
   const config = {
     ...raw,

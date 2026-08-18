@@ -41,6 +41,8 @@ export async function renderCover(htmlPath, outPath, config) {
       document.title = data.documentTitle;
       document.documentElement.dir = data.direction;
       document.documentElement.lang = data.language;
+      document.documentElement.dataset.readmePressVariant = data.variant;
+      document.body.dataset.readmePressVariant = data.variant;
       document.body.style.direction = data.direction;
       const values = {
         series: data.series,
@@ -72,6 +74,7 @@ export async function renderCover(htmlPath, outPath, config) {
       repositoryNote: config.cover.repositoryNote,
       direction: config.metadata.direction,
       language: config.metadata.language,
+      variant: config.outputVariant ?? 'normal',
     });
     await page.evaluate(() => document.fonts.ready);
 

@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/readme-press-hero.png" alt="A Markdown document passing through a precise typesetting press and becoming two PDF book editions" width="100%">
+  <img src="docs/assets/readme-press-hero.png" alt="A Markdown document passing through a precise typesetting press and becoming release-ready PDF book editions" width="100%">
 </p>
 
 <h1 align="center">README Press</h1>
@@ -40,10 +40,10 @@ Its first production use was a Persian, RTL-first book. That origin shaped the e
 
 <p align="center"><sub>Real pages rendered by the English and Persian integration pipelines, not an illustrative mockup.</sub></p>
 
-| Example | Standard edition | High-quality edition |
-|---|---|---|
-| English, LTR | [Download PDF](https://github.com/3lf/readme-press/releases/latest/download/readme-press-example.pdf) | [Download PDF](https://github.com/3lf/readme-press/releases/latest/download/readme-press-example-high-quality.pdf) |
-| Persian, RTL | [Download PDF](https://github.com/3lf/readme-press/releases/latest/download/readme-press-example-fa.pdf) | [Download PDF](https://github.com/3lf/readme-press/releases/latest/download/readme-press-example-fa-high-quality.pdf) |
+| Example | Standard edition | Print edition | High-quality edition |
+|---|---|---|---|
+| English, LTR | [Download PDF](https://github.com/3lf/readme-press/releases/latest/download/readme-press-example.pdf) | [Download PDF](https://github.com/3lf/readme-press/releases/latest/download/readme-press-example-print.pdf) | [Download PDF](https://github.com/3lf/readme-press/releases/latest/download/readme-press-example-high-quality.pdf) |
+| Persian, RTL | [Download PDF](https://github.com/3lf/readme-press/releases/latest/download/readme-press-example-fa.pdf) | [Download PDF](https://github.com/3lf/readme-press/releases/latest/download/readme-press-example-fa-print.pdf) | [Download PDF](https://github.com/3lf/readme-press/releases/latest/download/readme-press-example-fa-high-quality.pdf) |
 
 ## How it works
 
@@ -51,7 +51,7 @@ Its first production use was a Persian, RTL-first book. That origin shaped the e
   <tr>
     <td width="33%"><strong>1. Keep writing Markdown</strong><br>Your README stays useful on GitHub and remains the only content source.</td>
     <td width="33%"><strong>2. Describe the book</strong><br>A small config defines metadata, chapters, theme, outputs, and project-specific checks.</td>
-    <td width="33%"><strong>3. Build, verify, release</strong><br>One pipeline produces both editions, renders every page, and prepares checksums and release notes.</td>
+    <td width="33%"><strong>3. Build, verify, release</strong><br>One pipeline produces every configured edition, renders every page, and prepares checksums and release notes.</td>
   </tr>
 </table>
 
@@ -62,8 +62,8 @@ The built-in pipeline provides:
 - RTL and mixed-script isolation for Persian and other bidirectional documents
 - Shiki code highlighting, Mermaid diagrams, local emoji, tables, callouts, and figures
 - bookmarks, internal destinations, repository links, QR codes, and artifact footers
-- a standard JPEG-optimized edition and a lossless-image high-quality edition from the same source
-- PDF checks for geometry, fonts, links, destinations, image fidelity, full-page rendering, and quality parity
+- a standard JPEG-optimized edition, an optional ink-efficient print edition, and a lossless-image high-quality edition from the same source
+- PDF checks for geometry, fonts, links, destinations, image fidelity, white print backgrounds, full-page rendering, and edition parity
 - deterministic manifests, SHA-256 checksums, and concise release notes
 
 README Press includes the production `lapis-rtl` theme. Projects can replace its stylesheet, cover, fonts, Mermaid configuration, or add content-specific QA without forking the engine.
@@ -90,7 +90,7 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v7
-      - uses: 3lf/readme-press@v0.1.3
+      - uses: 3lf/readme-press@v0.2.0
         with:
           command: pipeline
           config: book/readme-press.config.mjs
@@ -99,7 +99,7 @@ jobs:
           render-all: true
 ```
 
-Pinning a release tag keeps local and CI builds on the same reviewed engine. The Action installs its locked dependencies, builds both PDF qualities, runs generic and project-specific QA, and prepares release metadata.
+Pinning a release tag keeps local and CI builds on the same reviewed engine. The Action installs its locked dependencies, builds every configured PDF edition, runs generic and project-specific QA, and prepares release metadata.
 
 ## Minimal configuration
 
@@ -129,12 +129,15 @@ export default {
   },
   outputs: {
     normal: "my-book.pdf",
+    print: "my-book-print.pdf",
     high: "my-book-high-quality.pdf"
   }
 };
 ```
 
 The source convention is deliberately small: one introduction heading, one hand-written GitHub contents heading, and level-one chapter headings after the contents. The configured start heading for each part controls the printed structure.
+
+`outputs.print` is optional. Omit it to keep the original two-edition pipeline. The bundled theme's print edition keeps lossless color figures while replacing page, cover, code-panel, table, and callout fills with white.
 
 ## Run locally
 
@@ -145,10 +148,11 @@ npm install --save-dev readme-press
 npx readme-press version
 ```
 
-Build one edition or both:
+Build one edition or every configured edition:
 
 ```bash
 npx readme-press build --config readme-press.config.mjs --quality normal
+npx readme-press build --config readme-press.config.mjs --quality print
 npx readme-press build --config readme-press.config.mjs --quality high
 npx readme-press build --config readme-press.config.mjs --quality all
 ```
@@ -175,7 +179,7 @@ node .readme-press/bin/readme-press.mjs pipeline \
   --render-all
 ```
 
-`--render-all` asks Poppler to rasterize every page of both editions. QA fails on broken rendering, image mismatches, invalid PDF structure, missing links or fonts, different pagination, or project assertions.
+`--render-all` asks Poppler to rasterize every page of every configured edition. QA fails on broken rendering, image mismatches, non-white print page backgrounds, invalid PDF structure, missing links or fonts, different pagination, or project assertions.
 
 Projects can add source-specific checks without changing the engine:
 
@@ -208,7 +212,7 @@ cover: {
 }
 ```
 
-The theme directory may contain fonts, `mermaid.config.json`, and `puppeteer-ci.json`. A cover must expose a `.cover` element. Optional `data-readme-press` fields let the engine inject the series, title, subtitle, author, dates, repository note, and repository URL.
+The theme directory may contain fonts, `mermaid.config.json`, and `puppeteer-ci.json`. A cover must expose a `.cover` element. Optional `data-readme-press` fields let the engine inject the series, title, subtitle, author, dates, repository note, and repository URL. Body and cover documents expose `data-readme-press-variant="print"` on the root element so custom themes can provide their own ink-efficient palette.
 
 The bundled theme includes Estedad, Vazirmatn, and JetBrains Mono under the SIL Open Font License. README Press itself is released under the [MIT License](./LICENSE).
 
@@ -226,4 +230,4 @@ npm audit --audit-level=low
 go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 .github/workflows/*.yml
 ```
 
-The integration suite builds and fully renders normal and high-quality English and Persian fixtures, checks their PDF containers and links, compares lossless image pixels, and validates release metadata. The package smoke test then packs the exact npm artifact, installs it in a clean project, audits the consumer dependency tree, and builds and verifies both PDF qualities through the installed CLI.
+The integration suite builds and fully renders standard, print, and high-quality English and Persian fixtures, checks their PDF containers and links, verifies white print backgrounds, compares lossless image pixels, and validates release metadata. The package smoke test then packs the exact npm artifact, installs it in a clean project, audits the consumer dependency tree, and builds and verifies all three PDF editions through the installed CLI.

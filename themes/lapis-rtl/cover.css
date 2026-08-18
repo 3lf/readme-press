@@ -83,3 +83,33 @@ body {
   unicode-bidi: isolate;
   font-family: var(--mono);
 }
+
+/* The print cover keeps the identity and typography without a full-page fill. */
+:root[data-readme-press-variant='print'] {
+  --night: #FFFFFF;
+  --lapis: #1C3F73;
+  --lapis-soft: #FFFFFF;
+  --gold: #6B531F;
+  --gold-bright: #1C3F73;
+  --gold-muted: rgba(28, 63, 115, 0.28);
+  --ivory: #13294B;
+  --ivory-soft: #3F4B5E;
+  --blue-soft: #315D89;
+}
+
+:root[data-readme-press-variant='print'] body,
+:root[data-readme-press-variant='print'] .classic-revised,
+:root[data-readme-press-variant='print'] .release-card,
+:root[data-readme-press-variant='print'] .release-card::before {
+  background: #FFFFFF !important;
+  background-image: none !important;
+}
+
+:root[data-readme-press-variant='print'] .frame-points i {
+  background: #FFFFFF;
+  box-shadow: none;
+}
+
+:root[data-readme-press-variant='print'] .shamsa {
+  filter: none;
+}
