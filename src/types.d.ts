@@ -151,7 +151,7 @@ export interface LoadedConfig extends Omit<ReadmePressConfig, 'theme' | 'page' |
     rawHtml: RawHtmlMode;
     network: NetworkPolicy;
     diagnostics: DiagnosticsMode;
-    strictConfig?: boolean;
+    strictConfig: boolean;
   };
   qa: Record<string, unknown> & { script?: string | null };
   release: Record<string, unknown>;
@@ -166,6 +166,7 @@ export interface BuildOutput {
   bytes: number;
   sha256: string;
   linearized: boolean;
+  externalRequests: string[];
   [key: string]: unknown;
 }
 

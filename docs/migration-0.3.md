@@ -30,12 +30,12 @@ export default defineConfig({
 });
 ```
 
-Run the complete gate and inspect the manifest before upgrading:
+Build and inspect every edition before upgrading:
 
 ```bash
 npx readme-press pipeline \
   --config readme-press.config.mjs \
-  --release-version v0.2.1 \
+  --release-version v1.0.0 \
   --render-all
 ```
 
@@ -110,3 +110,6 @@ version reached the registry, restore consumers to a known-good exact version
 and publish any correction under a new version number. Treat GitHub Release
 assets the same way: keep the historical release intact and create a new,
 verified corrective release.
+
+After upgrading to 0.3.0, settings omitted from `security` use the secure values
+in the table above and the 0.2.1 compatibility warning is no longer emitted.

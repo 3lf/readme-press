@@ -9,9 +9,9 @@ import { defineConfig } from 'readme-press/config';
 
 ## Configuration
 
-`defineConfig(config)` is an identity helper with TypeScript inference. `validateConfig(value, { strict })` validates the exported object with Zod and returns `{ config, diagnostics }`. Unknown core keys produce `UNKNOWN_CONFIG_KEY` warnings when `strict` is false and `ERR_CONFIG_UNKNOWN_KEYS` when it is true. Unknown `security` keys always fail closed with `ERR_CONFIG_UNKNOWN_SECURITY_KEYS`. The `qa`, `release`, and `labels` objects intentionally allow project-specific extensions.
+`defineConfig(config)` is an identity helper with TypeScript inference. `validateConfig(value, { strict })` validates the exported object with Zod and returns `{ config, diagnostics }`. Validation is strict by default in 0.3.x: unknown core keys raise `ERR_CONFIG_UNKNOWN_KEYS`. Pass `{ strict: false }` to receive `UNKNOWN_CONFIG_KEY` warnings instead. Unknown `security` keys always fail closed with `ERR_CONFIG_UNKNOWN_SECURITY_KEYS`. The `qa`, `release`, and `labels` objects intentionally allow project-specific extensions.
 
-`loadConfig(configFile?, cwd?)` executes the trusted JavaScript config, validates it, resolves paths, applies compatibility defaults, and returns the normalized config. Config files are trusted executable code; validation is not a JavaScript sandbox.
+`loadConfig(configFile?, cwd?)` executes the trusted JavaScript config, validates it, resolves paths, applies the safe HTML, denied network, strict diagnostic, and strict core-key defaults, and returns the normalized config. Config files are trusted executable code; validation is not a JavaScript sandbox.
 
 ## Build and QA
 

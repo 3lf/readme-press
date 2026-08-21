@@ -191,6 +191,13 @@ export async function runQa({
     check(output.bytes === statSync(pdfPath).size, `${requested} byte size matches manifest`);
     check(output.sha256 === createHash('sha256').update(bytes).digest('hex'), `${requested} SHA-256 matches manifest`);
     check(output.linearized === true, `${requested} manifest records linearization`);
+    if (config.security.network.mode === 'deny') {
+      check(
+        Array.isArray(output.externalRequests) && output.externalRequests.length === 0,
+        `${requested} made no external network requests`,
+        String(output.externalRequests?.length ?? 'missing'),
+      );
+    }
     const minPages = config.qa.minPages ?? 1;
     const maxPages = config.qa.maxPages ?? 10_000;
     check(pageCount >= minPages && pageCount <= maxPages, `${requested} page count is within configured range`, String(pageCount));

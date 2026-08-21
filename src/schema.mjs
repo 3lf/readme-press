@@ -145,7 +145,7 @@ function issueSummary(issues) {
 }
 
 /** Validate the object exported by a trusted executable configuration file. */
-export function validateConfig(value, { strict = false } = {}) {
+export function validateConfig(value, { strict = true } = {}) {
   let config;
   try {
     config = rawConfigSchema.parse(value);

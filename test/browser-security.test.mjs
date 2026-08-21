@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import test from 'node:test';
 import puppeteer from 'puppeteer';
+import { loadConfig } from '../src/config.mjs';
 import { renderCover } from '../src/cover.mjs';
 import { installRequestPolicy, normalizeNetworkPolicy } from '../src/network.mjs';
 import { renderPagedHtml } from '../src/render.mjs';
@@ -54,6 +55,8 @@ async function withWatchdog(promise, label, timeout = 10_000) {
     clearTimeout(timer);
   }
 }
+
+const root = resolve(import.meta.dirname, '..');
 
 test('deny mode stops a browser network canary before it reaches the server', async () => {
   let canaryRequests = 0;
@@ -408,6 +411,29 @@ test('an always-changing cover produces a PDF with a non-blocking fallback warni
       promoteInStrict: false,
       detail: 'normal cover used the final complete frame after 5 attempts.',
     }]);
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
+test('deny mode renders a stable local cover without waiting for network idle', {
+  timeout: 20_000,
+}, async () => {
+  const temporary = mkdtempSync(join(tmpdir(), 'readme-press-deny-cover-'));
+  try {
+    const config = await loadConfig('test/fixtures/basic/readme-press.config.mjs', root);
+    const output = join(temporary, 'cover-print.pdf');
+    await renderCover(config.cover.file, output, {
+      ...config,
+      outputVariant: 'print',
+      security: {
+        ...config.security,
+        network: normalizeNetworkPolicy('deny'),
+      },
+    });
+    assert.ok(existsSync(output));
+    assert.ok(existsSync(join(temporary, 'cover-print.png')));
+    assert.ok(statSync(output).size > 0);
   } finally {
     rmSync(temporary, { recursive: true, force: true });
   }

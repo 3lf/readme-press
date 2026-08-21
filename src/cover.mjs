@@ -79,7 +79,11 @@ export async function renderCover(htmlPath, outPath, config) {
   let captureData = null;
   const browser = await puppeteer.launch({
     headless: true,
-    args: process.env.CI ? ['--no-sandbox'] : [],
+    args: [
+      '--deterministic-mode',
+      '--num-raster-threads=1',
+      ...(process.env.CI ? ['--no-sandbox'] : []),
+    ],
   });
 
   try {
@@ -98,7 +102,9 @@ export async function renderCover(htmlPath, outPath, config) {
           height: Math.ceil(cssHeight),
           deviceScaleFactor: scale,
         });
-        await page.goto(pathToFileURL(htmlPath).href, { waitUntil: 'networkidle0' });
+        await page.goto(pathToFileURL(htmlPath).href, {
+          waitUntil: networkPolicy.mode === 'deny' ? 'load' : 'networkidle0',
+        });
         await page.evaluate((data) => {
             document.title = data.documentTitle;
             document.documentElement.dir = data.direction;

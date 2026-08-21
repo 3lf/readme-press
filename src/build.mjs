@@ -286,6 +286,7 @@ async function finalizePdf(bodyPdf, coverPdf, outputPath, config, result, render
     normalizedDestinations,
     outlines,
     linearized: true,
+    externalRequests: renderData.externalRequests,
   };
 }
 

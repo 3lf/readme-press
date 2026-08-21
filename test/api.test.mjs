@@ -48,10 +48,10 @@ test('Zod validation warns for unknown core keys and leaves qa/release extensibl
     typoKey: true,
     qa: { projectSpecificGate: true },
     release: { providerSpecificCopy: 'value' },
-  });
+  }, { strict: false });
   assert.deepEqual(result.diagnostics.map((diagnostic) => diagnostic.detail), ['typoKey']);
   assert.throws(
-    () => api.validateConfig({ ...validConfig, typoKey: true }, { strict: true }),
+    () => api.validateConfig({ ...validConfig, typoKey: true }),
     (error) => error.code === 'ERR_CONFIG_UNKNOWN_KEYS'
       && error.details.keys.includes('typoKey'),
   );
