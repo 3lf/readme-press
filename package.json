@@ -34,10 +34,10 @@
     "node": ">=22"
   },
   "scripts": {
-    "test": "node --test test/unit.test.mjs",
+    "test": "node --test test/*.test.mjs",
     "test:package": "node test/package-smoke.mjs",
     "test:action": "action-validator action.yml",
-    "test:syntax": "node --check bin/readme-press.mjs && node --check src/build.mjs && node --check src/config.mjs && node --check src/cover.mjs && node --check src/mermaid.mjs && node --check src/qa.mjs && node --check src/release.mjs && node --check src/render.mjs && node --check src/template.mjs && node --check src/transform.mjs && node --check test/package-smoke.mjs",
+    "test:syntax": "node --check bin/readme-press.mjs && node --check src/build.mjs && node --check src/config.mjs && node --check src/cover.mjs && node --check src/mermaid.mjs && node --check src/paths.mjs && node --check src/qa.mjs && node --check src/release.mjs && node --check src/render.mjs && node --check src/template.mjs && node --check src/transform.mjs && node --check test/package-smoke.mjs && node --check test/security.test.mjs",
     "fixture:prepare": "node test/prepare-fixture.mjs",
     "fixture:build": "npm run fixture:prepare && node bin/readme-press.mjs build --config test/fixtures/basic/readme-press.config.mjs --quality all --release-version v0.1.0 && node bin/readme-press.mjs build --config test/fixtures/persian/readme-press.config.mjs --quality all --release-version v0.1.0",
     "fixture:qa": "node bin/readme-press.mjs qa --config test/fixtures/basic/readme-press.config.mjs --quality all --release-version v0.1.0 --render-all && node bin/readme-press.mjs qa --config test/fixtures/persian/readme-press.config.mjs --quality all --release-version v0.1.0 --render-all",

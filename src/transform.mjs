@@ -3,8 +3,9 @@
 // separate top-level `html` nodes, so real headings stay real heading nodes),
 // clean GitHub-only presentation, then finish styling passes at hast level.
 
-import { readFileSync, existsSync } from 'fs';
-import { resolve } from 'path';
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { extname } from 'node:path';
 import { unified } from 'unified';
 import remarkParse from 'remark-parse';
 import remarkGfm from 'remark-gfm';
@@ -15,6 +16,7 @@ import { visit, SKIP, EXIT } from 'unist-util-visit';
 import { toString as mdastToString } from 'mdast-util-to-string';
 import { renderMermaid } from './mermaid.mjs';
 import { highlight } from './highlight.mjs';
+import { resolveContainedSource } from './paths.mjs';
 
 /* ---------------- emoji helpers (twemoji naming rules) ---------------- */
 
@@ -433,15 +435,50 @@ function pngSize(path) {
   return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) };
 }
 
+function isNonLocalImage(reference) {
+  return reference.startsWith('//') || /^[a-z][a-z\d+.-]*:/iu.test(reference);
+}
+
+function registerLocalImage(reference, ctx) {
+  if (!ctx.sourceDir || isNonLocalImage(reference)) return null;
+  const pathReference = reference.split(/[?#]/u, 1)[0];
+  const resolved = resolveContainedSource({
+    baseDirectory: ctx.sourceDir,
+    projectRoot: ctx.projectRoot ?? ctx.sourceDir,
+    reference: pathReference,
+    label: 'Image path',
+  });
+  if (!resolved.exists) {
+    ctx.diagnostics?.push({ code: 'MISSING_FIGURE_FILE', detail: reference });
+    return null;
+  }
+
+  const bytes = readFileSync(resolved.path);
+  const digest = createHash('sha256').update(bytes).digest('hex').slice(0, 24);
+  const sourceExtension = extname(resolved.path).toLowerCase();
+  const optimize = sourceExtension === '.png';
+  const normalUrl = `assets/figures/${digest}${optimize ? '.jpg' : sourceExtension}`;
+  const losslessUrl = `assets/figures/${digest}${sourceExtension}`;
+  const image = {
+    source: resolved.path,
+    optimize,
+    normalUrl,
+    losslessUrl,
+  };
+  ctx.images.set(normalUrl, image);
+  return image;
+}
+
+function imageDataAttributes(image) {
+  return ` data-readme-press-normal-src="${escapeHtmlText(image.normalUrl)}" data-readme-press-lossless-src="${escapeHtmlText(image.losslessUrl)}"`;
+}
+
 function renderImages(root, ctx) {
   visit(root, 'image', (node, index, parent) => {
-    if (!parent || !node.url || node.url.startsWith('http')) return;
-    const abs = ctx.sourceDir ? resolve(ctx.sourceDir, node.url) : null;
-    if (!abs || !existsSync(abs)) {
-      ctx.diagnostics?.push({ code: 'MISSING_FIGURE_FILE', detail: node.url });
-      return;
-    }
-    const size = node.url.endsWith('.png') ? pngSize(abs) : null;
+    if (!parent || !node.url || isNonLocalImage(node.url)) return;
+    const image = registerLocalImage(node.url, ctx);
+    if (!image) return;
+    const size = image.optimize ? pngSize(image.source) : null;
     const tall = size && size.height / size.width > ctx.imageOptions.tallRatio ? ' diagram--tall' : '';
     const special = ctx.imageOptions.classRules
       .filter((rule) => node.url.endsWith(rule.endsWith))
@@ -449,11 +486,9 @@ function renderImages(root, ctx) {
       .join('');
     const dims = size ? ` width="${size.width}" height="${size.height}"` : '';
     const alt = (node.alt || 'تصویر').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
-    const outputUrl = node.url.endsWith('.png') ? node.url.replace(/\.png$/i, '.jpg') : node.url;
-    ctx.images.set(outputUrl, { source: abs, optimize: node.url.endsWith('.png') });
     parent.children[index] = {
       type: 'html',
-      value: `<figure class="diagram${tall}${special}"><img src="${outputUrl}"${dims} alt="${alt}"></figure>`,
+      value: `<figure class="diagram${tall}${special}"><img src="${image.normalUrl}"${imageDataAttributes(image)}${dims} alt="${alt}"></figure>`,
     };
   });
 }
@@ -471,7 +506,7 @@ async function renderCodeBlocks(root, ctx) {
       const tall = d.height / d.width > 1.4 ? ' diagram--tall' : '';
       parent.children[index] = {
         type: 'html',
-        value: `<figure class="diagram${tall}"><img src="assets/diagrams/${d.file}" width="${d.width}" height="${d.height}" alt="دیاگرام"></figure>`,
+        value: `<figure class="diagram${tall}"><img src="assets/diagrams/${d.file}" data-readme-press-generated width="${d.width}" height="${d.height}" alt="دیاگرام"></figure>`,
       };
     } else if (['python', 'bash', 'json', 'js', 'javascript', 'yaml'].includes(lang)) {
       const html = await highlight(node.value, lang);
@@ -650,6 +685,47 @@ function hastPasses(tree, ctx) {
   walk(tree);
 }
 
+function registerRawHtmlImages(tree, ctx) {
+  visit(tree, 'element', (node) => {
+    if (node.tagName !== 'img') return;
+    const properties = node.properties ?? {};
+    if (properties.dataReadmePressNormalSrc !== undefined
+      || properties.dataReadmePressGenerated !== undefined) return;
+    const source = properties.src;
+    if (typeof source !== 'string' || !source || isNonLocalImage(source)) return;
+    const image = registerLocalImage(source, ctx);
+    if (!image) return;
+    properties.src = image.normalUrl;
+    properties.dataReadmePressNormalSrc = image.normalUrl;
+    properties.dataReadmePressLosslessSrc = image.losslessUrl;
+    if (image.optimize) {
+      const size = pngSize(image.source);
+      if (size) {
+        properties.width ??= size.width;
+        properties.height ??= size.height;
+      }
+    }
+    node.properties = properties;
+  });
+}
+
+function stringifyImageVariant(tree, processor, quality) {
+  const variantTree = structuredClone(tree);
+  visit(variantTree, 'element', (node) => {
+    if (node.tagName !== 'img') return;
+    const properties = node.properties ?? {};
+    const normal = properties.dataReadmePressNormalSrc;
+    const lossless = properties.dataReadmePressLosslessSrc;
+    if (typeof normal === 'string' && typeof lossless === 'string') {
+      properties.src = quality === 'normal' ? normal : lossless;
+    }
+    delete properties.dataReadmePressNormalSrc;
+    delete properties.dataReadmePressLosslessSrc;
+    delete properties.dataReadmePressGenerated;
+  });
+  return processor.stringify(variantTree);
+}
+
 /* ---------------- public API ---------------- */
 
 export async function transformReadme(markdown, config, ctxExtra = {}) {
@@ -664,6 +740,7 @@ export async function transformReadme(markdown, config, ctxExtra = {}) {
     imageOptions: config.images,
     contentRules: config.contentRules,
     mermaid: config.mermaid,
+    projectRoot: config.contentRoot ?? config.projectRoot,
     ...ctxExtra,
   };
 
@@ -698,6 +775,7 @@ export async function transformReadme(markdown, config, ctxExtra = {}) {
   const rendered = [];
   for (const { chapter, root, subheadings } of cleanedChapters) {
     const hast = await processor.run(root);
+    registerRawHtmlImages(hast, ctx);
     hastPasses(hast, ctx);
     // pull the h1 out — the chapter opener renders it
     let title = '';
@@ -710,6 +788,11 @@ export async function transformReadme(markdown, config, ctxExtra = {}) {
         return EXIT;
       }
     });
+    const htmlByQuality = {
+      normal: stringifyImageVariant(hast, processor, 'normal'),
+      print: stringifyImageVariant(hast, processor, 'print'),
+      high: stringifyImageVariant(hast, processor, 'high'),
+    };
     rendered.push({
       number: chapter.number,
       displayNumber: chapter.displayNumber,
@@ -721,7 +804,8 @@ export async function transformReadme(markdown, config, ctxExtra = {}) {
       slug: titleSlug,
       subheadings,
       tocHeadings: selectTocHeadings(title, subheadings, config.toc),
-      html: processor.stringify(hast),
+      html: htmlByQuality.normal,
+      htmlByQuality,
     });
   }
 

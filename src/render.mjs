@@ -1,5 +1,5 @@
 import { createServer } from 'node:http';
-import { readFile, stat, writeFile } from 'node:fs/promises';
+import { readFile, realpath, stat, writeFile } from 'node:fs/promises';
 import { basename, dirname, extname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
@@ -27,7 +27,7 @@ function within(root, path) {
   return path === root || path.startsWith(`${root}${sep}`);
 }
 
-function createStaticServer(routes) {
+export function createStaticServer(routes) {
   return createServer(async (request, response) => {
     try {
       const url = new URL(request.url ?? '/', 'http://127.0.0.1');
@@ -38,22 +38,31 @@ function createStaticServer(routes) {
       }
 
       const relative = decodeURIComponent(url.pathname.slice(route.prefix.length)) || 'index.html';
+      if (relative.includes('\\')) {
+        response.writeHead(403).end();
+        return;
+      }
       const path = resolve(route.root, relative);
       if (!within(route.root, path)) {
         response.writeHead(403).end();
         return;
       }
+      const canonicalPath = await realpath(path);
+      if (!within(route.canonicalRoot, canonicalPath)) {
+        response.writeHead(403).end();
+        return;
+      }
 
-      const info = await stat(path);
+      const info = await stat(canonicalPath);
       if (!info.isFile()) {
         response.writeHead(404).end();
         return;
       }
 
-      response.setHeader('Content-Type', MIME_TYPES.get(extname(path).toLowerCase())
+      response.setHeader('Content-Type', MIME_TYPES.get(extname(canonicalPath).toLowerCase())
         ?? 'application/octet-stream');
       response.setHeader('Cache-Control', 'no-store');
-      response.end(await readFile(path));
+      response.end(await readFile(canonicalPath));
     } catch {
       response.writeHead(404).end();
     }
@@ -101,10 +110,10 @@ export async function renderPagedHtml({
   timeout = 300_000,
 }) {
   const documentRoot = dirname(htmlPath);
-  const server = createStaticServer([
+  const server = createStaticServer(await Promise.all([
     { prefix: '/viewer/', root: VIEWER_ROOT },
     { prefix: '/document/', root: documentRoot },
-  ]);
+  ].map(async (route) => ({ ...route, canonicalRoot: await realpath(route.root) }))));
   const port = await listen(server);
   let browser;
 

@@ -235,19 +235,6 @@ function stampFooters(doc, footer, hasCover) {
   };
 }
 
-function highQualityFigurePath(path) {
-  return path.replace(/\.jpg$/i, '.png');
-}
-
-function htmlForQuality(html, images, quality) {
-  if (quality === 'normal') return html;
-  let output = html;
-  for (const [path, image] of images) {
-    if (image.optimize) output = output.replaceAll(path, highQualityFigurePath(path));
-  }
-  return output;
-}
-
 async function finalizePdf(bodyPdf, coverPdf, outputPath, config, result, renderData) {
   const bodyDoc = await PDFDocument.load(readFileSync(bodyPdf));
   applyPageBoxes(bodyDoc, renderData.pageSizeData);
@@ -346,7 +333,10 @@ export async function runBuild({ configFile, quality = 'normal', releaseVersion:
   mkdirSync(resolve(outputDir, 'assets/twemoji'), { recursive: true });
   mkdirSync(resolve(outputDir, 'assets/diagrams'), { recursive: true });
 
-  const result = await transformReadme(markdown, config, { sourceDir: dirname(config.sourcePath) });
+  const result = await transformReadme(markdown, config, {
+    sourceDir: dirname(config.sourcePath),
+    projectRoot: config.contentRoot,
+  });
   for (const diagnostic of result.diagnostics) {
     console.warn(`${diagnostic.code}: ${diagnostic.detail}`);
   }
@@ -362,20 +352,20 @@ export async function runBuild({ configFile, quality = 'normal', releaseVersion:
   for (const [file, path] of result.diagrams) {
     cpSync(path, resolve(outputDir, 'assets/diagrams', file));
   }
-  for (const [relativePath, image] of result.images) {
+  for (const image of result.images.values()) {
     if (!image.optimize) {
-      const target = resolve(outputDir, relativePath);
+      const target = resolve(outputDir, image.normalUrl);
       mkdirSync(dirname(target), { recursive: true });
       cpSync(image.source, target);
       continue;
     }
     if (qualities.includes('normal')) {
-      const target = resolve(outputDir, relativePath);
+      const target = resolve(outputDir, image.normalUrl);
       mkdirSync(dirname(target), { recursive: true });
       await writeOptimizedFigure(image.source, target, config.images.normalJpegQuality);
     }
     if (qualities.some((variant) => variant === 'high' || variant === 'print')) {
-      const target = resolve(outputDir, highQualityFigurePath(relativePath));
+      const target = resolve(outputDir, image.losslessUrl);
       mkdirSync(dirname(target), { recursive: true });
       cpSync(image.source, target);
     }
@@ -403,11 +393,12 @@ export async function runBuild({ configFile, quality = 'normal', releaseVersion:
     const bodyPdf = resolve(outputDir, variant.bodyPdf);
     const outputPath = resolve(outputDir, variant.pdf);
     const html = buildDocument(result, { ...documentConfig, outputVariant: requested });
-    writeFileSync(htmlPath, htmlForQuality(html, result.images, requested), 'utf8');
+    writeFileSync(htmlPath, html, 'utf8');
     const renderData = await renderPagedHtml({
       htmlPath,
       pdfPath: bodyPdf,
     });
+    mkdirSync(dirname(outputPath), { recursive: true });
     const finalized = await finalizePdf(
       bodyPdf,
       coverPdfs.get(requested) ?? null,
@@ -442,13 +433,15 @@ export async function runBuild({ configFile, quality = 'normal', releaseVersion:
     metadata: config.metadata,
     repository: config.repository,
     parts: result.parts,
-    chapters: result.chapters.map(({ html, ...rest }) => rest),
+    chapters: result.chapters.map(({ html, htmlByQuality, ...rest }) => rest),
     headings: result.headings.length,
     diagrams: [...result.diagrams.keys()],
-    optimizedFigures: [...result.images.keys()],
-    highQualityFigures: [...result.images.entries()]
-      .filter(([, image]) => image.optimize)
-      .map(([path]) => highQualityFigurePath(path)),
+    optimizedFigures: [...result.images.values()]
+      .filter((image) => image.optimize)
+      .map((image) => image.normalUrl),
+    highQualityFigures: [...result.images.values()]
+      .filter((image) => image.optimize)
+      .map((image) => image.losslessUrl),
     repositoryQr,
     diagnostics: result.diagnostics,
   };
