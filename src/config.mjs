@@ -1,6 +1,8 @@
 import { existsSync, realpathSync, statSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { sanitizeInlineMarkup } from './html.mjs';
+import { normalizeNetworkPolicy } from './network.mjs';
 import { outputComparisonIdentity, resolveContainedOutput } from './paths.mjs';
 
 const PACKAGE_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -47,6 +49,20 @@ function required(value, label) {
   return value;
 }
 
+function requiredHttpUrl(value, label) {
+  const string = String(required(value, label));
+  let url;
+  try {
+    url = new URL(string);
+  } catch {
+    throw new Error(`${label} must be a valid HTTP or HTTPS URL.`);
+  }
+  if (!['http:', 'https:'].includes(url.protocol)) {
+    throw new Error(`${label} must use HTTP or HTTPS.`);
+  }
+  return string;
+}
+
 function resolveConfigFile(configRoot, value, fallback) {
   return resolve(configRoot, value ?? fallback);
 }
@@ -72,8 +88,16 @@ export async function loadConfig(configFile = 'readme-press.config.mjs', cwd = p
   const themeRoot = themeDirectory
     ? resolveConfigFile(configRoot, themeDirectory)
     : resolve(PACKAGE_ROOT, 'themes', themeName ?? 'lapis-rtl');
-  const repositoryUrl = required(raw.repository?.url, 'repository.url').replace(/\/$/, '');
+  const repositoryUrl = requiredHttpUrl(raw.repository?.url, 'repository.url').replace(/\/$/, '');
   const repositoryDisplay = raw.repository?.display ?? repositoryUrl.replace(/^https?:\/\//, '');
+  const rawHtmlMode = raw.security?.rawHtml ?? 'trusted';
+  if (!['trusted', 'safe', 'deny'].includes(rawHtmlMode)) {
+    throw new Error(`security.rawHtml must be trusted, safe, or deny; received ${rawHtmlMode}.`);
+  }
+  const networkPolicy = normalizeNetworkPolicy(
+    raw.security?.network,
+    raw.security?.allowHosts ?? [],
+  );
   const outputs = {
     normal: raw.outputs?.normal ?? 'book.pdf',
     high: raw.outputs?.high ?? 'book-high-quality.pdf',
@@ -151,9 +175,11 @@ export async function loadConfig(configFile = 'readme-press.config.mjs', cwd = p
       titlePrefix: raw.cover?.titlePrefix ?? raw.metadata?.titlePrefix ?? '',
       title: raw.cover?.title ?? raw.metadata?.title,
       tagline: raw.cover?.tagline ?? raw.metadata?.tagline ?? '',
-      repositoryNote: raw.cover?.repositoryNote
-        ?? raw.labels?.coverRepositoryNote
-        ?? DEFAULT_LABELS.coverRepositoryNote,
+      repositoryNote: sanitizeInlineMarkup(
+        raw.cover?.repositoryNote
+          ?? raw.labels?.coverRepositoryNote
+          ?? DEFAULT_LABELS.coverRepositoryNote,
+      ),
     },
     images: {
       normalJpegQuality: raw.images?.normalJpegQuality ?? 94,
@@ -179,6 +205,11 @@ export async function loadConfig(configFile = 'readme-press.config.mjs', cwd = p
       paragraphClassRules: raw.contentRules?.paragraphClassRules ?? [],
       chapterClassRules: raw.contentRules?.chapterClassRules ?? [],
       treeAriaLabel: raw.contentRules?.treeAriaLabel ?? 'Document hierarchy',
+    },
+    security: {
+      ...(raw.security ?? {}),
+      rawHtml: rawHtmlMode,
+      network: networkPolicy,
     },
     qa: {
       ...(raw.qa ?? {}),

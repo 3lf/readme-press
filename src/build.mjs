@@ -402,6 +402,7 @@ export async function runBuild({ configFile, quality = 'normal', releaseVersion:
     const renderData = await renderPagedHtml({
       htmlPath,
       pdfPath: bodyPdf,
+      network: config.security.network,
     });
     assertContainedOutputSink(outputDir, outputPath, { label: `outputs.${requested}` });
     mkdirSync(dirname(outputPath), { recursive: true });

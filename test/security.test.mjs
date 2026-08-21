@@ -12,12 +12,16 @@ import {
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
+import { loadConfig } from '../src/config.mjs';
+import { sanitizeInlineMarkup, sanitizeRawHtml } from '../src/html.mjs';
+import { normalizeNetworkPolicy } from '../src/network.mjs';
 import {
   assertContainedOutputSink,
   resolveContainedOutput,
   resolveContainedSource,
 } from '../src/paths.mjs';
 import { createStaticServer, runRendererLifecycle } from '../src/render.mjs';
+import { buildDocument } from '../src/template.mjs';
 import { transformReadme } from '../src/transform.mjs';
 
 const PNG = Buffer.from(
@@ -295,4 +299,117 @@ test('the rendering server refuses files reached through a symbolic link', async
     await new Promise((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
     rmSync(temporary, { recursive: true, force: true });
   }
+});
+
+test('safe raw HTML removes executable markup, handlers, styles, and dangerous URLs', () => {
+  const sanitized = sanitizeRawHtml(`<div class="note" onclick="evil()" style="color:red">
+<script>alert(1)</script>
+<iframe src="https://evil.example"></iframe>
+<a href="javascript:alert(1)">safe label</a>
+<img src="figure.png" onerror="evil()" style="display:none">
+</div>`);
+  assert.match(sanitized, /class="note"/u);
+  assert.match(sanitized, />safe label<\/a>/u);
+  assert.match(sanitized, /src="figure\.png"/u);
+  assert.doesNotMatch(sanitized, /script|iframe|onclick|onerror|style=|javascript:/iu);
+});
+
+test('cover repository notes allow only limited inline markup', () => {
+  const sanitized = sanitizeInlineMarkup(
+    'Get it from <strong>GitHub</strong><br><em>today</em><script>bad()</script><a href="https://evil.example">link</a>',
+  );
+  assert.equal(sanitized, 'Get it from <strong>GitHub</strong><br><em>today</em>link');
+});
+
+test('safe and deny raw HTML modes are enforced during transformation', async () => {
+  const project = mkdtempSync(join(tmpdir(), 'readme-press-raw-html-'));
+  try {
+    const safeConfig = {
+      ...transformConfig(project),
+      security: {
+        rawHtml: 'safe',
+        network: normalizeNetworkPolicy('deny'),
+      },
+    };
+    const safe = await transformReadme(markdownWith(
+      '<span onclick="evil()" style="color:red">Visible</span><script>bad()</script>',
+    ), safeConfig, { sourceDir: project });
+    const html = safe.chapters.map((chapter) => chapter.html).join('\n');
+    assert.match(html, /Visible/u);
+    assert.doesNotMatch(html, /onclick|style=|script|bad\(\)/iu);
+    assert.ok(safe.diagnostics.some((diagnostic) => diagnostic.code === 'RAW_HTML_SANITIZED'));
+
+    await assert.rejects(
+      transformReadme(markdownWith('<br>'), {
+        ...safeConfig,
+        security: { ...safeConfig.security, rawHtml: 'deny' },
+      }, { sourceDir: project }),
+      /Raw HTML is disabled/u,
+    );
+  } finally {
+    rmSync(project, { recursive: true, force: true });
+  }
+});
+
+test('network policy rejects remote images unless their host is allowlisted', async () => {
+  const project = mkdtempSync(join(tmpdir(), 'readme-press-network-transform-'));
+  try {
+    const base = transformConfig(project);
+    await assert.rejects(
+      transformReadme(markdownWith('![Remote](https://assets.example/figure.png)'), {
+        ...base,
+        security: { rawHtml: 'safe', network: normalizeNetworkPolicy('deny') },
+      }, { sourceDir: project }),
+      /blocked by security\.network=deny/u,
+    );
+    await assert.rejects(
+      transformReadme(markdownWith('![Local file](file:///etc/passwd)'), {
+        ...base,
+        security: { rawHtml: 'trusted', network: normalizeNetworkPolicy('trusted') },
+      }, { sourceDir: project }),
+      /unsafe URL protocol/u,
+    );
+    const allowed = await transformReadme(
+      markdownWith('![Remote](https://assets.example/figure.png)'),
+      {
+        ...base,
+        security: {
+          rawHtml: 'safe',
+          network: normalizeNetworkPolicy({ mode: 'allowlist', allowHosts: ['assets.example'] }),
+        },
+      },
+      { sourceDir: project },
+    );
+    assert.match(allowed.chapters.at(-1).html, /https:\/\/assets\.example\/figure\.png/u);
+  } finally {
+    rmSync(project, { recursive: true, force: true });
+  }
+});
+
+test('document templates context-encode config values and emit CSP in safe mode', async () => {
+  const config = await loadConfig('test/fixtures/basic/readme-press.config.mjs', process.cwd());
+  config.metadata = {
+    ...config.metadata,
+    title: '</title><script>bad()</script>',
+    author: 'Author" onload="bad()',
+  };
+  config.security = {
+    rawHtml: 'safe',
+    network: normalizeNetworkPolicy('deny'),
+  };
+  const html = buildDocument({
+    parts: [],
+    chapters: [{
+      isIntroduction: true,
+      title: 'Introduction',
+      slug: 'intro',
+      html: '<p>Body</p>',
+      htmlByQuality: { normal: '<p>Body</p>' },
+      tocHeadings: [],
+    }],
+  }, config);
+  assert.match(html, /Content-Security-Policy/u);
+  assert.match(html, /&lt;\/title&gt;&lt;script&gt;bad\(\)&lt;\/script&gt;/u);
+  assert.match(html, /Author&quot; onload=&quot;bad\(\)/u);
+  assert.doesNotMatch(html, /<script>bad\(\)<\/script>/u);
 });

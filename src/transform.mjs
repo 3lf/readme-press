@@ -16,6 +16,8 @@ import { visit, SKIP, EXIT } from 'unist-util-visit';
 import { toString as mdastToString } from 'mdast-util-to-string';
 import { renderMermaid } from './mermaid.mjs';
 import { highlight } from './highlight.mjs';
+import { escapeHtmlAttribute, escapeHtmlText, sanitizeRawHtml } from './html.mjs';
+import { assertNetworkAsset, normalizeNetworkPolicy } from './network.mjs';
 import { resolveContainedSource } from './paths.mjs';
 
 /* ---------------- emoji helpers (twemoji naming rules) ---------------- */
@@ -58,14 +60,6 @@ const ISOLATED_LATIN_RE = new RegExp(
   String.raw`\([ \t]*${LATIN_RUN_SOURCE}[ \t]*\)|${LATIN_RUN_SOURCE}`,
   'g',
 );
-
-function escapeHtmlText(text) {
-  return String(text)
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;');
-}
 
 /** Wraps Latin phrases in <bdi> so RTL line-breaking can't scramble them
  *  (e.g. a heading wrapping inside «(Fine-tuning vs RAG)»). */
@@ -245,7 +239,7 @@ function renderTextTree(value, ariaLabel) {
       <span class="book-tree-branch" aria-hidden="true"></span>
       <span class="book-tree-node">${wrapLatinHtml(child.text)}</span>
     </div>`).join('\n');
-  return `<div class="book-tree" role="tree" aria-label="${escapeHtmlText(ariaLabel)}">
+  return `<div class="book-tree" role="tree" aria-label="${escapeHtmlAttribute(ariaLabel)}">
   <div class="book-tree-root" role="treeitem">${wrapLatinHtml(lines[0].trim())}</div>
   <div class="book-tree-children" role="group">
 ${rows}
@@ -440,7 +434,11 @@ function isNonLocalImage(reference) {
 }
 
 function registerLocalImage(reference, ctx) {
-  if (!ctx.sourceDir || isNonLocalImage(reference)) return null;
+  if (isNonLocalImage(reference)) {
+    assertNetworkAsset(reference, ctx.network, 'Remote image');
+    return null;
+  }
+  if (!ctx.sourceDir) return null;
   const pathReference = reference.split(/[?#]/u, 1)[0];
   const resolved = resolveContainedSource({
     baseDirectory: ctx.sourceDir,
@@ -474,12 +472,12 @@ function registerLocalImage(reference, ctx) {
 }
 
 function imageDataAttributes(image) {
-  return ` data-readme-press-normal-src="${escapeHtmlText(image.normalUrl)}" data-readme-press-lossless-src="${escapeHtmlText(image.losslessUrl)}"`;
+  return ` data-readme-press-normal-src="${escapeHtmlAttribute(image.normalUrl)}" data-readme-press-lossless-src="${escapeHtmlAttribute(image.losslessUrl)}"`;
 }
 
 function renderImages(root, ctx) {
   visit(root, 'image', (node, index, parent) => {
-    if (!parent || !node.url || isNonLocalImage(node.url)) return;
+    if (!parent || !node.url) return;
     const image = registerLocalImage(node.url, ctx);
     if (!image) return;
     const size = image.optimize ? pngSize(image.source) : null;
@@ -489,7 +487,7 @@ function renderImages(root, ctx) {
       .map((rule) => ` ${rule.className}`)
       .join('');
     const dims = size ? ` width="${size.width}" height="${size.height}"` : '';
-    const alt = (node.alt || 'تصویر').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+    const alt = escapeHtmlAttribute(node.alt || 'تصویر');
     parent.children[index] = {
       type: 'html',
       value: `<figure class="diagram${tall}${special}"><img src="${image.normalUrl}"${imageDataAttributes(image)}${dims} alt="${alt}"></figure>`,
@@ -696,7 +694,7 @@ function registerRawHtmlImages(tree, ctx) {
     if (properties.dataReadmePressNormalSrc !== undefined
       || properties.dataReadmePressGenerated !== undefined) return;
     const source = properties.src;
-    if (typeof source !== 'string' || !source || isNonLocalImage(source)) return;
+    if (typeof source !== 'string' || !source) return;
     const image = registerLocalImage(source, ctx);
     if (!image) return;
     properties.src = image.normalUrl;
@@ -711,6 +709,35 @@ function registerRawHtmlImages(tree, ctx) {
     }
     node.properties = properties;
   });
+}
+
+function applyRawHtmlPolicy(tree, ctx) {
+  if (ctx.rawHtml === 'trusted') return;
+  visit(tree, 'html', (node) => {
+    if (ctx.rawHtml === 'deny') {
+      throw new Error('Raw HTML is disabled by security.rawHtml=deny.');
+    }
+    const sanitized = sanitizeRawHtml(node.value);
+    if (sanitized !== node.value) {
+      ctx.diagnostics.push({
+        code: 'RAW_HTML_SANITIZED',
+        detail: node.value.slice(0, 120).replace(/\s+/gu, ' '),
+      });
+    }
+    node.value = sanitized;
+  });
+}
+
+function rejectDeniedRawHtml(nodes, ctx) {
+  if (ctx.rawHtml !== 'deny') return;
+  for (const node of nodes) {
+    let found = false;
+    visit(node, 'html', () => {
+      found = true;
+      return EXIT;
+    });
+    if (found) throw new Error('Raw HTML is disabled by security.rawHtml=deny.');
+  }
 }
 
 function stringifyImageVariant(tree, processor, quality) {
@@ -745,6 +772,8 @@ export async function transformReadme(markdown, config, ctxExtra = {}) {
     contentRules: config.contentRules,
     mermaid: config.mermaid,
     projectRoot: config.contentRoot ?? config.projectRoot,
+    rawHtml: config.security?.rawHtml ?? 'trusted',
+    network: config.security?.network ?? normalizeNetworkPolicy('trusted'),
     ...ctxExtra,
   };
 
@@ -754,11 +783,13 @@ export async function transformReadme(markdown, config, ctxExtra = {}) {
   // pass 1: clean + collect headings (slugs must be computed in document order)
   const cleanedChapters = [];
   for (const chapter of chapters) {
+    rejectDeniedRawHtml(chapter.nodes, ctx);
     const headingStart = ctx.headings.length;
     const root = cleanChapterMdast(chapter.nodes, ctx);
     const subheadings = ctx.headings
       .slice(headingStart)
       .filter((heading) => heading.depth === 2 || heading.depth === 3);
+    applyRawHtmlPolicy(root, ctx);
     cleanedChapters.push({ chapter, root, subheadings });
   }
 

@@ -12,12 +12,13 @@
         "@mermaid-js/mermaid-cli": "^11.16.0",
         "@twemoji/svg": "^15.0.0",
         "@vivliostyle/viewer": "^2.44.1",
-        "dompurify": "3.4.13",
         "mdast-util-to-string": "^4.0.0",
         "pdf-lib": "^1.17.1",
         "puppeteer": "^25.3.0",
         "qrcode": "^1.5.4",
+        "rehype-parse": "^9.0.1",
         "rehype-raw": "^7.0.0",
+        "rehype-sanitize": "^6.0.0",
         "rehype-stringify": "^10.0.1",
         "remark-gfm": "^4.0.1",
         "remark-parse": "^11.0.0",
@@ -930,15 +931,6 @@
         "node": ">=20"
       }
     },
-    "node_modules/@shikijs/core/node_modules/@types/hast": {
-      "version": "3.0.5",
-      "resolved": "https://registry.npmjs.org/@types/hast/-/hast-3.0.5.tgz",
-      "integrity": "sha512-rp/ezSWaD1m44dPKICGhiskI13nVr7qTloFwDa/IYkhhf5nzwP+zIQcIJh3WIFSBOy/H1PzB40jPjMDksN4F+g==",
-      "license": "MIT",
-      "dependencies": {
-        "@types/unist": "*"
-      }
-    },
     "node_modules/@shikijs/engine-javascript": {
       "version": "4.3.1",
       "resolved": "https://registry.npmjs.org/@shikijs/engine-javascript/-/engine-javascript-4.3.1.tgz",
@@ -992,15 +984,6 @@
         "node": ">=20"
       }
     },
-    "node_modules/@shikijs/primitive/node_modules/@types/hast": {
-      "version": "3.0.5",
-      "resolved": "https://registry.npmjs.org/@types/hast/-/hast-3.0.5.tgz",
-      "integrity": "sha512-rp/ezSWaD1m44dPKICGhiskI13nVr7qTloFwDa/IYkhhf5nzwP+zIQcIJh3WIFSBOy/H1PzB40jPjMDksN4F+g==",
-      "license": "MIT",
-      "dependencies": {
-        "@types/unist": "*"
-      }
-    },
     "node_modules/@shikijs/themes": {
       "version": "4.3.1",
       "resolved": "https://registry.npmjs.org/@shikijs/themes/-/themes-4.3.1.tgz",
@@ -1024,15 +1007,6 @@
       },
       "engines": {
         "node": ">=20"
-      }
-    },
-    "node_modules/@shikijs/types/node_modules/@types/hast": {
-      "version": "3.0.5",
-      "resolved": "https://registry.npmjs.org/@types/hast/-/hast-3.0.5.tgz",
-      "integrity": "sha512-rp/ezSWaD1m44dPKICGhiskI13nVr7qTloFwDa/IYkhhf5nzwP+zIQcIJh3WIFSBOy/H1PzB40jPjMDksN4F+g==",
-      "license": "MIT",
-      "dependencies": {
-        "@types/unist": "*"
       }
     },
     "node_modules/@shikijs/vscode-textmate": {
@@ -1351,6 +1325,15 @@
       "integrity": "sha512-6C8nqWur3j98U6+lXDfTUWIfgvZU+EumvpHKcYjujKH7woYyLj2sUmff0tRhrqM7BohUw7Pz3ZB1jj2gW9Fvmg==",
       "license": "MIT"
     },
+    "node_modules/@types/hast": {
+      "version": "3.0.5",
+      "resolved": "https://registry.npmjs.org/@types/hast/-/hast-3.0.5.tgz",
+      "integrity": "sha512-rp/ezSWaD1m44dPKICGhiskI13nVr7qTloFwDa/IYkhhf5nzwP+zIQcIJh3WIFSBOy/H1PzB40jPjMDksN4F+g==",
+      "license": "MIT",
+      "dependencies": {
+        "@types/unist": "*"
+      }
+    },
     "node_modules/@types/ms": {
       "version": "2.1.0",
       "resolved": "https://registry.npmjs.org/@types/ms/-/ms-2.1.0.tgz",
@@ -1365,9 +1348,9 @@
       "optional": true
     },
     "node_modules/@types/unist": {
-      "version": "2.0.11",
-      "resolved": "https://registry.npmjs.org/@types/unist/-/unist-2.0.11.tgz",
-      "integrity": "sha512-CmBKiL6NNo/OqgmMn95Fk9Whlp2mtvIv+KNpQKN2F4SjvrEesubTRWGYSg+BnWZOnlCaSTU1sMpsBOzgbYhnsA==",
+      "version": "3.0.3",
+      "resolved": "https://registry.npmjs.org/@types/unist/-/unist-3.0.3.tgz",
+      "integrity": "sha512-ko/gIFJRv177XgZsZcBwnqJN5x/Gien8qNOn0D5bQU/zAzVf9Zt3BlcUiLqhV9y4ARk0GbT3tnUiPNgnTXzc/Q==",
       "license": "MIT"
     },
     "node_modules/@ungap/structured-clone": {
@@ -2604,6 +2587,24 @@
       "integrity": "sha512-3GKBOn+m2LX9iq+JC1064cSFprJY4jL1jCXTcpnfER5HYE2l/4EfWSGzkPa/ZDBmYI0ZOEj5VHV/eKnPGkHuOg==",
       "license": "MIT"
     },
+    "node_modules/hast-util-from-html": {
+      "version": "2.0.3",
+      "resolved": "https://registry.npmjs.org/hast-util-from-html/-/hast-util-from-html-2.0.3.tgz",
+      "integrity": "sha512-CUSRHXyKjzHov8yKsQjGOElXy/3EKpyX56ELnkHH34vDVw1N1XSQ1ZcAvTyAPtGqLTuKP/uxM+aLkSPqF/EtMw==",
+      "license": "MIT",
+      "dependencies": {
+        "@types/hast": "^3.0.0",
+        "devlop": "^1.1.0",
+        "hast-util-from-parse5": "^8.0.0",
+        "parse5": "^7.0.0",
+        "vfile": "^6.0.0",
+        "vfile-message": "^4.0.0"
+      },
+      "funding": {
+        "type": "opencollective",
+        "url": "https://opencollective.com/unified"
+      }
+    },
     "node_modules/hast-util-from-parse5": {
       "version": "8.0.3",
       "resolved": "https://registry.npmjs.org/hast-util-from-parse5/-/hast-util-from-parse5-8.0.3.tgz",
@@ -2624,21 +2625,6 @@
         "url": "https://opencollective.com/unified"
       }
     },
-    "node_modules/hast-util-from-parse5/node_modules/@types/hast": {
-      "version": "3.0.5",
-      "resolved": "https://registry.npmjs.org/@types/hast/-/hast-3.0.5.tgz",
-      "integrity": "sha512-rp/ezSWaD1m44dPKICGhiskI13nVr7qTloFwDa/IYkhhf5nzwP+zIQcIJh3WIFSBOy/H1PzB40jPjMDksN4F+g==",
-      "license": "MIT",
-      "dependencies": {
-        "@types/unist": "*"
-      }
-    },
-    "node_modules/hast-util-from-parse5/node_modules/@types/unist": {
-      "version": "3.0.3",
-      "resolved": "https://registry.npmjs.org/@types/unist/-/unist-3.0.3.tgz",
-      "integrity": "sha512-ko/gIFJRv177XgZsZcBwnqJN5x/Gien8qNOn0D5bQU/zAzVf9Zt3BlcUiLqhV9y4ARk0GbT3tnUiPNgnTXzc/Q==",
-      "license": "MIT"
-    },
     "node_modules/hast-util-from-parse5/node_modules/property-information": {
       "version": "7.2.0",
       "resolved": "https://registry.npmjs.org/property-information/-/property-information-7.2.0.tgz",
@@ -2647,34 +2633,6 @@
       "funding": {
         "type": "github",
         "url": "https://github.com/sponsors/wooorm"
-      }
-    },
-    "node_modules/hast-util-from-parse5/node_modules/vfile": {
-      "version": "6.0.3",
-      "resolved": "https://registry.npmjs.org/vfile/-/vfile-6.0.3.tgz",
-      "integrity": "sha512-KzIbH/9tXat2u30jf+smMwFCsno4wHVdNmzFyL+T/L3UGqqk6JKfVqOFOZEpZSHADH1k40ab6NUIXZq422ov3Q==",
-      "license": "MIT",
-      "dependencies": {
-        "@types/unist": "^3.0.0",
-        "vfile-message": "^4.0.0"
-      },
-      "funding": {
-        "type": "opencollective",
-        "url": "https://opencollective.com/unified"
-      }
-    },
-    "node_modules/hast-util-from-parse5/node_modules/vfile-message": {
-      "version": "4.0.3",
-      "resolved": "https://registry.npmjs.org/vfile-message/-/vfile-message-4.0.3.tgz",
-      "integrity": "sha512-QTHzsGd1EhbZs4AsQ20JX1rC3cOlt/IWJruk893DfLRr57lcnOeMaWG4K0JrRta4mIJZKth2Au3mM3u03/JWKw==",
-      "license": "MIT",
-      "dependencies": {
-        "@types/unist": "^3.0.0",
-        "unist-util-stringify-position": "^4.0.0"
-      },
-      "funding": {
-        "type": "opencollective",
-        "url": "https://opencollective.com/unified"
       }
     },
     "node_modules/hast-util-parse-selector": {
@@ -2688,15 +2646,6 @@
       "funding": {
         "type": "opencollective",
         "url": "https://opencollective.com/unified"
-      }
-    },
-    "node_modules/hast-util-parse-selector/node_modules/@types/hast": {
-      "version": "3.0.5",
-      "resolved": "https://registry.npmjs.org/@types/hast/-/hast-3.0.5.tgz",
-      "integrity": "sha512-rp/ezSWaD1m44dPKICGhiskI13nVr7qTloFwDa/IYkhhf5nzwP+zIQcIJh3WIFSBOy/H1PzB40jPjMDksN4F+g==",
-      "license": "MIT",
-      "dependencies": {
-        "@types/unist": "*"
       }
     },
     "node_modules/hast-util-raw": {
@@ -2724,15 +2673,6 @@
         "url": "https://opencollective.com/unified"
       }
     },
-    "node_modules/hast-util-raw/node_modules/@types/hast": {
-      "version": "3.0.5",
-      "resolved": "https://registry.npmjs.org/@types/hast/-/hast-3.0.5.tgz",
-      "integrity": "sha512-rp/ezSWaD1m44dPKICGhiskI13nVr7qTloFwDa/IYkhhf5nzwP+zIQcIJh3WIFSBOy/H1PzB40jPjMDksN4F+g==",
-      "license": "MIT",
-      "dependencies": {
-        "@types/unist": "*"
-      }
-    },
     "node_modules/hast-util-raw/node_modules/@types/mdast": {
       "version": "4.0.4",
       "resolved": "https://registry.npmjs.org/@types/mdast/-/mdast-4.0.4.tgz",
@@ -2741,12 +2681,6 @@
       "dependencies": {
         "@types/unist": "*"
       }
-    },
-    "node_modules/hast-util-raw/node_modules/@types/unist": {
-      "version": "3.0.3",
-      "resolved": "https://registry.npmjs.org/@types/unist/-/unist-3.0.3.tgz",
-      "integrity": "sha512-ko/gIFJRv177XgZsZcBwnqJN5x/Gien8qNOn0D5bQU/zAzVf9Zt3BlcUiLqhV9y4ARk0GbT3tnUiPNgnTXzc/Q==",
-      "license": "MIT"
     },
     "node_modules/hast-util-raw/node_modules/mdast-util-to-hast": {
       "version": "13.2.1",
@@ -2769,41 +2703,15 @@
         "url": "https://opencollective.com/unified"
       }
     },
-    "node_modules/hast-util-raw/node_modules/unist-util-position": {
-      "version": "5.0.0",
-      "resolved": "https://registry.npmjs.org/unist-util-position/-/unist-util-position-5.0.0.tgz",
-      "integrity": "sha512-fucsC7HjXvkB5R3kTCO7kUjRdrS0BJt3M/FPxmHMBOm8JQi2BsHAHFsy27E0EolP8rp0NzXsJ+jNPyDWvOJZPA==",
+    "node_modules/hast-util-sanitize": {
+      "version": "5.0.2",
+      "resolved": "https://registry.npmjs.org/hast-util-sanitize/-/hast-util-sanitize-5.0.2.tgz",
+      "integrity": "sha512-3yTWghByc50aGS7JlGhk61SPenfE/p1oaFeNwkOOyrscaOkMGrcW9+Cy/QAIOBpZxP1yqDIzFMR0+Np0i0+usg==",
       "license": "MIT",
       "dependencies": {
-        "@types/unist": "^3.0.0"
-      },
-      "funding": {
-        "type": "opencollective",
-        "url": "https://opencollective.com/unified"
-      }
-    },
-    "node_modules/hast-util-raw/node_modules/vfile": {
-      "version": "6.0.3",
-      "resolved": "https://registry.npmjs.org/vfile/-/vfile-6.0.3.tgz",
-      "integrity": "sha512-KzIbH/9tXat2u30jf+smMwFCsno4wHVdNmzFyL+T/L3UGqqk6JKfVqOFOZEpZSHADH1k40ab6NUIXZq422ov3Q==",
-      "license": "MIT",
-      "dependencies": {
-        "@types/unist": "^3.0.0",
-        "vfile-message": "^4.0.0"
-      },
-      "funding": {
-        "type": "opencollective",
-        "url": "https://opencollective.com/unified"
-      }
-    },
-    "node_modules/hast-util-raw/node_modules/vfile-message": {
-      "version": "4.0.3",
-      "resolved": "https://registry.npmjs.org/vfile-message/-/vfile-message-4.0.3.tgz",
-      "integrity": "sha512-QTHzsGd1EhbZs4AsQ20JX1rC3cOlt/IWJruk893DfLRr57lcnOeMaWG4K0JrRta4mIJZKth2Au3mM3u03/JWKw==",
-      "license": "MIT",
-      "dependencies": {
-        "@types/unist": "^3.0.0",
-        "unist-util-stringify-position": "^4.0.0"
+        "@types/hast": "^3.0.0",
+        "@ungap/structured-clone": "^1.0.0",
+        "unist-util-position": "^5.0.0"
       },
       "funding": {
         "type": "opencollective",
@@ -2833,15 +2741,6 @@
         "url": "https://opencollective.com/unified"
       }
     },
-    "node_modules/hast-util-to-html/node_modules/@types/hast": {
-      "version": "3.0.5",
-      "resolved": "https://registry.npmjs.org/@types/hast/-/hast-3.0.5.tgz",
-      "integrity": "sha512-rp/ezSWaD1m44dPKICGhiskI13nVr7qTloFwDa/IYkhhf5nzwP+zIQcIJh3WIFSBOy/H1PzB40jPjMDksN4F+g==",
-      "license": "MIT",
-      "dependencies": {
-        "@types/unist": "*"
-      }
-    },
     "node_modules/hast-util-to-html/node_modules/@types/mdast": {
       "version": "4.0.4",
       "resolved": "https://registry.npmjs.org/@types/mdast/-/mdast-4.0.4.tgz",
@@ -2850,12 +2749,6 @@
       "dependencies": {
         "@types/unist": "*"
       }
-    },
-    "node_modules/hast-util-to-html/node_modules/@types/unist": {
-      "version": "3.0.3",
-      "resolved": "https://registry.npmjs.org/@types/unist/-/unist-3.0.3.tgz",
-      "integrity": "sha512-ko/gIFJRv177XgZsZcBwnqJN5x/Gien8qNOn0D5bQU/zAzVf9Zt3BlcUiLqhV9y4ARk0GbT3tnUiPNgnTXzc/Q==",
-      "license": "MIT"
     },
     "node_modules/hast-util-to-html/node_modules/hast-util-whitespace": {
       "version": "3.0.0",
@@ -2901,47 +2794,6 @@
         "url": "https://github.com/sponsors/wooorm"
       }
     },
-    "node_modules/hast-util-to-html/node_modules/unist-util-position": {
-      "version": "5.0.0",
-      "resolved": "https://registry.npmjs.org/unist-util-position/-/unist-util-position-5.0.0.tgz",
-      "integrity": "sha512-fucsC7HjXvkB5R3kTCO7kUjRdrS0BJt3M/FPxmHMBOm8JQi2BsHAHFsy27E0EolP8rp0NzXsJ+jNPyDWvOJZPA==",
-      "license": "MIT",
-      "dependencies": {
-        "@types/unist": "^3.0.0"
-      },
-      "funding": {
-        "type": "opencollective",
-        "url": "https://opencollective.com/unified"
-      }
-    },
-    "node_modules/hast-util-to-html/node_modules/vfile": {
-      "version": "6.0.3",
-      "resolved": "https://registry.npmjs.org/vfile/-/vfile-6.0.3.tgz",
-      "integrity": "sha512-KzIbH/9tXat2u30jf+smMwFCsno4wHVdNmzFyL+T/L3UGqqk6JKfVqOFOZEpZSHADH1k40ab6NUIXZq422ov3Q==",
-      "license": "MIT",
-      "dependencies": {
-        "@types/unist": "^3.0.0",
-        "vfile-message": "^4.0.0"
-      },
-      "funding": {
-        "type": "opencollective",
-        "url": "https://opencollective.com/unified"
-      }
-    },
-    "node_modules/hast-util-to-html/node_modules/vfile-message": {
-      "version": "4.0.3",
-      "resolved": "https://registry.npmjs.org/vfile-message/-/vfile-message-4.0.3.tgz",
-      "integrity": "sha512-QTHzsGd1EhbZs4AsQ20JX1rC3cOlt/IWJruk893DfLRr57lcnOeMaWG4K0JrRta4mIJZKth2Au3mM3u03/JWKw==",
-      "license": "MIT",
-      "dependencies": {
-        "@types/unist": "^3.0.0",
-        "unist-util-stringify-position": "^4.0.0"
-      },
-      "funding": {
-        "type": "opencollective",
-        "url": "https://opencollective.com/unified"
-      }
-    },
     "node_modules/hast-util-to-parse5": {
       "version": "8.0.1",
       "resolved": "https://registry.npmjs.org/hast-util-to-parse5/-/hast-util-to-parse5-8.0.1.tgz",
@@ -2959,15 +2811,6 @@
       "funding": {
         "type": "opencollective",
         "url": "https://opencollective.com/unified"
-      }
-    },
-    "node_modules/hast-util-to-parse5/node_modules/@types/hast": {
-      "version": "3.0.5",
-      "resolved": "https://registry.npmjs.org/@types/hast/-/hast-3.0.5.tgz",
-      "integrity": "sha512-rp/ezSWaD1m44dPKICGhiskI13nVr7qTloFwDa/IYkhhf5nzwP+zIQcIJh3WIFSBOy/H1PzB40jPjMDksN4F+g==",
-      "license": "MIT",
-      "dependencies": {
-        "@types/unist": "*"
       }
     },
     "node_modules/hast-util-to-parse5/node_modules/property-information": {
@@ -2995,15 +2838,6 @@
       "funding": {
         "type": "opencollective",
         "url": "https://opencollective.com/unified"
-      }
-    },
-    "node_modules/hastscript/node_modules/@types/hast": {
-      "version": "3.0.5",
-      "resolved": "https://registry.npmjs.org/@types/hast/-/hast-3.0.5.tgz",
-      "integrity": "sha512-rp/ezSWaD1m44dPKICGhiskI13nVr7qTloFwDa/IYkhhf5nzwP+zIQcIJh3WIFSBOy/H1PzB40jPjMDksN4F+g==",
-      "license": "MIT",
-      "dependencies": {
-        "@types/unist": "*"
       }
     },
     "node_modules/hastscript/node_modules/property-information": {
@@ -3274,12 +3108,6 @@
         "@types/unist": "*"
       }
     },
-    "node_modules/mdast-util-from-markdown/node_modules/@types/unist": {
-      "version": "3.0.3",
-      "resolved": "https://registry.npmjs.org/@types/unist/-/unist-3.0.3.tgz",
-      "integrity": "sha512-ko/gIFJRv177XgZsZcBwnqJN5x/Gien8qNOn0D5bQU/zAzVf9Zt3BlcUiLqhV9y4ARk0GbT3tnUiPNgnTXzc/Q==",
-      "license": "MIT"
-    },
     "node_modules/mdast-util-gfm": {
       "version": "3.1.0",
       "resolved": "https://registry.npmjs.org/mdast-util-gfm/-/mdast-util-gfm-3.1.0.tgz",
@@ -3324,12 +3152,6 @@
       "dependencies": {
         "@types/unist": "*"
       }
-    },
-    "node_modules/mdast-util-gfm-autolink-literal/node_modules/@types/unist": {
-      "version": "3.0.3",
-      "resolved": "https://registry.npmjs.org/@types/unist/-/unist-3.0.3.tgz",
-      "integrity": "sha512-ko/gIFJRv177XgZsZcBwnqJN5x/Gien8qNOn0D5bQU/zAzVf9Zt3BlcUiLqhV9y4ARk0GbT3tnUiPNgnTXzc/Q==",
-      "license": "MIT"
     },
     "node_modules/mdast-util-gfm-autolink-literal/node_modules/mdast-util-find-and-replace": {
       "version": "3.0.2",
@@ -3498,12 +3320,6 @@
         "@types/unist": "*"
       }
     },
-    "node_modules/mdast-util-phrasing/node_modules/@types/unist": {
-      "version": "3.0.3",
-      "resolved": "https://registry.npmjs.org/@types/unist/-/unist-3.0.3.tgz",
-      "integrity": "sha512-ko/gIFJRv177XgZsZcBwnqJN5x/Gien8qNOn0D5bQU/zAzVf9Zt3BlcUiLqhV9y4ARk0GbT3tnUiPNgnTXzc/Q==",
-      "license": "MIT"
-    },
     "node_modules/mdast-util-phrasing/node_modules/unist-util-is": {
       "version": "6.0.1",
       "resolved": "https://registry.npmjs.org/unist-util-is/-/unist-util-is-6.0.1.tgz",
@@ -3546,12 +3362,6 @@
       "dependencies": {
         "@types/unist": "*"
       }
-    },
-    "node_modules/mdast-util-to-markdown/node_modules/@types/unist": {
-      "version": "3.0.3",
-      "resolved": "https://registry.npmjs.org/@types/unist/-/unist-3.0.3.tgz",
-      "integrity": "sha512-ko/gIFJRv177XgZsZcBwnqJN5x/Gien8qNOn0D5bQU/zAzVf9Zt3BlcUiLqhV9y4ARk0GbT3tnUiPNgnTXzc/Q==",
-      "license": "MIT"
     },
     "node_modules/mdast-util-to-string": {
       "version": "4.0.0",
@@ -4710,6 +4520,21 @@
       "integrity": "sha512-8VhliFJAWRaUiVvREIiW2NXXTmHs4vMNnSzuJVhscgmGav3g9VDxLrQndI3dZZVVdp0ZO/5v0xmX516/7M9cng==",
       "license": "MIT"
     },
+    "node_modules/rehype-parse": {
+      "version": "9.0.1",
+      "resolved": "https://registry.npmjs.org/rehype-parse/-/rehype-parse-9.0.1.tgz",
+      "integrity": "sha512-ksCzCD0Fgfh7trPDxr2rSylbwq9iYDkSn8TCDmEJ49ljEUBxDVCzCHv7QNzZOfODanX4+bWQ4WZqLCRWYLfhag==",
+      "license": "MIT",
+      "dependencies": {
+        "@types/hast": "^3.0.0",
+        "hast-util-from-html": "^2.0.0",
+        "unified": "^11.0.0"
+      },
+      "funding": {
+        "type": "opencollective",
+        "url": "https://opencollective.com/unified"
+      }
+    },
     "node_modules/rehype-raw": {
       "version": "7.0.0",
       "resolved": "https://registry.npmjs.org/rehype-raw/-/rehype-raw-7.0.0.tgz",
@@ -4725,43 +4550,14 @@
         "url": "https://opencollective.com/unified"
       }
     },
-    "node_modules/rehype-raw/node_modules/@types/hast": {
-      "version": "3.0.5",
-      "resolved": "https://registry.npmjs.org/@types/hast/-/hast-3.0.5.tgz",
-      "integrity": "sha512-rp/ezSWaD1m44dPKICGhiskI13nVr7qTloFwDa/IYkhhf5nzwP+zIQcIJh3WIFSBOy/H1PzB40jPjMDksN4F+g==",
+    "node_modules/rehype-sanitize": {
+      "version": "6.0.0",
+      "resolved": "https://registry.npmjs.org/rehype-sanitize/-/rehype-sanitize-6.0.0.tgz",
+      "integrity": "sha512-CsnhKNsyI8Tub6L4sm5ZFsme4puGfc6pYylvXo1AeqaGbjOYyzNv3qZPwvs0oMJ39eryyeOdmxwUIo94IpEhqg==",
       "license": "MIT",
       "dependencies": {
-        "@types/unist": "*"
-      }
-    },
-    "node_modules/rehype-raw/node_modules/@types/unist": {
-      "version": "3.0.3",
-      "resolved": "https://registry.npmjs.org/@types/unist/-/unist-3.0.3.tgz",
-      "integrity": "sha512-ko/gIFJRv177XgZsZcBwnqJN5x/Gien8qNOn0D5bQU/zAzVf9Zt3BlcUiLqhV9y4ARk0GbT3tnUiPNgnTXzc/Q==",
-      "license": "MIT"
-    },
-    "node_modules/rehype-raw/node_modules/vfile": {
-      "version": "6.0.3",
-      "resolved": "https://registry.npmjs.org/vfile/-/vfile-6.0.3.tgz",
-      "integrity": "sha512-KzIbH/9tXat2u30jf+smMwFCsno4wHVdNmzFyL+T/L3UGqqk6JKfVqOFOZEpZSHADH1k40ab6NUIXZq422ov3Q==",
-      "license": "MIT",
-      "dependencies": {
-        "@types/unist": "^3.0.0",
-        "vfile-message": "^4.0.0"
-      },
-      "funding": {
-        "type": "opencollective",
-        "url": "https://opencollective.com/unified"
-      }
-    },
-    "node_modules/rehype-raw/node_modules/vfile-message": {
-      "version": "4.0.3",
-      "resolved": "https://registry.npmjs.org/vfile-message/-/vfile-message-4.0.3.tgz",
-      "integrity": "sha512-QTHzsGd1EhbZs4AsQ20JX1rC3cOlt/IWJruk893DfLRr57lcnOeMaWG4K0JrRta4mIJZKth2Au3mM3u03/JWKw==",
-      "license": "MIT",
-      "dependencies": {
-        "@types/unist": "^3.0.0",
-        "unist-util-stringify-position": "^4.0.0"
+        "@types/hast": "^3.0.0",
+        "hast-util-sanitize": "^5.0.0"
       },
       "funding": {
         "type": "opencollective",
@@ -4781,15 +4577,6 @@
       "funding": {
         "type": "opencollective",
         "url": "https://opencollective.com/unified"
-      }
-    },
-    "node_modules/rehype-stringify/node_modules/@types/hast": {
-      "version": "3.0.5",
-      "resolved": "https://registry.npmjs.org/@types/hast/-/hast-3.0.5.tgz",
-      "integrity": "sha512-rp/ezSWaD1m44dPKICGhiskI13nVr7qTloFwDa/IYkhhf5nzwP+zIQcIJh3WIFSBOy/H1PzB40jPjMDksN4F+g==",
-      "license": "MIT",
-      "dependencies": {
-        "@types/unist": "*"
       }
     },
     "node_modules/remark-gfm": {
@@ -4861,15 +4648,6 @@
         "url": "https://opencollective.com/unified"
       }
     },
-    "node_modules/remark-rehype/node_modules/@types/hast": {
-      "version": "3.0.5",
-      "resolved": "https://registry.npmjs.org/@types/hast/-/hast-3.0.5.tgz",
-      "integrity": "sha512-rp/ezSWaD1m44dPKICGhiskI13nVr7qTloFwDa/IYkhhf5nzwP+zIQcIJh3WIFSBOy/H1PzB40jPjMDksN4F+g==",
-      "license": "MIT",
-      "dependencies": {
-        "@types/unist": "*"
-      }
-    },
     "node_modules/remark-rehype/node_modules/@types/mdast": {
       "version": "4.0.4",
       "resolved": "https://registry.npmjs.org/@types/mdast/-/mdast-4.0.4.tgz",
@@ -4878,12 +4656,6 @@
       "dependencies": {
         "@types/unist": "*"
       }
-    },
-    "node_modules/remark-rehype/node_modules/@types/unist": {
-      "version": "3.0.3",
-      "resolved": "https://registry.npmjs.org/@types/unist/-/unist-3.0.3.tgz",
-      "integrity": "sha512-ko/gIFJRv177XgZsZcBwnqJN5x/Gien8qNOn0D5bQU/zAzVf9Zt3BlcUiLqhV9y4ARk0GbT3tnUiPNgnTXzc/Q==",
-      "license": "MIT"
     },
     "node_modules/remark-rehype/node_modules/mdast-util-to-hast": {
       "version": "13.2.1",
@@ -4900,47 +4672,6 @@
         "unist-util-position": "^5.0.0",
         "unist-util-visit": "^5.0.0",
         "vfile": "^6.0.0"
-      },
-      "funding": {
-        "type": "opencollective",
-        "url": "https://opencollective.com/unified"
-      }
-    },
-    "node_modules/remark-rehype/node_modules/unist-util-position": {
-      "version": "5.0.0",
-      "resolved": "https://registry.npmjs.org/unist-util-position/-/unist-util-position-5.0.0.tgz",
-      "integrity": "sha512-fucsC7HjXvkB5R3kTCO7kUjRdrS0BJt3M/FPxmHMBOm8JQi2BsHAHFsy27E0EolP8rp0NzXsJ+jNPyDWvOJZPA==",
-      "license": "MIT",
-      "dependencies": {
-        "@types/unist": "^3.0.0"
-      },
-      "funding": {
-        "type": "opencollective",
-        "url": "https://opencollective.com/unified"
-      }
-    },
-    "node_modules/remark-rehype/node_modules/vfile": {
-      "version": "6.0.3",
-      "resolved": "https://registry.npmjs.org/vfile/-/vfile-6.0.3.tgz",
-      "integrity": "sha512-KzIbH/9tXat2u30jf+smMwFCsno4wHVdNmzFyL+T/L3UGqqk6JKfVqOFOZEpZSHADH1k40ab6NUIXZq422ov3Q==",
-      "license": "MIT",
-      "dependencies": {
-        "@types/unist": "^3.0.0",
-        "vfile-message": "^4.0.0"
-      },
-      "funding": {
-        "type": "opencollective",
-        "url": "https://opencollective.com/unified"
-      }
-    },
-    "node_modules/remark-rehype/node_modules/vfile-message": {
-      "version": "4.0.3",
-      "resolved": "https://registry.npmjs.org/vfile-message/-/vfile-message-4.0.3.tgz",
-      "integrity": "sha512-QTHzsGd1EhbZs4AsQ20JX1rC3cOlt/IWJruk893DfLRr57lcnOeMaWG4K0JrRta4mIJZKth2Au3mM3u03/JWKw==",
-      "license": "MIT",
-      "dependencies": {
-        "@types/unist": "^3.0.0",
-        "unist-util-stringify-position": "^4.0.0"
       },
       "funding": {
         "type": "opencollective",
@@ -5108,15 +4839,6 @@
         "node": ">=20"
       }
     },
-    "node_modules/shiki/node_modules/@types/hast": {
-      "version": "3.0.5",
-      "resolved": "https://registry.npmjs.org/@types/hast/-/hast-3.0.5.tgz",
-      "integrity": "sha512-rp/ezSWaD1m44dPKICGhiskI13nVr7qTloFwDa/IYkhhf5nzwP+zIQcIJh3WIFSBOy/H1PzB40jPjMDksN4F+g==",
-      "license": "MIT",
-      "dependencies": {
-        "@types/unist": "*"
-      }
-    },
     "node_modules/space-separated-tokens": {
       "version": "2.0.2",
       "resolved": "https://registry.npmjs.org/space-separated-tokens/-/space-separated-tokens-2.0.2.tgz",
@@ -5275,34 +4997,13 @@
         "url": "https://opencollective.com/unified"
       }
     },
-    "node_modules/unified/node_modules/@types/unist": {
-      "version": "3.0.3",
-      "resolved": "https://registry.npmjs.org/@types/unist/-/unist-3.0.3.tgz",
-      "integrity": "sha512-ko/gIFJRv177XgZsZcBwnqJN5x/Gien8qNOn0D5bQU/zAzVf9Zt3BlcUiLqhV9y4ARk0GbT3tnUiPNgnTXzc/Q==",
-      "license": "MIT"
-    },
-    "node_modules/unified/node_modules/vfile": {
-      "version": "6.0.3",
-      "resolved": "https://registry.npmjs.org/vfile/-/vfile-6.0.3.tgz",
-      "integrity": "sha512-KzIbH/9tXat2u30jf+smMwFCsno4wHVdNmzFyL+T/L3UGqqk6JKfVqOFOZEpZSHADH1k40ab6NUIXZq422ov3Q==",
+    "node_modules/unist-util-position": {
+      "version": "5.0.0",
+      "resolved": "https://registry.npmjs.org/unist-util-position/-/unist-util-position-5.0.0.tgz",
+      "integrity": "sha512-fucsC7HjXvkB5R3kTCO7kUjRdrS0BJt3M/FPxmHMBOm8JQi2BsHAHFsy27E0EolP8rp0NzXsJ+jNPyDWvOJZPA==",
       "license": "MIT",
       "dependencies": {
-        "@types/unist": "^3.0.0",
-        "vfile-message": "^4.0.0"
-      },
-      "funding": {
-        "type": "opencollective",
-        "url": "https://opencollective.com/unified"
-      }
-    },
-    "node_modules/unified/node_modules/vfile-message": {
-      "version": "4.0.3",
-      "resolved": "https://registry.npmjs.org/vfile-message/-/vfile-message-4.0.3.tgz",
-      "integrity": "sha512-QTHzsGd1EhbZs4AsQ20JX1rC3cOlt/IWJruk893DfLRr57lcnOeMaWG4K0JrRta4mIJZKth2Au3mM3u03/JWKw==",
-      "license": "MIT",
-      "dependencies": {
-        "@types/unist": "^3.0.0",
-        "unist-util-stringify-position": "^4.0.0"
+        "@types/unist": "^3.0.0"
       },
       "funding": {
         "type": "opencollective",
@@ -5322,12 +5023,6 @@
         "url": "https://opencollective.com/unified"
       }
     },
-    "node_modules/unist-util-stringify-position/node_modules/@types/unist": {
-      "version": "3.0.3",
-      "resolved": "https://registry.npmjs.org/@types/unist/-/unist-3.0.3.tgz",
-      "integrity": "sha512-ko/gIFJRv177XgZsZcBwnqJN5x/Gien8qNOn0D5bQU/zAzVf9Zt3BlcUiLqhV9y4ARk0GbT3tnUiPNgnTXzc/Q==",
-      "license": "MIT"
-    },
     "node_modules/unist-util-visit": {
       "version": "5.1.0",
       "resolved": "https://registry.npmjs.org/unist-util-visit/-/unist-util-visit-5.1.0.tgz",
@@ -5342,12 +5037,6 @@
         "type": "opencollective",
         "url": "https://opencollective.com/unified"
       }
-    },
-    "node_modules/unist-util-visit/node_modules/@types/unist": {
-      "version": "3.0.3",
-      "resolved": "https://registry.npmjs.org/@types/unist/-/unist-3.0.3.tgz",
-      "integrity": "sha512-ko/gIFJRv177XgZsZcBwnqJN5x/Gien8qNOn0D5bQU/zAzVf9Zt3BlcUiLqhV9y4ARk0GbT3tnUiPNgnTXzc/Q==",
-      "license": "MIT"
     },
     "node_modules/unist-util-visit/node_modules/unist-util-is": {
       "version": "6.0.1",
@@ -5398,6 +5087,20 @@
         "uuid": "dist-node/bin/uuid"
       }
     },
+    "node_modules/vfile": {
+      "version": "6.0.3",
+      "resolved": "https://registry.npmjs.org/vfile/-/vfile-6.0.3.tgz",
+      "integrity": "sha512-KzIbH/9tXat2u30jf+smMwFCsno4wHVdNmzFyL+T/L3UGqqk6JKfVqOFOZEpZSHADH1k40ab6NUIXZq422ov3Q==",
+      "license": "MIT",
+      "dependencies": {
+        "@types/unist": "^3.0.0",
+        "vfile-message": "^4.0.0"
+      },
+      "funding": {
+        "type": "opencollective",
+        "url": "https://opencollective.com/unified"
+      }
+    },
     "node_modules/vfile-location": {
       "version": "5.0.3",
       "resolved": "https://registry.npmjs.org/vfile-location/-/vfile-location-5.0.3.tgz",
@@ -5412,27 +5115,7 @@
         "url": "https://opencollective.com/unified"
       }
     },
-    "node_modules/vfile-location/node_modules/@types/unist": {
-      "version": "3.0.3",
-      "resolved": "https://registry.npmjs.org/@types/unist/-/unist-3.0.3.tgz",
-      "integrity": "sha512-ko/gIFJRv177XgZsZcBwnqJN5x/Gien8qNOn0D5bQU/zAzVf9Zt3BlcUiLqhV9y4ARk0GbT3tnUiPNgnTXzc/Q==",
-      "license": "MIT"
-    },
-    "node_modules/vfile-location/node_modules/vfile": {
-      "version": "6.0.3",
-      "resolved": "https://registry.npmjs.org/vfile/-/vfile-6.0.3.tgz",
-      "integrity": "sha512-KzIbH/9tXat2u30jf+smMwFCsno4wHVdNmzFyL+T/L3UGqqk6JKfVqOFOZEpZSHADH1k40ab6NUIXZq422ov3Q==",
-      "license": "MIT",
-      "dependencies": {
-        "@types/unist": "^3.0.0",
-        "vfile-message": "^4.0.0"
-      },
-      "funding": {
-        "type": "opencollective",
-        "url": "https://opencollective.com/unified"
-      }
-    },
-    "node_modules/vfile-location/node_modules/vfile-message": {
+    "node_modules/vfile-message": {
       "version": "4.0.3",
       "resolved": "https://registry.npmjs.org/vfile-message/-/vfile-message-4.0.3.tgz",
       "integrity": "sha512-QTHzsGd1EhbZs4AsQ20JX1rC3cOlt/IWJruk893DfLRr57lcnOeMaWG4K0JrRta4mIJZKth2Au3mM3u03/JWKw==",

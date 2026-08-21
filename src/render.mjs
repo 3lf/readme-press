@@ -3,6 +3,7 @@ import { readFile, realpath, stat, writeFile } from 'node:fs/promises';
 import { basename, dirname, extname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
+import { installRequestPolicy, normalizeNetworkPolicy } from './network.mjs';
 
 const VIEWER_ROOT = resolve(
   dirname(fileURLToPath(import.meta.resolve('@vivliostyle/viewer/package.json'))),
@@ -155,6 +156,7 @@ async function pageSizeData(page) {
 export async function renderPagedHtml({
   htmlPath,
   pdfPath,
+  network = normalizeNetworkPolicy('trusted'),
   timeout = 300_000,
 }) {
   const documentRoot = dirname(htmlPath);
@@ -171,6 +173,8 @@ export async function renderPagedHtml({
     render: async ({ browser, port }) => {
     const page = await browser.newPage();
     page.setDefaultTimeout(timeout);
+    const base = `http://127.0.0.1:${port}`;
+    const requests = await installRequestPolicy(page, network, { allowedOrigins: [base] });
     const pageErrors = [];
     page.on('pageerror', (error) => pageErrors.push(error.message));
     page.on('response', (response) => {
@@ -179,7 +183,6 @@ export async function renderPagedHtml({
       }
     });
 
-    const base = `http://127.0.0.1:${port}`;
     const sourceUrl = `${base}/document/${encodeURIComponent(basename(htmlPath))}`;
     const viewerUrl = `${base}/viewer/index.html#src=${sourceUrl}&bookMode=true&renderAllPages=true`;
     const response = await page.goto(viewerUrl, { waitUntil: 'domcontentloaded', timeout });
@@ -198,6 +201,9 @@ export async function renderPagedHtml({
     if (pageErrors.length) {
       throw new Error(`Vivliostyle browser error: ${pageErrors.join('\n')}`);
     }
+    if (requests.blocked.length) {
+      throw new Error(`Network policy blocked request: ${requests.blocked.join(', ')}`);
+    }
 
     const pdf = await page.pdf({
       margin: { top: 0, right: 0, bottom: 0, left: 0 },
@@ -206,7 +212,7 @@ export async function renderPagedHtml({
       tagged: true,
     });
     await writeFile(pdfPath, pdf);
-    return { pageSizeData: sizes };
+    return { pageSizeData: sizes, externalRequests: requests.observedExternal };
     },
   });
 }

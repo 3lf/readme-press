@@ -6,6 +6,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { PDFArray, PDFDocument, PDFHexString, PDFName, PDFString } from 'pdf-lib';
 import puppeteer from 'puppeteer';
+import { installRequestPolicy, normalizeNetworkPolicy } from './network.mjs';
 
 const CSS_DPI = 96;
 
@@ -31,6 +32,11 @@ export async function renderCover(htmlPath, outPath, config) {
 
   try {
     const page = await browser.newPage();
+    const requests = await installRequestPolicy(
+      page,
+      config.security?.network ?? normalizeNetworkPolicy('trusted'),
+      { offlineForDeny: true },
+    );
     await page.setViewport({
       width: Math.ceil(cssWidth),
       height: Math.ceil(cssHeight),
@@ -77,6 +83,13 @@ export async function renderCover(htmlPath, outPath, config) {
       variant: config.outputVariant ?? 'normal',
     });
     await page.evaluate(() => document.fonts.ready);
+    if (requests.blocked.length) {
+      throw new Error(`Network policy blocked cover request: ${requests.blocked.join(', ')}`);
+    }
+    await requests.disable();
+    await page.evaluate(() => new Promise((resolvePaint) => {
+      requestAnimationFrame(() => requestAnimationFrame(resolvePaint));
+    }));
 
     const size = await page.$eval('.cover', (element) => {
       const rect = element.getBoundingClientRect();
