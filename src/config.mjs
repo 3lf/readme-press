@@ -98,6 +98,10 @@ export async function loadConfig(configFile = 'readme-press.config.mjs', cwd = p
     raw.security?.network,
     raw.security?.allowHosts ?? [],
   );
+  const diagnosticsMode = raw.security?.diagnostics ?? 'warn';
+  if (!['warn', 'strict'].includes(diagnosticsMode)) {
+    throw new Error(`security.diagnostics must be warn or strict; received ${diagnosticsMode}.`);
+  }
   const outputs = {
     normal: raw.outputs?.normal ?? 'book.pdf',
     high: raw.outputs?.high ?? 'book-high-quality.pdf',
@@ -210,6 +214,7 @@ export async function loadConfig(configFile = 'readme-press.config.mjs', cwd = p
       ...(raw.security ?? {}),
       rawHtml: rawHtmlMode,
       network: networkPolicy,
+      diagnostics: diagnosticsMode,
     },
     qa: {
       ...(raw.qa ?? {}),

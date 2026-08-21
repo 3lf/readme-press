@@ -259,6 +259,24 @@ test('prepares checksums and neutral release notes from verified outputs', () =>
     assert.match(readFileSync(join(dist, 'release-notes.md'), 'utf8'), /Example book/);
     assert.match(readFileSync(join(dist, 'release-notes.md'), 'utf8'), /Print edition/);
     assert.match(readFileSync(join(dist, 'release-notes.md'), 'utf8'), /github\.com\/example\/book\/commit/);
+    prepareRelease({
+      version: 'v1.0.0',
+      manifestPath,
+      outputDir: dist,
+      commit,
+      release: {
+        copy: {
+          intro: '<script>bad()</script>\n## Injected',
+          normalPurpose: 'Normal | forged cell',
+          validation: ['[click](javascript:bad())'],
+        },
+      },
+    });
+    const safeNotes = readFileSync(join(dist, 'release-notes.md'), 'utf8');
+    assert.doesNotMatch(safeNotes, /<script>|\n## Injected/u);
+    assert.ok(safeNotes.includes('\\<script\\>bad()\\</script\\> \\#\\# Injected'));
+    assert.ok(safeNotes.includes('Normal \\| forged cell'));
+    assert.ok(safeNotes.includes('\\[click\\](javascript:bad())'));
     assert.throws(() => prepareRelease({
       version: 'v1.0.0',
       manifestPath,

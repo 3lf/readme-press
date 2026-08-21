@@ -7,6 +7,7 @@ import { pathToFileURL } from 'node:url';
 import { PDFArray, PDFDict, PDFDocument, PDFName } from 'pdf-lib';
 import sharp from 'sharp';
 import { loadConfig } from './config.mjs';
+import { preflightQa } from './preflight.mjs';
 import { normalizeReleaseVersion } from './release.mjs';
 
 function runTool(command, args, options = {}) {
@@ -134,6 +135,7 @@ export async function runQa({
   renderAll = false,
 } = {}) {
   const config = await loadConfig(configFile);
+  preflightQa();
   const manifestPath = resolve(config.outputDir, 'manifest.json');
   const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
   const requestedQuality = quality ?? manifest.requestedQuality ?? 'normal';
@@ -155,8 +157,11 @@ export async function runQa({
   check(manifest.source === config.sourcePath, 'manifest source matches configuration');
   check(manifest.repository?.url === config.repository.url, 'manifest repository matches configuration');
   check(manifest.engine?.name === 'readme-press', 'manifest identifies README Press');
-  check(Array.isArray(manifest.diagnostics) && manifest.diagnostics.length === 0,
-    'transform completed without diagnostics', String(manifest.diagnostics?.length ?? 0));
+  const diagnosticErrors = Array.isArray(manifest.diagnostics)
+    ? manifest.diagnostics.filter((diagnostic) => diagnostic.severity === 'error')
+    : [null];
+  check(diagnosticErrors.length === 0,
+    'build completed without diagnostic errors', String(diagnosticErrors.length));
   if (expectedVersion) check(manifest.releaseVersion === expectedVersion, 'manifest release version', manifest.releaseVersion);
   if (config.qa.requireSourceCommit) {
     check(/^[0-9a-f]{40}$/i.test(manifest.sourceCommit ?? ''), 'manifest records a full source commit');
