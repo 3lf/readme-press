@@ -15,14 +15,24 @@
   "bin": {
     "readme-press": "bin/readme-press.mjs"
   },
+  "types": "./src/index.d.ts",
   "exports": {
-    ".": "./src/index.mjs",
-    "./config": "./src/config.mjs"
+    ".": {
+      "types": "./src/index.d.ts",
+      "import": "./src/index.mjs",
+      "default": "./src/index.mjs"
+    },
+    "./config": {
+      "types": "./src/config.d.ts",
+      "import": "./src/config.mjs",
+      "default": "./src/config.mjs"
+    }
   },
   "files": [
     "action.yml",
     "bin/",
     "docs/assets/",
+    "docs/programmatic-api.md",
     "src/",
     "themes/",
     "npm-shrinkwrap.json",
@@ -35,15 +45,16 @@
   },
   "scripts": {
     "test": "node --test test/*.test.mjs",
+    "test:types": "tsc --noEmit -p test/types/tsconfig.json",
     "test:package": "node test/package-smoke.mjs",
     "test:action": "action-validator action.yml",
-    "test:syntax": "node --check bin/readme-press.mjs && node --check src/artifacts.mjs && node --check src/build.mjs && node --check src/config.mjs && node --check src/cover.mjs && node --check src/diagnostics.mjs && node --check src/html.mjs && node --check src/manifest.mjs && node --check src/mermaid.mjs && node --check src/network.mjs && node --check src/paths.mjs && node --check src/preflight.mjs && node --check src/qa.mjs && node --check src/release.mjs && node --check src/render.mjs && node --check src/template.mjs && node --check src/transform.mjs && node --check test/browser-security.test.mjs && node --check test/package-smoke.mjs && node --check test/pipeline.test.mjs && node --check test/security.test.mjs && node --check test/verify-manifest-outputs.mjs",
+    "test:syntax": "node --check bin/readme-press.mjs && node --check src/artifacts.mjs && node --check src/build.mjs && node --check src/cli.mjs && node --check src/config.mjs && node --check src/cover.mjs && node --check src/diagnostics.mjs && node --check src/errors.mjs && node --check src/html.mjs && node --check src/manifest.mjs && node --check src/mermaid.mjs && node --check src/network.mjs && node --check src/paths.mjs && node --check src/preflight.mjs && node --check src/qa.mjs && node --check src/release.mjs && node --check src/render.mjs && node --check src/schema.mjs && node --check src/template.mjs && node --check src/transform.mjs && node --check test/api.test.mjs && node --check test/browser-security.test.mjs && node --check test/package-smoke.mjs && node --check test/pipeline.test.mjs && node --check test/security.test.mjs && node --check test/verify-manifest-outputs.mjs",
     "fixture:prepare": "node test/prepare-fixture.mjs",
     "fixture:build": "npm run fixture:prepare && node bin/readme-press.mjs build --config test/fixtures/basic/readme-press.config.mjs --quality all --release-version v0.1.0 && node bin/readme-press.mjs build --config test/fixtures/persian/readme-press.config.mjs --quality all --release-version v0.1.0 && node test/verify-manifest-outputs.mjs",
     "fixture:qa": "node bin/readme-press.mjs qa --config test/fixtures/basic/readme-press.config.mjs --quality all --release-version v0.1.0 --render-all && node bin/readme-press.mjs qa --config test/fixtures/persian/readme-press.config.mjs --quality all --release-version v0.1.0 --render-all",
     "test:integration": "npm run fixture:build && npm run fixture:qa",
     "pack:check": "npm pack --dry-run",
-    "verify:publish": "npm run test:syntax && npm run test:action && npm test && npm run test:integration && npm run test:package && npm run pack:check && npm audit --audit-level=low",
+    "verify:publish": "npm run test:syntax && npm run test:action && npm test && npm run test:types && npm run test:integration && npm run test:package && npm run pack:check && npm audit --audit-level=low",
     "prepublishOnly": "npm run verify:publish"
   },
   "dependencies": {
@@ -64,13 +75,15 @@
     "sharp": "^0.35.3",
     "shiki": "^4.3.1",
     "unified": "^11.0.5",
-    "unist-util-visit": "^5.1.0"
+    "unist-util-visit": "^5.1.0",
+    "zod": "^4.4.3"
   },
   "directories": {
     "test": "test"
   },
   "devDependencies": {
-    "@action-validator/cli": "^0.6.0"
+    "@action-validator/cli": "^0.6.0",
+    "typescript": "^5.9.3"
   },
   "keywords": [
     "markdown",

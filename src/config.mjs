@@ -5,6 +5,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { sanitizeInlineMarkup } from './html.mjs';
 import { normalizeNetworkPolicy } from './network.mjs';
 import { outputComparisonIdentity, resolveContainedOutput } from './paths.mjs';
+import { validateConfig } from './schema.mjs';
 
 const PACKAGE_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const require = createRequire(import.meta.url);
@@ -74,8 +75,14 @@ export async function loadConfig(configFile = 'readme-press.config.mjs', cwd = p
   const absoluteConfig = resolve(cwd, configFile);
   if (!existsSync(absoluteConfig)) throw new Error(`README Press config not found: ${absoluteConfig}`);
   const loaded = await import(`${pathToFileURL(absoluteConfig).href}?t=${Date.now()}`);
-  const raw = loaded.default ?? loaded.config;
-  if (!raw || typeof raw !== 'object') throw new Error('README Press config must export a default object.');
+  const candidate = loaded.default ?? loaded.config;
+  if (!candidate || typeof candidate !== 'object') {
+    throw new Error('README Press config must export a default object.');
+  }
+  const validation = validateConfig(candidate, {
+    strict: candidate.security?.strictConfig ?? false,
+  });
+  const raw = validation.config;
 
   const configRoot = dirname(absoluteConfig);
   const sourcePath = resolveConfigFile(configRoot, raw.source, 'README.md');
@@ -120,6 +127,7 @@ export async function loadConfig(configFile = 'readme-press.config.mjs', cwd = p
     projectRoot: configRoot,
     contentRoot: canonicalContentRoot,
     packageRoot: PACKAGE_ROOT,
+    validationDiagnostics: validation.diagnostics,
     sourcePath,
     outputDir: resolveConfigFile(configRoot, raw.outputDir, 'dist'),
     themeRoot,
@@ -285,3 +293,5 @@ export async function loadConfig(configFile = 'readme-press.config.mjs', cwd = p
 export function packageRoot() {
   return PACKAGE_ROOT;
 }
+
+export { validateConfig };
