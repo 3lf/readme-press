@@ -1,6 +1,6 @@
 # Programmatic API
 
-README Press is an ESM package for Node.js 22 or newer. The package root exposes the build, QA, release, transform, validation, and error contracts. The `readme-press/config` entry point exposes the config helper, loader, and validator without requiring consumers to import the rest of the API.
+README Press is an ESM package for Node.js 22 or 24. The package root exposes the build, QA, release, transform, validation, and error contracts. The `readme-press/config` entry point exposes the config helper, loader, and validator without requiring consumers to import the rest of the API.
 
 ```js
 import { runBuild, validateConfig, ReadmePressError } from 'readme-press';

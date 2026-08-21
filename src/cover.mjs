@@ -9,6 +9,7 @@ import puppeteer from 'puppeteer';
 import { normalizeNetworkPolicy, withRequestPolicy } from './network.mjs';
 
 const CSS_DPI = 96;
+const MAX_STABLE_SCREENSHOT_ATTEMPTS = 5;
 
 function stableRequestInventory(values) {
   return [...new Set(values)].sort();
@@ -18,6 +19,25 @@ function pngPathFor(pdfPath) {
   return /\.pdf$/i.test(pdfPath)
     ? pdfPath.replace(/\.pdf$/i, '.png')
     : `${pdfPath}.png`;
+}
+
+export async function captureStableScreenshot(
+  page,
+  options,
+  maxAttempts = MAX_STABLE_SCREENSHOT_ATTEMPTS,
+) {
+  let previous = null;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    await page.evaluate(() => new Promise((resolvePaint) => {
+      requestAnimationFrame(() => requestAnimationFrame(resolvePaint));
+    }));
+    const current = Buffer.from(await page.screenshot(options));
+    if (previous?.equals(current)) return current;
+    previous = current;
+  }
+  throw new Error(
+    `Cover screenshot did not stabilize after ${maxAttempts} attempts.`,
+  );
 }
 
 export async function renderCover(htmlPath, outPath, config) {
@@ -110,12 +130,12 @@ export async function renderCover(htmlPath, outPath, config) {
           return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
         });
 
-        await page.screenshot({
-          path: pngPath,
+        const screenshot = await captureStableScreenshot(page, {
           type: 'png',
           clip: { x: 0, y: 0, width: cssWidth, height: cssHeight },
           captureBeyondViewport: false,
         });
+        await writeFile(pngPath, screenshot);
         if (requests.blocked.length) {
           throw new Error(`Network policy blocked cover request: ${requests.blocked.join(', ')}`);
         }

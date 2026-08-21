@@ -1,6 +1,6 @@
 {
   "name": "readme-press",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Turn a long Markdown README into a professionally typeset, release-ready PDF book.",
   "license": "MIT",
   "type": "module",
@@ -32,6 +32,7 @@
     "action.yml",
     "bin/",
     "docs/assets/",
+    "docs/migration-0.3.md",
     "docs/programmatic-api.md",
     "src/",
     "themes/",

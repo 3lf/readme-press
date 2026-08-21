@@ -68,6 +68,20 @@ function resolveConfigFile(configRoot, value, fallback) {
   return resolve(configRoot, value ?? fallback);
 }
 
+function compatibilityDiagnostics(raw) {
+  const security = raw.security ?? {};
+  const missing = ['rawHtml', 'network', 'diagnostics', 'strictConfig']
+    .filter((key) => security[key] === undefined)
+    .map((key) => `security.${key}`);
+  if (!missing.length) return [];
+  return [{
+    code: 'SECURITY_DEFAULTS_DEPRECATED',
+    severity: 'warning',
+    promoteInStrict: false,
+    detail: `Compatibility defaults are active for ${missing.join(', ')}; set them explicitly before upgrading to 0.3.0.`,
+  }];
+}
+
 export async function loadConfig(configFile = 'readme-press.config.mjs', cwd = process.cwd()) {
   const absoluteConfig = resolve(cwd, configFile);
   if (!existsSync(absoluteConfig)) throw new Error(`README Press config not found: ${absoluteConfig}`);
@@ -124,7 +138,10 @@ export async function loadConfig(configFile = 'readme-press.config.mjs', cwd = p
     projectRoot: configRoot,
     contentRoot: canonicalContentRoot,
     packageRoot: PACKAGE_ROOT,
-    validationDiagnostics: validation.diagnostics,
+    validationDiagnostics: [
+      ...validation.diagnostics,
+      ...compatibilityDiagnostics(raw),
+    ],
     sourcePath,
     outputDir: resolveConfigFile(configRoot, raw.outputDir, 'dist'),
     themeRoot,

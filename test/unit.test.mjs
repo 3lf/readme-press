@@ -18,6 +18,7 @@ import test from 'node:test';
 import { unified } from 'unified';
 import remarkParse from 'remark-parse';
 import { loadConfig } from '../src/config.mjs';
+import { captureStableScreenshot } from '../src/cover.mjs';
 import { normalizeReleaseVersion, prepareRelease, verifyRenderedPages } from '../src/release.mjs';
 import { selectBook, transformReadme } from '../src/transform.mjs';
 
@@ -73,6 +74,13 @@ test('keeps print output opt-in for existing configurations', async () => {
 };\n`);
     const config = await loadConfig('readme-press.config.mjs', temporary);
     assert.deepEqual(config.outputs, { normal: 'legacy.pdf', high: 'legacy-high.pdf' });
+    assert.deepEqual(config.security, {
+      rawHtml: 'trusted',
+      network: { mode: 'trusted', allowHosts: [] },
+      diagnostics: 'warn',
+    });
+    assert.equal(config.validationDiagnostics[0].code, 'SECURITY_DEFAULTS_DEPRECATED');
+    assert.equal(config.validationDiagnostics[0].promoteInStrict, false);
   } finally {
     rmSync(temporary, { recursive: true, force: true });
   }
@@ -156,6 +164,36 @@ test('requires projectRoot to resolve to an existing directory', async () => {
   } finally {
     rmSync(temporary, { recursive: true, force: true });
   }
+});
+
+test('cover capture waits for two byte-identical paints', async () => {
+  const screenshots = [Buffer.from('first'), Buffer.from('stable'), Buffer.from('stable')];
+  let paints = 0;
+  const page = {
+    async evaluate(callback) {
+      paints += 1;
+      void callback;
+    },
+    async screenshot() {
+      return screenshots.shift();
+    },
+  };
+  const result = await captureStableScreenshot(page, {}, 3);
+  assert.equal(result.toString(), 'stable');
+  assert.equal(paints, 3);
+
+  let unstableCapture = 0;
+  const unstable = {
+    async evaluate() {},
+    async screenshot() {
+      unstableCapture += 1;
+      return Buffer.from(String(unstableCapture));
+    },
+  };
+  await assert.rejects(
+    captureStableScreenshot(unstable, {}, 3),
+    /did not stabilize after 3 attempts/u,
+  );
 });
 
 test('selects an introduction and configured parts without project knowledge', () => {

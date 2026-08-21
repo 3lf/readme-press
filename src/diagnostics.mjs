@@ -11,7 +11,11 @@ export function normalizeDiagnostics(diagnostics, mode = 'warn') {
       ?? (ERROR_CODES.has(diagnostic.code) ? 'error' : 'warning');
     return {
       ...diagnostic,
-      severity: mode === 'strict' && baseSeverity === 'warning' ? 'error' : baseSeverity,
+      severity: mode === 'strict'
+        && baseSeverity === 'warning'
+        && diagnostic.promoteInStrict !== false
+        ? 'error'
+        : baseSeverity,
     };
   });
   const ranks = { warning: 1, error: 2 };
