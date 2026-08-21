@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {
+  chmodSync,
   existsSync,
   mkdtempSync,
   mkdirSync,
@@ -9,7 +10,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { delimiter, join } from 'node:path';
 import test from 'node:test';
 import {
   createStagingDirectory,
@@ -61,7 +62,17 @@ test('publishes a staged manifest last and removes only previously owned stale f
 
 test('a failed build preserves the previous manifest and user files', async () => {
   const temporary = mkdtempSync(join(tmpdir(), 'readme-press-failed-build-'));
+  const originalPath = process.env.PATH;
   try {
+    const tools = join(temporary, 'tools');
+    mkdirSync(tools);
+    const fakeQpdf = join(tools, process.platform === 'win32' ? 'qpdf.cmd' : 'qpdf');
+    writeFileSync(fakeQpdf, process.platform === 'win32'
+      ? '@exit /b 0\r\n'
+      : '#!/bin/sh\nexit 0\n');
+    if (process.platform !== 'win32') chmodSync(fakeQpdf, 0o755);
+    process.env.PATH = `${tools}${delimiter}${originalPath ?? ''}`;
+
     const output = join(temporary, 'dist');
     mkdirSync(output);
     const previousManifest = '{"generatedFiles":["manifest.json","old.pdf"],"build":"previous"}\n';
@@ -105,6 +116,8 @@ Welcome.
     assert.equal(readFileSync(join(output, 'user-notes.txt'), 'utf8'), 'user content');
     assert.equal(readdirSync(temporary).some((name) => name.startsWith('.readme-press-stage-')), false);
   } finally {
+    if (originalPath === undefined) delete process.env.PATH;
+    else process.env.PATH = originalPath;
     rmSync(temporary, { recursive: true, force: true });
   }
 });
