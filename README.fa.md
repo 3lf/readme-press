@@ -18,7 +18,7 @@
   <a href="https://github.com/3lf/readme-press/actions/workflows/ci.yml"><img alt="CI status" src="https://github.com/3lf/readme-press/actions/workflows/ci.yml/badge.svg"></a>
   <a href="https://github.com/3lf/readme-press/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/3lf/readme-press?display_name=tag&sort=semver"></a>
   <a href="./LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-17365D"></a>
-  <img alt="Node.js 22 or newer" src="https://img.shields.io/badge/node-%E2%89%A522-17365D">
+  <img alt="Node.js 22 or 24" src="https://img.shields.io/badge/node-22%20%7C%2024-17365D">
 </p>
 
 <p align="center">
@@ -163,7 +163,7 @@ npx readme-press build --config readme-press.config.mjs --quality all
 
 این ابزارها باید روی سیستم نصب باشن:
 
-- **نسخه Node.js:** نسخه ۲۲ یا جدیدتر
+- **نسخه Node.js:** نسخه ۲۲ یا ۲۴؛ محیط مرجع رندر PDF نسخه ۲۲ است
 - **Python 3:** برای QA بلوک‌های کد منبع
 - **ابزار qpdf:** برای ساخت PDF خطی و آماده انتشار
 - **ابزارهای Poppler:** شامل `pdfinfo`، `pdffonts`، `pdftotext`، `pdfimages` و `pdftoppm`
@@ -226,16 +226,14 @@ cover: {
 
 ```bash
 npm ci
-npm test
-npm run test:syntax
-npm run test:action
-npm run test:integration
-npm run test:package
-npm run pack:check
-npm audit --audit-level=low
+npm run verify:source
+npm run verify:artifacts
+npm run verify:publish
 go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 .github/workflows/*.yml
 ```
 
 تست یکپارچه نسخه عادی، چاپی و باکیفیت نمونه‌های انگلیسی و فارسی رو می‌سازه، تک‌تک صفحه‌ها رو رندر می‌کنه، ساختار PDF و لینک‌ها رو بررسی می‌کنه، سفیدی پس‌زمینه چاپی و پیکسل تصاویر بدون افت رو می‌سنجه و اطلاعات Release رو اعتبارسنجی می‌کنه. تست بسته هم دقیقاً همون tarball مربوط به npm رو می‌سازه، داخل یه پروژه خالی نصبش می‌کنه، وابستگی‌های سمت مصرف‌کننده رو ممیزی می‌کنه و با CLI نصب‌شده هر سه نسخه PDF رو می‌سازه و بررسی می‌کنه.
+
+قراردادهای کامل نگهداری داخل [API برنامه‌نویسی](./docs/programmatic-api.md)، [راهبرد تست](./docs/testing.md)، [راهنمای مشارکت](./CONTRIBUTING.md)، [سیاست امنیت](./SECURITY.md) و [تاریخچه تغییرها](./CHANGELOG.md) نوشته شده‌اند.
 
 </div>
