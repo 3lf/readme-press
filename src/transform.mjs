@@ -740,6 +740,20 @@ function rejectDeniedRawHtml(nodes, ctx) {
   }
 }
 
+const SAFE_MARKDOWN_LINK_SCHEMES = new Set(['http', 'https', 'mailto']);
+
+function applyMarkdownLinkPolicy(tree, ctx) {
+  visit(tree, 'link', (node, index, parent) => {
+    if (!parent || typeof index !== 'number') return;
+    const normalized = String(node.url ?? '').replace(/[\u0000-\u0020\u007f]/gu, '');
+    const scheme = normalized.match(/^([a-z][a-z\d+.-]*):/iu)?.[1]?.toLowerCase();
+    if (!scheme || SAFE_MARKDOWN_LINK_SCHEMES.has(scheme)) return;
+    ctx.diagnostics.push({ code: 'UNSAFE_LINK_SCHEME', detail: scheme });
+    parent.children.splice(index, 1, ...node.children);
+    return index;
+  });
+}
+
 function stringifyImageVariant(tree, processor, quality) {
   const variantTree = structuredClone(tree);
   visit(variantTree, 'element', (node) => {
@@ -789,6 +803,7 @@ export async function transformReadme(markdown, config, ctxExtra = {}) {
     const subheadings = ctx.headings
       .slice(headingStart)
       .filter((heading) => heading.depth === 2 || heading.depth === 3);
+    applyMarkdownLinkPolicy(root, ctx);
     applyRawHtmlPolicy(root, ctx);
     cleanedChapters.push({ chapter, root, subheadings });
   }
