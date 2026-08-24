@@ -4,24 +4,46 @@ import puppeteer from 'puppeteer';
 import { ReadmePressError } from './errors.mjs';
 
 function requireCommand(command, installHint) {
-  const result = spawnSync(command, ['--version'], { encoding: 'utf8', stdio: 'ignore' });
-  if (result.error?.code === 'ENOENT') {
-    throw new ReadmePressError(`Required tool "${command}" was not found. ${installHint}`, {
+  const result = spawnSync(command, ['--version'], {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'ignore'],
+  });
+  if (result.error) {
+    const cause = result.error.code ?? result.error.message;
+    throw new ReadmePressError(`Required tool "${command}" could not be executed: ${cause}. ${installHint}`, {
       code: 'ERR_PREFLIGHT_TOOL',
-      details: { tool: command },
+      details: { tool: command, cause },
+      cause: result.error,
     });
+  }
+  if (result.status !== 0 || result.signal) {
+    throw new ReadmePressError(
+      `Required tool "${command}" is present but unhealthy (exit=${result.status}, signal=${result.signal}). ${installHint}`,
+      {
+        code: 'ERR_PREFLIGHT_TOOL',
+        details: { tool: command, status: result.status, signal: result.signal },
+      },
+    );
   }
 }
 
-async function requireChrome() {
-  let executable;
+export async function requireChrome({
+  executablePath = () => puppeteer.executablePath(),
+  assertExecutable = (path) => accessSync(path, constants.X_OK),
+} = {}) {
+  let executable = '(unknown)';
   try {
-    executable = await puppeteer.executablePath();
-    accessSync(executable, constants.X_OK);
-  } catch {
+    executable = await executablePath();
+    assertExecutable(executable);
+  } catch (error) {
+    const cause = String(error?.message ?? error ?? '(unknown error)').slice(0, 200);
     throw new ReadmePressError(
-      `Chromium for Puppeteer was not found at ${executable}. Run "npx puppeteer browsers install chrome".`,
-      { code: 'ERR_PREFLIGHT_CHROME', details: { executable } },
+      `Chromium for Puppeteer was not found at ${executable}: ${cause}. Run "npx puppeteer browsers install chrome".`,
+      {
+        code: 'ERR_PREFLIGHT_CHROME',
+        details: { executable, cause },
+        cause: error,
+      },
     );
   }
 }
