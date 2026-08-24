@@ -32,7 +32,7 @@ export declare function validateConfig(
 ): { config: ReadmePressConfig; diagnostics: Diagnostic[] };
 /** Execute, validate, normalize, and resolve a README Press config file. */
 export declare function loadConfig(configFile?: string, cwd?: string): Promise<LoadedConfig>;
-/** Build and atomically publish one or all configured PDF editions. */
+/** Build and publish one or all PDF editions through manifest-last, per-file replacement. */
 export declare function runBuild(options?: BuildOptions): Promise<BuildManifest>;
 /** Verify the manifest, PDF containers, content, rendering, and project-specific gates. */
 export declare function runQa(options?: QaOptions): Promise<void>;
