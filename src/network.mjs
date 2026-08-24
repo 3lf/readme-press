@@ -1,7 +1,30 @@
+import { isIP } from 'node:net';
+import { domainToASCII } from 'node:url';
+
 const NETWORK_MODES = new Set(['trusted', 'allowlist', 'deny']);
+const DNS_HOSTNAME = /^[a-z\d](?:[a-z\d-]{0,61}[a-z\d])?(?:\.[a-z\d](?:[a-z\d-]{0,61}[a-z\d])?)*$/u;
 
 function normalizedHost(value) {
-  return String(value).trim().toLowerCase().replace(/^\[|\]$/gu, '');
+  if (typeof value !== 'string') {
+    throw new Error(`security.network.allowHosts contains an invalid allowlist host: ${JSON.stringify(value)}.`);
+  }
+  const raw = value.trim().toLowerCase();
+  if (/[\u0000-\u0020\u007f/\\?#@;]/u.test(raw)) {
+    throw new Error(`security.network.allowHosts contains an invalid allowlist host: ${JSON.stringify(value)}.`);
+  }
+  const bracketed = raw.match(/^\[([^\]]+)\]$/u);
+  const ipv6 = bracketed?.[1] ?? raw;
+  if (isIP(ipv6) === 6) return new URL(`http://[${ipv6}]`).hostname.toLowerCase();
+  if (bracketed || raw.includes(':')) {
+    throw new Error(`security.network.allowHosts contains an invalid allowlist host: ${JSON.stringify(value)}.`);
+  }
+  if (isIP(raw) === 4) return raw;
+
+  const ascii = domainToASCII(raw).toLowerCase();
+  if (!ascii || ascii.length > 253 || !DNS_HOSTNAME.test(ascii)) {
+    throw new Error(`security.network.allowHosts contains an invalid allowlist host: ${JSON.stringify(value)}.`);
+  }
+  return new URL(`http://${ascii}`).hostname.toLowerCase();
 }
 
 export function normalizeNetworkPolicy(value = 'trusted', fallbackHosts = []) {
@@ -16,7 +39,7 @@ export function normalizeNetworkPolicy(value = 'trusted', fallbackHosts = []) {
   }
   return {
     mode: policy.mode,
-    allowHosts: [...new Set(policy.allowHosts.map(normalizedHost).filter(Boolean))],
+    allowHosts: [...new Set(policy.allowHosts.map(normalizedHost))],
   };
 }
 
