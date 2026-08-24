@@ -24,7 +24,7 @@ import {
   removeStagingDirectory,
   writeStagedManifest,
 } from '../src/artifacts.mjs';
-import { runBuild } from '../src/build.mjs';
+import { runBuild, stableExternalRequests } from '../src/build.mjs';
 import { assertNoDiagnosticErrors, normalizeDiagnostics } from '../src/diagnostics.mjs';
 import { preflightQa, requireChrome, resolveMermaidCli } from '../src/preflight.mjs';
 
@@ -452,6 +452,19 @@ test('diagnostic normalization deduplicates code and detail with highest severit
     { code: 'RAW_HTML_SANITIZED', detail: '<script>', severity: 'error' },
     { code: 'RAW_HTML_SANITIZED', detail: '<style>', severity: 'warning' },
   ]);
+});
+
+test('stabilizes the external-request audit inventory before manifest publication', () => {
+  // Remote-resource bytes remain fetch-dependent; only the recorded URL
+  // inventory is made stable here.
+  assert.deepEqual(
+    stableExternalRequests([
+      'https://b.example/figure.png',
+      'https://a.example/font.woff2',
+      'https://b.example/figure.png',
+    ]),
+    ['https://a.example/font.woff2', 'https://b.example/figure.png'],
+  );
 });
 
 test('preflight failures name the missing tool and installation path', () => {

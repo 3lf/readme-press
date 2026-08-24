@@ -286,7 +286,7 @@ async function finalizePdf(bodyPdf, coverPdf, outputPath, config, result, render
     normalizedDestinations,
     outlines,
     linearized: true,
-    externalRequests: renderData.externalRequests,
+    externalRequests: stableExternalRequests(renderData.externalRequests),
   };
 }
 
@@ -301,6 +301,10 @@ function sourceCommit(projectRoot) {
   } catch {
     return null;
   }
+}
+
+export function stableExternalRequests(requests) {
+  return [...new Set(requests)].sort();
 }
 
 export async function runBuild({ configFile, quality = 'normal', releaseVersion: rawVersion } = {}) {
