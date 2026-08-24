@@ -386,6 +386,112 @@ test('network policy rejects remote images unless their host is allowlisted', as
   }
 });
 
+test('unwraps unsafe Markdown links and reports stable scheme diagnostics', async () => {
+  const project = mkdtempSync(join(tmpdir(), 'readme-press-link-schemes-'));
+  try {
+    const result = await transformReadme(markdownWith(`
+[JavaScript](javascript:alert(1))
+[mixed case](JaVaScRiPt:alert(1))
+[encoded colon](javascript&#58;alert(1))
+[encoded tab](java&#9;script:alert(1))
+[data](data:text/html;base64,QQ==)
+[file](file:///etc/passwd)
+[unknown](ftp://host/x)
+[HTTPS](https://example.com/x)
+[HTTP](http://example.com/x)
+[email](mailto:a@b.c)
+[fragment](#chapter)
+[relative](./relative)
+[protocol relative](//example.com/x)
+`), transformConfig(project), { sourceDir: project });
+    const html = result.chapters.find((chapter) => chapter.title === 'Chapter').html;
+
+    for (const unsafe of ['javascript:', 'data:', 'file:', 'ftp:']) {
+      assert.doesNotMatch(html, new RegExp(`href="${unsafe}`, 'iu'));
+    }
+    for (const visible of [
+      'JavaScript', 'mixed case', 'encoded colon', 'encoded tab', 'data', 'file', 'unknown',
+    ]) {
+      assert.match(html, new RegExp(visible, 'u'));
+    }
+    for (const allowed of [
+      'https://example.com/x',
+      'http://example.com/x',
+      'mailto:a@b.c',
+      '#chapter',
+      './relative',
+      '//example.com/x',
+    ]) {
+      assert.match(html, new RegExp(`href="${allowed.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')}"`, 'u'));
+    }
+    assert.deepEqual(
+      result.diagnostics.filter((item) => item.code === 'UNSAFE_LINK_SCHEME'),
+      [
+        { code: 'UNSAFE_LINK_SCHEME', detail: 'javascript' },
+        { code: 'UNSAFE_LINK_SCHEME', detail: 'javascript' },
+        { code: 'UNSAFE_LINK_SCHEME', detail: 'javascript' },
+        { code: 'UNSAFE_LINK_SCHEME', detail: 'javascript' },
+        { code: 'UNSAFE_LINK_SCHEME', detail: 'data' },
+        { code: 'UNSAFE_LINK_SCHEME', detail: 'file' },
+        { code: 'UNSAFE_LINK_SCHEME', detail: 'ftp' },
+      ],
+    );
+  } finally {
+    rmSync(project, { recursive: true, force: true });
+  }
+});
+
+test('validates exact allowlist hosts before constructing CSP sources', async () => {
+  for (const host of [
+    '"*"',
+    'evil.com/path',
+    '*.com',
+    '[::1]:999',
+    'example.com:443',
+    'user@example.com',
+    'example.com; script-src *',
+  ]) {
+    assert.throws(
+      () => normalizeNetworkPolicy({ mode: 'allowlist', allowHosts: [host] }),
+      /invalid allowlist host/u,
+    );
+  }
+
+  const policy = normalizeNetworkPolicy({
+    mode: 'allowlist',
+    allowHosts: [' Example.COM ', '127.0.0.1', '[::1]'],
+  });
+  assert.deepEqual(policy.allowHosts, ['example.com', '127.0.0.1', '[::1]']);
+
+  const config = await loadConfig('test/fixtures/basic/readme-press.config.mjs', process.cwd());
+  config.security = { rawHtml: 'safe', network: policy };
+  const html = buildDocument({ parts: [], chapters: [] }, config);
+  assert.match(html, /https:\/\/example\.com/u);
+  assert.match(html, /https:\/\/127\.0\.0\.1/u);
+  assert.match(html, /https:\/\/\[::1\]/u);
+});
+
+test('rejects non-HTTP repository URLs at config load', async () => {
+  const project = mkdtempSync(join(tmpdir(), 'readme-press-repository-url-'));
+  try {
+    writeFileSync(join(project, 'readme-press.config.mjs'), `export default {
+  metadata: { title: 'Book', author: 'Author', edition: 'First' },
+  repository: { url: 'file:///tmp/book' },
+  structure: {
+    introHeading: 'Introduction',
+    githubTocHeading: 'Contents',
+    parts: [{ title: 'Part', startHeading: 'Chapter' }],
+  },
+};\n`);
+    await assert.rejects(
+      loadConfig('readme-press.config.mjs', project),
+      /repository\.url must use HTTP or HTTPS/u,
+    );
+  } finally {
+    rmSync(project, { recursive: true, force: true });
+  }
+});
+
 test('document templates context-encode config values and emit CSP in safe mode', async () => {
   const config = await loadConfig('test/fixtures/basic/readme-press.config.mjs', process.cwd());
   config.metadata = {
