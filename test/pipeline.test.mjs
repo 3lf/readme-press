@@ -26,7 +26,7 @@ import {
 } from '../src/artifacts.mjs';
 import { runBuild } from '../src/build.mjs';
 import { assertNoDiagnosticErrors, normalizeDiagnostics } from '../src/diagnostics.mjs';
-import { preflightQa } from '../src/preflight.mjs';
+import { preflightQa, requireChrome } from '../src/preflight.mjs';
 
 test('publishes a staged manifest last and removes only previously owned stale files', () => {
   const temporary = mkdtempSync(join(tmpdir(), 'readme-press-publish-'));
@@ -455,9 +455,93 @@ test('preflight failures name the missing tool and installation path', () => {
     process.env.PATH = '';
     assert.throws(
       () => preflightQa(),
-      /Required tool "qpdf" was not found\. Install qpdf/u,
+      (error) => error.code === 'ERR_PREFLIGHT_TOOL'
+        && error.details.tool === 'qpdf'
+        && error.details.cause === 'ENOENT'
+        && error.cause?.code === 'ENOENT'
+        && /Install qpdf/u.test(error.message),
     );
   } finally {
     process.env.PATH = originalPath;
   }
+});
+
+test('preflight reports executable permission failures', { skip: process.platform === 'win32' }, () => {
+  const temporary = mkdtempSync(join(tmpdir(), 'readme-press-preflight-eacces-'));
+  const originalPath = process.env.PATH;
+  try {
+    writeFileSync(join(temporary, 'qpdf'), '#!/bin/sh\nexit 0\n');
+    process.env.PATH = temporary;
+    assert.throws(
+      () => preflightQa(),
+      (error) => error.code === 'ERR_PREFLIGHT_TOOL'
+        && error.details.tool === 'qpdf'
+        && error.details.cause === 'EACCES'
+        && error.cause?.code === 'EACCES',
+    );
+  } finally {
+    if (originalPath === undefined) delete process.env.PATH;
+    else process.env.PATH = originalPath;
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
+test('preflight reports unhealthy tool exit status', { skip: process.platform === 'win32' }, () => {
+  const temporary = mkdtempSync(join(tmpdir(), 'readme-press-preflight-exit-'));
+  const originalPath = process.env.PATH;
+  try {
+    const qpdf = join(temporary, 'qpdf');
+    writeFileSync(qpdf, '#!/bin/sh\nexit 7\n');
+    chmodSync(qpdf, 0o755);
+    process.env.PATH = temporary;
+    assert.throws(
+      () => preflightQa(),
+      (error) => error.code === 'ERR_PREFLIGHT_TOOL'
+        && error.details.tool === 'qpdf'
+        && error.details.status === 7
+        && error.details.signal === null,
+    );
+  } finally {
+    if (originalPath === undefined) delete process.env.PATH;
+    else process.env.PATH = originalPath;
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
+test('preflight reports tool signal termination', { skip: process.platform === 'win32' }, () => {
+  const temporary = mkdtempSync(join(tmpdir(), 'readme-press-preflight-signal-'));
+  const originalPath = process.env.PATH;
+  try {
+    const qpdf = join(temporary, 'qpdf');
+    writeFileSync(qpdf, '#!/bin/sh\nkill -TERM $$\n');
+    chmodSync(qpdf, 0o755);
+    process.env.PATH = temporary;
+    assert.throws(
+      () => preflightQa(),
+      (error) => error.code === 'ERR_PREFLIGHT_TOOL'
+        && error.details.tool === 'qpdf'
+        && error.details.status === null
+        && error.details.signal === 'SIGTERM',
+    );
+  } finally {
+    if (originalPath === undefined) delete process.env.PATH;
+    else process.env.PATH = originalPath;
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
+test('Chrome discovery errors retain their cause without an undefined path', async () => {
+  const discoveryError = new Error(`discovery failed ${'x'.repeat(300)}`);
+  await assert.rejects(
+    requireChrome({
+      executablePath: async () => { throw discoveryError; },
+      assertExecutable: () => {},
+    }),
+    (error) => error.code === 'ERR_PREFLIGHT_CHROME'
+      && error.details.executable === '(unknown)'
+      && error.details.cause.startsWith('discovery failed')
+      && error.details.cause.length === 200
+      && error.cause === discoveryError
+      && !error.message.includes('undefined'),
+  );
 });
