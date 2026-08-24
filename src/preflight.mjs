@@ -3,8 +3,8 @@ import { accessSync, constants } from 'node:fs';
 import puppeteer from 'puppeteer';
 import { ReadmePressError } from './errors.mjs';
 
-function requireCommand(command, installHint) {
-  const result = spawnSync(command, ['--version'], {
+function requireCommand(command, installHint, versionArgs = ['--version']) {
+  const result = spawnSync(command, versionArgs, {
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'ignore'],
   });
@@ -64,7 +64,11 @@ export async function preflightBuild(config) {
 export function preflightQa() {
   requireCommand('qpdf', 'Install qpdf and make it available on PATH.');
   for (const command of ['pdfimages', 'pdfinfo', 'pdffonts', 'pdftoppm', 'pdftotext']) {
-    requireCommand(command, 'Install Poppler and make its command-line tools available on PATH.');
+    requireCommand(
+      command,
+      'Install Poppler and make its command-line tools available on PATH.',
+      ['-v'],
+    );
   }
   requireCommand('python3', 'Install Python 3 and make python3 available on PATH.');
 }

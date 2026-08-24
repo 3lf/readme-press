@@ -530,6 +530,33 @@ test('preflight reports tool signal termination', { skip: process.platform === '
   }
 });
 
+test('preflight uses each tool family supported version probe', { skip: process.platform === 'win32' }, () => {
+  const temporary = mkdtempSync(join(tmpdir(), 'readme-press-preflight-version-'));
+  const originalPath = process.env.PATH;
+  try {
+    const expectedArguments = new Map([
+      ['qpdf', '--version'],
+      ['pdfimages', '-v'],
+      ['pdfinfo', '-v'],
+      ['pdffonts', '-v'],
+      ['pdftoppm', '-v'],
+      ['pdftotext', '-v'],
+      ['python3', '--version'],
+    ]);
+    for (const [command, expected] of expectedArguments) {
+      const executable = join(temporary, command);
+      writeFileSync(executable, `#!/bin/sh\n[ "$1" = "${expected}" ]\n`);
+      chmodSync(executable, 0o755);
+    }
+    process.env.PATH = temporary;
+    assert.doesNotThrow(() => preflightQa());
+  } finally {
+    if (originalPath === undefined) delete process.env.PATH;
+    else process.env.PATH = originalPath;
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
 test('Chrome discovery errors retain their cause without an undefined path', async () => {
   const discoveryError = new Error(`discovery failed ${'x'.repeat(300)}`);
   await assert.rejects(
