@@ -18,6 +18,6 @@ README Press configuration files are executable JavaScript and must be trusted. 
 - `safe`: sanitize author HTML with a GFM-compatible allowlist. Scripts, iframes, event handlers, inline styles, and unsafe URL protocols are removed.
 - `deny`: reject a selected book that contains raw HTML.
 
-`security.network` accepts `trusted`, `deny`, or `{ mode: 'allowlist', allowHosts: [...] }`. The policy is enforced while Markdown assets are transformed and again for Chromium requests. Local build resources remain available. Safe HTML documents also receive a restrictive Content Security Policy.
+`security.network` accepts `trusted`, `deny`, or `{ mode: 'allowlist', allowHosts: [...] }`. The policy is enforced while Markdown assets are transformed and again in the pipeline's own Chromium rendering. The separate Mermaid CLI browser is not subject to this policy, so Mermaid diagrams should use local resources. Local build resources remain available. Safe HTML documents also receive a restrictive Content Security Policy.
 
 Local image paths are resolved relative to the source README. Their canonical paths must remain inside the configured content root. Generated assets are content-addressed, and configured PDF paths must remain inside the output directory.
