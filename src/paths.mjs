@@ -79,12 +79,3 @@ export function resolveContainedOutput(outputDirectory, relativePath, {
   }
   return target;
 }
-
-export function assertCanonicalContainment(root, candidate, label = 'Path') {
-  const canonicalRoot = realpathSync(root);
-  const canonicalCandidate = realpathSync(candidate);
-  if (!isContained(canonicalRoot, canonicalCandidate)) {
-    throw new Error(`${label} escapes its allowed root: ${candidate}`);
-  }
-  return canonicalCandidate;
-}
