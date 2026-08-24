@@ -113,6 +113,12 @@ function pruneEmptyParents(path, root) {
   }
 }
 
+/**
+ * Publishes artifacts through per-file atomic replacement, then publishes the
+ * manifest last. Until the manifest swap completes, readers can observe new
+ * artifacts alongside the previous manifest. Files not owned by the previous
+ * manifest are never removed.
+ */
 export function publishStagedBuild({ stagingDirectory, outputDirectory, previousFiles }) {
   const output = resolve(outputDirectory);
   const files = listArtifactFiles(stagingDirectory);

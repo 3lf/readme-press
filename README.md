@@ -64,7 +64,7 @@ The built-in pipeline provides:
 - bookmarks, internal destinations, repository links, QR codes, and artifact footers
 - a standard JPEG-optimized edition, an optional ink-efficient print edition, and a lossless-image high-quality edition from the same source
 - PDF checks for geometry, fonts, links, destinations, image fidelity, white print backgrounds, full-page rendering, and edition parity
-- deterministic manifests, SHA-256 checksums, and concise release notes
+- manifest-owned artifact inventories, SHA-256 checksums, and concise release notes
 
 README Press includes the production `lapis-rtl` theme. Projects can replace its stylesheet, cover, fonts, Mermaid configuration, or add content-specific QA without forking the engine.
 
