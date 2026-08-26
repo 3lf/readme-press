@@ -79,6 +79,18 @@ export async function installRequestPolicy(page, policy, {
 } = {}) {
   const observedExternal = [];
   const blocked = [];
+  const errors = [];
+  const pending = new Set();
+  const recordError = (error) => {
+    errors.push(error instanceof Error ? error : new Error(String(error)));
+  };
+  const track = (promise) => {
+    pending.add(promise);
+    promise.catch(() => {}).finally(() => pending.delete(promise));
+  };
+  const drain = async () => {
+    while (pending.size) await Promise.allSettled([...pending]);
+  };
   const observeRequest = (request) => {
     const url = request.url();
     const remote = isRemoteUrl(url) && !allowedOrigins.includes(parsedUrl(url)?.origin);
@@ -87,51 +99,93 @@ export async function installRequestPolicy(page, policy, {
   };
 
   if (policy.mode === 'trusted') {
-    const handleTrustedRequest = (request) => observeRequest(request);
+    const handleTrustedRequest = (request) => {
+      try { observeRequest(request); } catch (error) { recordError(error); }
+    };
     page.on('request', handleTrustedRequest);
     return {
       observedExternal,
       blocked,
+      errors,
       async disable() {
         page.off('request', handleTrustedRequest);
+        await drain();
       },
     };
   }
 
   if (policy.mode === 'deny' && offlineForDeny) {
     const handleOfflineRequest = (request) => {
-      const { remote, url } = observeRequest(request);
-      if (remote) blocked.push(url);
+      try {
+        const { remote, url } = observeRequest(request);
+        if (remote) blocked.push(url);
+      } catch (error) {
+        recordError(error);
+      }
     };
     page.on('request', handleOfflineRequest);
     await page.setOfflineMode(true);
     return {
       observedExternal,
       blocked,
+      errors,
       async disable() {
         page.off('request', handleOfflineRequest);
+        await drain();
         await page.setOfflineMode(false);
       },
     };
   }
 
   await page.setRequestInterception(true);
-  const handleRequest = (request) => {
-    const { url } = observeRequest(request);
-    if (!networkAllowsUrl(url, policy, allowedOrigins)) {
-      blocked.push(url);
-      request.abort('blockedbyclient');
-      return;
+  const settleRequest = async (request) => {
+    let url = '<unavailable>';
+    let shouldAbort = true;
+    try {
+      ({ url } = observeRequest(request));
+      shouldAbort = !networkAllowsUrl(url, policy, allowedOrigins);
+      if (shouldAbort) blocked.push(url);
+    } catch (error) {
+      recordError(error);
     }
-    request.continue();
+    try {
+      if (shouldAbort) await request.abort('blockedbyclient');
+      else await request.continue();
+    } catch (error) {
+      recordError(error);
+    }
+  };
+  const handleRequest = (request) => {
+    track(settleRequest(request));
   };
   page.on('request', handleRequest);
   return {
     observedExternal,
     blocked,
+    errors,
     async disable() {
       page.off('request', handleRequest);
+      await drain();
       await page.setRequestInterception(false);
     },
   };
+}
+
+export async function withRequestPolicy(page, policy, options, operation) {
+  const requests = await installRequestPolicy(page, policy, options);
+  let result;
+  let primaryError;
+  try {
+    result = await operation(requests);
+  } catch (error) {
+    primaryError = error;
+  }
+  try {
+    await requests.disable();
+  } catch (error) {
+    primaryError ??= error;
+  }
+  primaryError ??= requests.errors[0];
+  if (primaryError) throw primaryError;
+  return result;
 }

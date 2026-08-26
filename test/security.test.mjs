@@ -14,7 +14,7 @@ import { join } from 'node:path';
 import test from 'node:test';
 import { loadConfig } from '../src/config.mjs';
 import { sanitizeInlineMarkup, sanitizeRawHtml } from '../src/html.mjs';
-import { normalizeNetworkPolicy } from '../src/network.mjs';
+import { installRequestPolicy, normalizeNetworkPolicy } from '../src/network.mjs';
 import {
   assertContainedOutputSink,
   resolveContainedOutput,
@@ -441,6 +441,84 @@ test('unwraps unsafe Markdown links and reports stable scheme diagnostics', asyn
   }
 });
 
+test('unwraps unsafe full, collapsed, and shortcut reference links once per definition', async () => {
+  const project = mkdtempSync(join(tmpdir(), 'readme-press-reference-links-'));
+  try {
+    const result = await transformReadme(markdownWith(`
+[Full][unsafe]
+[Second use][unsafe]
+[Collapsed][]
+[Shortcut]
+[Safe][safe]
+
+The literal javascript:alert(1) remains prose and \`javascript:alert(1)\` remains code.
+
+[unsafe]: javascript:alert(1)
+[collapsed]: data:text/html,unsafe
+[shortcut]: file:///etc/passwd
+[safe]: https://example.com/safe
+`), transformConfig(project), { sourceDir: project });
+    const html = result.chapters.find((chapter) => chapter.title === 'Chapter').html;
+    assert.doesNotMatch(html, /href="(?:javascript|data|file):/iu);
+    for (const label of ['Full', 'Second use', 'Collapsed', 'Shortcut']) assert.match(html, new RegExp(label, 'u'));
+    assert.match(html, /href="https:\/\/example\.com\/safe"/u);
+    assert.match(html.replace(/<[^>]*>/gu, ''), /literal javascript:alert\(1\) remains prose/u);
+    assert.match(html, /<code[^>]*>javascript:alert\(1\)<\/code>/u);
+    assert.deepEqual(
+      result.diagnostics.filter(({ code }) => code === 'UNSAFE_LINK_SCHEME'),
+      [
+        { code: 'UNSAFE_LINK_SCHEME', detail: 'javascript' },
+        { code: 'UNSAFE_LINK_SCHEME', detail: 'data' },
+        { code: 'UNSAFE_LINK_SCHEME', detail: 'file' },
+      ],
+    );
+  } finally {
+    rmSync(project, { recursive: true, force: true });
+  }
+});
+
+test('request interception fails closed and drains every settlement', async () => {
+  let handler;
+  const page = {
+    on(event, callback) { if (event === 'request') handler = callback; },
+    off() {},
+    async setRequestInterception() {},
+  };
+  const policy = normalizeNetworkPolicy({ mode: 'allowlist', allowHosts: ['example.com'] });
+  const requests = await installRequestPolicy(page, policy);
+  let malformedAborts = 0;
+  let malformedContinues = 0;
+  handler({
+    url: () => 'https://bad_host.example/file',
+    abort: async () => { malformedAborts += 1; },
+    continue: async () => { malformedContinues += 1; },
+  });
+  let rejectedContinues = 0;
+  handler({
+    url: () => 'https://example.com/file',
+    abort: async () => assert.fail('allowed request must not abort'),
+    continue: async () => {
+      rejectedContinues += 1;
+      throw new Error('continue failed');
+    },
+  });
+  await requests.disable();
+  assert.equal(malformedAborts, 1);
+  assert.equal(malformedContinues, 0);
+  assert.equal(rejectedContinues, 1);
+  assert.equal(requests.errors.length, 2);
+  assert.match(requests.errors[0].message, /invalid allowlist host/u);
+  assert.match(requests.errors[1].message, /continue failed/u);
+});
+
+test('boundary markup fast path requires balanced divs and accepts br elements', () => {
+  assert.equal(sanitizeRawHtml('<div class="note"><br></div>'), '<div class="note"><br></div>');
+  assert.equal(sanitizeRawHtml('<div><div></div></div>'), '<div><div></div></div>');
+  assert.notEqual(sanitizeRawHtml('<div><br>'), '<div><br>');
+  assert.notEqual(sanitizeRawHtml('</div>'), '</div>');
+  assert.doesNotMatch(sanitizeRawHtml('<div><span onclick="bad()">x'), /onclick/u);
+});
+
 test('validates exact allowlist hosts before constructing CSP sources', async () => {
   for (const host of [
     '"*"',
@@ -518,4 +596,13 @@ test('document templates context-encode config values and emit CSP in safe mode'
   assert.match(html, /&lt;\/title&gt;&lt;script&gt;bad\(\)&lt;\/script&gt;/u);
   assert.match(html, /Author&quot; onload=&quot;bad\(\)/u);
   assert.doesNotMatch(html, /<script>bad\(\)<\/script>/u);
+});
+
+test('document templates emit restrictive CSP in deny mode', async () => {
+  const config = await loadConfig('test/fixtures/basic/readme-press.config.mjs', process.cwd());
+  config.security = { rawHtml: 'deny', network: normalizeNetworkPolicy('deny') };
+  const html = buildDocument({ parts: [], chapters: [] }, config);
+  assert.match(html, /Content-Security-Policy/u);
+  assert.match(html, /default-src &#39;none&#39;/u);
+  assert.match(html, /script-src &#39;none&#39;/u);
 });

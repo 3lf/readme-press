@@ -19,7 +19,7 @@ const formatNumber = (n, config) => config.metadata.numerals === 'persian'
 const editionHtml = (edition) => wrapLatinHtml(edition);
 
 function contentSecurityPolicy(config) {
-  if (config.security?.rawHtml !== 'safe') return '';
+  if (!['safe', 'deny'].includes(config.security?.rawHtml)) return '';
   const policy = config.security.network;
   const remoteSources = policy.mode === 'trusted'
     ? ['http:', 'https:']

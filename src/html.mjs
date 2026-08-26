@@ -65,20 +65,25 @@ function sanitizeBoundaryMarkup(value) {
 
   let cursor = 0;
   let output = '';
+  let divDepth = 0;
   for (const token of tokens) {
     output += source.slice(cursor, token.index);
     const markup = token[0];
     const name = token[1].toLowerCase();
     if (markup.startsWith('</')) {
-      output += name === 'div' ? '</div>' : '';
+      if (name !== 'div' || divDepth === 0) return null;
+      divDepth -= 1;
+      output += '</div>';
     } else if (name === 'br') {
       output += sanitizeFragment(markup);
     } else {
+      if (/\/>$/u.test(markup)) return null;
+      divDepth += 1;
       output += sanitizeFragment(`${markup}</div>`).replace(/<\/div>$/u, '');
     }
     cursor = token.index + markup.length;
   }
-  return output + source.slice(cursor);
+  return divDepth === 0 ? output + source.slice(cursor) : null;
 }
 
 export function sanitizeRawHtml(value) {

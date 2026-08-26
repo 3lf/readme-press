@@ -87,6 +87,7 @@ export async function renderCover(htmlPath, outPath, config) {
       throw new Error(`Network policy blocked cover request: ${requests.blocked.join(', ')}`);
     }
     await requests.disable();
+    if (requests.errors.length) throw requests.errors[0];
     await page.evaluate(() => new Promise((resolvePaint) => {
       requestAnimationFrame(() => requestAnimationFrame(resolvePaint));
     }));

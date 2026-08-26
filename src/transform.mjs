@@ -742,13 +742,38 @@ function rejectDeniedRawHtml(nodes, ctx) {
 
 const SAFE_MARKDOWN_LINK_SCHEMES = new Set(['http', 'https', 'mailto']);
 
+function markdownLinkScheme(value) {
+  const normalized = String(value ?? '').replace(/[\u0000-\u0020\u007f]/gu, '');
+  return normalized.match(/^([a-z][a-z\d+.-]*):/iu)?.[1]?.toLowerCase() ?? null;
+}
+
 function applyMarkdownLinkPolicy(tree, ctx) {
   visit(tree, 'link', (node, index, parent) => {
     if (!parent || typeof index !== 'number') return;
-    const normalized = String(node.url ?? '').replace(/[\u0000-\u0020\u007f]/gu, '');
-    const scheme = normalized.match(/^([a-z][a-z\d+.-]*):/iu)?.[1]?.toLowerCase();
+    const scheme = markdownLinkScheme(node.url);
     if (!scheme || SAFE_MARKDOWN_LINK_SCHEMES.has(scheme)) return;
     ctx.diagnostics.push({ code: 'UNSAFE_LINK_SCHEME', detail: scheme });
+    parent.children.splice(index, 1, ...node.children);
+    return index;
+  });
+
+  const unsafeDefinitions = new Map();
+  visit(tree, 'definition', (node) => {
+    const scheme = markdownLinkScheme(node.url);
+    if (scheme && !SAFE_MARKDOWN_LINK_SCHEMES.has(scheme)) {
+      unsafeDefinitions.set(String(node.identifier ?? '').toLowerCase(), scheme);
+    }
+  });
+  const reported = new Set();
+  visit(tree, 'linkReference', (node, index, parent) => {
+    if (!parent || typeof index !== 'number') return;
+    const identifier = String(node.identifier ?? '').toLowerCase();
+    const scheme = unsafeDefinitions.get(identifier);
+    if (!scheme) return;
+    if (!reported.has(identifier)) {
+      ctx.diagnostics.push({ code: 'UNSAFE_LINK_SCHEME', detail: scheme });
+      reported.add(identifier);
+    }
     parent.children.splice(index, 1, ...node.children);
     return index;
   });
