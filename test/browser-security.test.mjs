@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { existsSync, mkdtempSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -57,6 +57,49 @@ async function withWatchdog(promise, label, timeout = 10_000) {
 }
 
 const root = resolve(import.meta.dirname, '..');
+
+async function listenCanary(handler) {
+  const server = createServer(handler);
+  await new Promise((resolveListen, reject) => {
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', resolveListen);
+  });
+  const address = server.address();
+  assert.ok(address && typeof address !== 'string');
+  return { server, base: `http://127.0.0.1:${address.port}` };
+}
+
+async function closeCanary(server) {
+  await new Promise((resolveClose, reject) => {
+    server.close((error) => (error ? reject(error) : resolveClose()));
+  });
+}
+
+function directCoverConfig(network) {
+  return {
+    page: { widthCm: 2.54, heightCm: 2.54, coverDpi: 96 },
+    metadata: {
+      title: 'Network cover',
+      author: 'README Press',
+      creator: 'README Press',
+      direction: 'ltr',
+      language: 'en',
+      localDate: '',
+      latinDate: '',
+    },
+    cover: {
+      series: '',
+      titlePrefix: '',
+      title: 'Network cover',
+      tagline: '',
+      repositoryNote: '',
+    },
+    repository: { url: 'https://github.com/3lf/readme-press', display: '3lf/readme-press' },
+    labels: { latestLink: 'Latest release' },
+    ...(network ? { security: { network } } : {}),
+    outputVariant: 'normal',
+  };
+}
 
 test('deny mode stops a browser network canary before it reaches the server', async () => {
   let canaryRequests = 0;
@@ -435,6 +478,116 @@ test('deny mode renders a stable local cover without waiting for network idle', 
     assert.ok(existsSync(join(temporary, 'cover-print.png')));
     assert.ok(statSync(output).size > 0);
   } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
+test('direct cover rendering defaults to deny and records zero successful requests', {
+  timeout: 20_000,
+}, async () => {
+  let successfulRequests = 0;
+  const { server, base } = await listenCanary((_request, response) => {
+    successfulRequests += 1;
+    response.writeHead(200, { 'Content-Type': 'image/png' }).end('not-an-image');
+  });
+  const temporary = mkdtempSync(join(tmpdir(), 'readme-press-cover-default-deny-'));
+  try {
+    const htmlPath = join(temporary, 'cover.html');
+    writeFileSync(htmlPath, `<style>html,body{margin:0}.cover{width:96px;height:96px}</style>
+<div class="cover"><span class="repo-url"></span><img src="${base}/blocked.png"></div>`);
+    await assert.rejects(
+      renderCover(htmlPath, join(temporary, 'cover.pdf'), directCoverConfig()),
+      /Network policy blocked cover request/u,
+    );
+    assert.equal(successfulRequests, 0);
+  } finally {
+    await closeCanary(server);
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
+test('cover capture keeps allowlisted policy active and returns the complete request inventory', {
+  timeout: 20_000,
+}, async () => {
+  const paths = [];
+  const font = readFileSync(join(root, 'themes/lapis-rtl/fonts/Vazirmatn-Variable.woff2'));
+  const png = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl2nWQAAAAASUVORK5CYII=',
+    'base64',
+  );
+  let base;
+  const { server, base: canaryBase } = await listenCanary((request, response) => {
+    paths.push(request.url);
+    response.setHeader('Access-Control-Allow-Origin', '*');
+    if (request.url === '/style.css') {
+      response.writeHead(200, { 'Content-Type': 'text/css' }).end(`
+@font-face { font-family: Canary; src: url('${base}/font.woff2'); }
+.cover { background-image: url('${base}/css-image.png'); }
+.repo-url { font-family: Canary; }
+`);
+    } else if (request.url === '/script.js') {
+      response.writeHead(200, { 'Content-Type': 'text/javascript' }).end(
+        `setTimeout(() => fetch('${base}/delayed'), 10);`,
+      );
+    } else if (request.url === '/font.woff2') {
+      response.writeHead(200, { 'Content-Type': 'font/woff2' }).end(font);
+    } else if (request.url?.endsWith('.png')) {
+      response.writeHead(200, { 'Content-Type': 'image/png' }).end(png);
+    } else {
+      response.writeHead(200, { 'Content-Type': 'text/plain' }).end('ok');
+    }
+  });
+  base = canaryBase;
+  const temporary = mkdtempSync(join(tmpdir(), 'readme-press-cover-inventory-'));
+  try {
+    const htmlPath = join(temporary, 'cover.html');
+    writeFileSync(htmlPath, `<link rel="stylesheet" href="${base}/style.css">
+<script src="${base}/script.js"></script>
+<style>html,body{margin:0}.cover{width:96px;height:96px}</style>
+<div class="cover"><span class="repo-url">Repository</span><img src="${base}/initial.png"></div>`);
+    const result = await renderCover(
+      htmlPath,
+      join(temporary, 'cover.pdf'),
+      directCoverConfig(normalizeNetworkPolicy({ mode: 'allowlist', allowHosts: ['127.0.0.1'] })),
+    );
+    const observed = result.externalRequests.map((url) => new URL(url).pathname).sort();
+    for (const expected of [
+      '/css-image.png',
+      '/delayed',
+      '/font.woff2',
+      '/initial.png',
+      '/script.js',
+      '/style.css',
+    ]) {
+      assert.ok(observed.includes(expected), `missing ${expected} from request inventory`);
+      assert.ok(paths.includes(expected), `canary did not receive ${expected}`);
+    }
+  } finally {
+    await closeCanary(server);
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
+test('direct body rendering defaults to deny and records zero successful requests', {
+  timeout: 30_000,
+}, async () => {
+  let successfulRequests = 0;
+  const { server, base } = await listenCanary((_request, response) => {
+    successfulRequests += 1;
+    response.writeHead(200, { 'Content-Type': 'image/png' }).end('not-an-image');
+  });
+  const temporary = mkdtempSync(join(tmpdir(), 'readme-press-body-default-deny-'));
+  try {
+    const htmlPath = join(temporary, 'book.html');
+    writeFileSync(htmlPath, `<!doctype html><style>@page{size:10cm 10cm;margin:1cm}</style>
+<h1>Direct render</h1><img src="${base}/blocked.png">`);
+    await assert.rejects(
+      renderPagedHtml({ htmlPath, pdfPath: join(temporary, 'book.pdf'), timeout: 20_000 }),
+      /Network policy blocked request/u,
+    );
+    assert.equal(successfulRequests, 0);
+  } finally {
+    await closeCanary(server);
     rmSync(temporary, { recursive: true, force: true });
   }
 });

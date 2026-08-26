@@ -458,12 +458,15 @@ test('stabilizes the external-request audit inventory before manifest publicatio
   // Remote-resource bytes remain fetch-dependent; only the recorded URL
   // inventory is made stable here.
   assert.deepEqual(
-    stableExternalRequests([
-      'https://b.example/figure.png',
+    stableExternalRequests(
+      ['https://b.example/figure.png', 'https://a.example/font.woff2'],
+      ['https://b.example/figure.png', 'https://cover.example/theme.css'],
+    ),
+    [
       'https://a.example/font.woff2',
       'https://b.example/figure.png',
-    ]),
-    ['https://a.example/font.woff2', 'https://b.example/figure.png'],
+      'https://cover.example/theme.css',
+    ],
   );
 });
 

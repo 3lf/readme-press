@@ -3,7 +3,8 @@ import { readFile, realpath, stat, writeFile } from 'node:fs/promises';
 import { basename, dirname, extname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
-import { normalizeNetworkPolicy, withRequestPolicy } from './network.mjs';
+import { createSecurityDefaults } from './defaults.mjs';
+import { withRequestPolicy } from './network.mjs';
 
 const VIEWER_ROOT = resolve(
   dirname(fileURLToPath(import.meta.resolve('@vivliostyle/viewer/package.json'))),
@@ -156,7 +157,7 @@ async function pageSizeData(page) {
 export async function renderPagedHtml({
   htmlPath,
   pdfPath,
-  network = normalizeNetworkPolicy('trusted'),
+  network = createSecurityDefaults().network,
   timeout = 300_000,
 }) {
   const documentRoot = dirname(htmlPath);

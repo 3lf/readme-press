@@ -101,6 +101,44 @@ test('configuration contracts accept valid chapter rules and reject inert or mis
   );
 });
 
+test('direct Markdown transformation defaults to safe HTML and denied network access', async () => {
+  const config = {
+    repository: { url: 'https://github.com/example/book' },
+    images: { classRules: [], tallRatio: 1.4 },
+    contentRules: {
+      calloutClassRules: [],
+      paragraphClassRules: [],
+      chapterClassRules: [],
+      treeAriaLabel: 'Document hierarchy',
+    },
+    mermaid: {},
+    contentRoot: process.cwd(),
+    structure: validConfig.structure,
+    toc: {},
+  };
+  const result = await api.transformReadme(`# Introduction
+
+# Contents
+
+# Chapter
+
+<script>alert('unsafe')</script>
+`, config);
+  assert.equal(result.chapters.some(({ html }) => html.includes('<script')), false);
+  assert.ok(result.diagnostics.some(({ code }) => code === 'RAW_HTML_SANITIZED'));
+  await assert.rejects(
+    api.transformReadme(`# Introduction
+
+# Contents
+
+# Chapter
+
+![Remote](https://assets.example/figure.png)
+`, config),
+    /blocked by security\.network=deny/u,
+  );
+});
+
 test('CLI parsing rejects missing, unknown, and repeated options with usage exit code', () => {
   for (const args of [
     ['build', '--config'],

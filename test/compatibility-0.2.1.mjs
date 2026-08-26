@@ -29,6 +29,10 @@ try {
     assert.equal(compatibilityWarnings[0].severity, 'warning');
     assert.equal(compatibilityWarnings[0].promoteInStrict, false);
   } else {
+    assert.equal(config.security.rawHtml, 'safe');
+    assert.equal(config.security.network.mode, 'deny');
+    assert.equal(config.security.diagnostics, 'strict');
+    assert.equal(config.security.strictConfig, true);
     assert.equal(compatibilityWarnings.length, 0);
   }
 
