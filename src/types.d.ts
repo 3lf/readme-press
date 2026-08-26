@@ -101,7 +101,7 @@ export interface ReadmePressConfig {
   release?: Record<string, unknown>;
 }
 
-export interface LoadedConfig extends ReadmePressConfig {
+export interface LoadedConfig extends Omit<ReadmePressConfig, 'theme' | 'page' | 'footer' | 'cover' | 'mermaid'> {
   configFile: string;
   configRoot: string;
   projectRoot: string;
@@ -110,6 +110,39 @@ export interface LoadedConfig extends ReadmePressConfig {
   sourcePath: string;
   outputDir: string;
   themeRoot: string;
+  theme: {
+    name: string | null;
+    directory: string;
+    stylesheet: string;
+    cover: string;
+    mermaidConfig: string;
+    puppeteerConfig: string;
+  };
+  page: { widthCm: number; heightCm: number; coverDpi: number };
+  footer: null | {
+    text: string;
+    size: number;
+    y: number;
+    opacity: number;
+    color: [number, number, number];
+  };
+  cover: {
+    enabled: boolean;
+    file: string;
+    series: string;
+    titlePrefix: string;
+    title: string;
+    tagline: string;
+    repositoryNote: string;
+  };
+  mermaid: {
+    cacheDir: string;
+    configPath: string;
+    fontPath: string;
+    fontFamily: string;
+    mmdcPath: string | null;
+    puppeteerConfig: string;
+  };
   validationDiagnostics: Diagnostic[];
   outputs: { normal: string; print?: string; high: string };
   security: {
@@ -146,6 +179,16 @@ export interface BuildManifest {
   pageCount: number;
   diagnostics: Diagnostic[];
   generatedFiles: string[];
+  publication?: {
+    cleanup?: {
+      reaped?: number;
+      reapedPaths?: string[];
+      reapedPathsTruncated?: boolean;
+      removed?: number;
+      removedPaths?: string[];
+      removedPathsTruncated?: boolean;
+    };
+  };
   [key: string]: unknown;
 }
 

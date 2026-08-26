@@ -2,6 +2,7 @@ import {
   ReadmePressError,
   normalizeReleaseVersion,
   runBuild,
+  runQa,
   validateConfig,
   type BuildManifest,
 } from 'readme-press';
@@ -38,4 +39,15 @@ async function consume(): Promise<BuildManifest> {
   return runBuild({ configFile: 'readme-press.config.mjs', quality: 'all' });
 }
 
+async function consumeQa(): Promise<BuildManifest> {
+  const result = await runQa({ configFile: 'readme-press.config.mjs', quality: 'normal' });
+  const failures: 0 = result.failures;
+  if (failures !== 0) throw new Error('unreachable');
+  return result.manifest;
+}
+
+// @ts-expect-error output quality names are closed
+void runBuild({ quality: 'ultra' });
+
 void consume;
+void consumeQa;

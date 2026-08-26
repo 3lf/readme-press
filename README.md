@@ -162,10 +162,12 @@ npx readme-press build --config readme-press.config.mjs --quality all
 System requirements:
 
 - Node.js 22 or newer
+- Python 3 for source-block QA
 - `qpdf` for linearized release PDFs
 - Poppler tools for full QA: `pdfinfo`, `pdffonts`, `pdftotext`, `pdfimages`, and `pdftoppm`
+- Chromium installed by Puppeteer and Mermaid CLI installed with README Press
 
-Install the PDF tools on Ubuntu with `sudo apt-get install -y poppler-utils qpdf`, or on macOS with `brew install poppler qpdf`.
+Install the external tools on Ubuntu with `sudo apt-get install -y python3 poppler-utils qpdf`, or on macOS with `brew install python poppler qpdf`. Restore Chromium with `npx puppeteer browsers install chrome` if its managed browser is missing.
 
 npm 11 may ask you to review Puppeteer's browser-install script. If your project enforces a strict install-script policy, approve the installed Puppeteer dependency with `npm install-scripts approve puppeteer` before building.
 

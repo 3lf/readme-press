@@ -35,7 +35,7 @@ export declare function loadConfig(configFile?: string, cwd?: string): Promise<L
 /** Build and publish one or all PDF editions through manifest-last, per-file replacement. */
 export declare function runBuild(options?: BuildOptions): Promise<BuildManifest>;
 /** Verify the manifest, PDF containers, content, rendering, and project-specific gates. */
-export declare function runQa(options?: QaOptions): Promise<void>;
+export declare function runQa(options?: QaOptions): Promise<{ failures: 0; manifest: BuildManifest }>;
 /** Validate and normalize a v-prefixed semantic release version. */
 export declare function normalizeReleaseVersion(value: string): string;
 /** Verify release artifacts and atomically write checksums and Markdown-safe notes. */

@@ -9,7 +9,7 @@ import { defineConfig } from 'readme-press/config';
 
 ## Configuration
 
-`defineConfig(config)` is an identity helper with TypeScript inference. `validateConfig(value, { strict })` validates the exported object with Zod and returns `{ config, diagnostics }`. Unknown core keys produce `UNKNOWN_CONFIG_KEY` warnings when `strict` is false and `ERR_CONFIG_UNKNOWN_KEYS` when it is true. The `qa` and `release` objects intentionally allow project-specific extensions.
+`defineConfig(config)` is an identity helper with TypeScript inference. `validateConfig(value, { strict })` validates the exported object with Zod and returns `{ config, diagnostics }`. Unknown core keys produce `UNKNOWN_CONFIG_KEY` warnings when `strict` is false and `ERR_CONFIG_UNKNOWN_KEYS` when it is true. Unknown `security` keys always fail closed with `ERR_CONFIG_UNKNOWN_SECURITY_KEYS`. The `qa`, `release`, and `labels` objects intentionally allow project-specific extensions.
 
 `loadConfig(configFile?, cwd?)` executes the trusted JavaScript config, validates it, resolves paths, applies compatibility defaults, and returns the normalized config. Config files are trusted executable code; validation is not a JavaScript sandbox.
 
@@ -17,7 +17,7 @@ import { defineConfig } from 'readme-press/config';
 
 `runBuild({ configFile, quality, releaseVersion })` resolves to the published build manifest. `quality` is `normal`, `print`, `high`, or `all`.
 
-`runQa({ configFile, quality, releaseVersion, renderAll })` verifies the current manifest and artifacts and rejects when a QA gate fails.
+`runQa({ configFile, quality, releaseVersion, renderAll })` verifies the current manifest and artifacts and resolves to `{ failures: 0, manifest }`. It rejects when any QA gate fails.
 
 ## Release helpers
 

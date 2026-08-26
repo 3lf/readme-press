@@ -164,10 +164,12 @@ npx readme-press build --config readme-press.config.mjs --quality all
 این ابزارها باید روی سیستم نصب باشن:
 
 - **نسخه Node.js:** نسخه ۲۲ یا جدیدتر
+- **Python 3:** برای QA بلوک‌های کد منبع
 - **ابزار qpdf:** برای ساخت PDF خطی و آماده انتشار
 - **ابزارهای Poppler:** شامل `pdfinfo`، `pdffonts`، `pdftotext`، `pdfimages` و `pdftoppm`
+- **Chromium و Mermaid CLI:** نسخه‌های مدیریت‌شده‌ای که همراه وابستگی‌های README Press نصب می‌شن
 
-روی Ubuntu از فرمان `sudo apt-get install -y poppler-utils qpdf` و روی macOS از `brew install poppler qpdf` استفاده کن.
+روی Ubuntu از فرمان `sudo apt-get install -y python3 poppler-utils qpdf` و روی macOS از `brew install python poppler qpdf` استفاده کن. اگه مرورگر مدیریت‌شده Puppeteer موجود نیست، با `npx puppeteer browsers install chrome` دوباره نصبش کن.
 
 ممکنه npm 11 ازت بخواد script نصب مرورگر Puppeteer رو بررسی کنی. اگه پروژه‌ات سیاست سخت‌گیرانه‌ای برای install scriptها داره، قبل از ساخت با فرمان `npm install-scripts approve puppeteer` نسخه نصب‌شده Puppeteer رو تأیید کن.
 

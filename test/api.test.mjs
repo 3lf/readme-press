@@ -62,6 +62,36 @@ test('Zod validation warns for unknown core keys and leaves qa/release extensibl
   );
 });
 
+test('configuration contracts accept valid chapter rules and reject inert or mistyped security rules', () => {
+  const chapter = api.validateConfig({
+    ...validConfig,
+    contentRules: { chapterClassRules: [{ titleStartsWith: 'Chapter', className: 'chapter-special' }] },
+  });
+  assert.deepEqual(chapter.diagnostics, []);
+  assert.throws(
+    () => api.validateConfig({
+      ...validConfig,
+      contentRules: { paragraphClassRules: [{ className: 'never-matches' }] },
+    }),
+    (error) => error.code === 'ERR_CONFIG_VALIDATION'
+      && /contentRules\.paragraphClassRules\.0/u.test(error.message)
+      && /contains or startsWith/u.test(error.message),
+  );
+  assert.throws(
+    () => api.validateConfig({ ...validConfig, security: { netwrok: 'deny' } }),
+    (error) => error.code === 'ERR_CONFIG_UNKNOWN_SECURITY_KEYS'
+      && error.details.keys.includes('security.netwrok'),
+  );
+  assert.throws(
+    () => api.validateConfig({
+      ...validConfig,
+      security: { network: { mode: 'deny', allowHost: ['example.com'] } },
+    }),
+    (error) => error.code === 'ERR_CONFIG_UNKNOWN_SECURITY_KEYS'
+      && error.details.keys.includes('security.network.allowHost'),
+  );
+});
+
 test('CLI parsing rejects missing, unknown, and repeated options with usage exit code', () => {
   for (const args of [
     ['build', '--config'],

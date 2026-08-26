@@ -1,9 +1,40 @@
 import { spawnSync } from 'node:child_process';
-import { accessSync, constants } from 'node:fs';
+import { accessSync, constants, existsSync, readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import { dirname, resolve } from 'node:path';
 import puppeteer from 'puppeteer';
 import { ReadmePressError } from './errors.mjs';
 
-function requireCommand(command, installHint, versionArgs = ['--version']) {
+const require = createRequire(import.meta.url);
+
+export function resolveMermaidCli() {
+  let directory = dirname(require.resolve('@mermaid-js/mermaid-cli'));
+  for (let depth = 0; depth < 5; depth += 1) {
+    const packagePath = resolve(directory, 'package.json');
+    if (existsSync(packagePath)) {
+      const packageJson = JSON.parse(readFileSync(packagePath, 'utf8'));
+      if (packageJson.name === '@mermaid-js/mermaid-cli') {
+        const bin = typeof packageJson.bin === 'string'
+          ? packageJson.bin
+          : packageJson.bin?.mmdc ?? packageJson.bin?.['mermaid-cli'];
+        if (!bin || typeof bin !== 'string') {
+          throw new ReadmePressError('The installed Mermaid CLI package has no supported bin mapping.', {
+            code: 'ERR_PREFLIGHT_MERMAID', details: { packagePath },
+          });
+        }
+        return resolve(directory, bin);
+      }
+    }
+    const parent = dirname(directory);
+    if (parent === directory) break;
+    directory = parent;
+  }
+  throw new ReadmePressError('Unable to locate the installed Mermaid CLI package metadata.', {
+    code: 'ERR_PREFLIGHT_MERMAID',
+  });
+}
+
+function requireCommand(command, installHint, versionArgs = ['--version'], errorCode = 'ERR_PREFLIGHT_TOOL') {
   const result = spawnSync(command, versionArgs, {
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'ignore'],
@@ -11,7 +42,7 @@ function requireCommand(command, installHint, versionArgs = ['--version']) {
   if (result.error) {
     const cause = result.error.code ?? result.error.message;
     throw new ReadmePressError(`Required tool "${command}" could not be executed: ${cause}. ${installHint}`, {
-      code: 'ERR_PREFLIGHT_TOOL',
+      code: errorCode,
       details: { tool: command, cause },
       cause: result.error,
     });
@@ -20,7 +51,7 @@ function requireCommand(command, installHint, versionArgs = ['--version']) {
     throw new ReadmePressError(
       `Required tool "${command}" is present but unhealthy (exit=${result.status}, signal=${result.signal}). ${installHint}`,
       {
-        code: 'ERR_PREFLIGHT_TOOL',
+        code: errorCode,
         details: { tool: command, status: result.status, signal: result.signal },
       },
     );
@@ -52,11 +83,19 @@ export async function preflightBuild(config) {
   requireCommand('qpdf', 'Install qpdf and make it available on PATH.');
   await requireChrome();
   try {
+    config.mermaid.mmdcPath ??= resolveMermaidCli();
     accessSync(config.mermaid.mmdcPath, constants.X_OK);
-  } catch {
+    requireCommand(
+      config.mermaid.mmdcPath,
+      'Reinstall @mermaid-js/mermaid-cli.',
+      ['--version'],
+      'ERR_PREFLIGHT_MERMAID',
+    );
+  } catch (cause) {
+    if (cause instanceof ReadmePressError) throw cause;
     throw new ReadmePressError(
       `Mermaid CLI was not found at ${config.mermaid.mmdcPath}. Run "npm install" in the README Press package.`,
-      { code: 'ERR_PREFLIGHT_MERMAID', details: { path: config.mermaid.mmdcPath } },
+      { code: 'ERR_PREFLIGHT_MERMAID', details: { path: config.mermaid.mmdcPath }, cause },
     );
   }
 }

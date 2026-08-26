@@ -1,5 +1,4 @@
 import { existsSync, realpathSync, statSync } from 'node:fs';
-import { createRequire } from 'node:module';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { sanitizeInlineMarkup } from './html.mjs';
@@ -8,8 +7,6 @@ import { outputComparisonIdentity, resolveContainedOutput } from './paths.mjs';
 import { validateConfig } from './schema.mjs';
 
 const PACKAGE_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const require = createRequire(import.meta.url);
-const MMDC_PATH = resolve(dirname(require.resolve('@mermaid-js/mermaid-cli')), 'cli.js');
 
 const PIPELINE_PDF_NAMES = [
   'body.pdf',
@@ -210,8 +207,7 @@ export async function loadConfig(configFile = 'readme-press.config.mjs', cwd = p
         ? resolveConfigFile(configRoot, raw.mermaid.font)
         : resolve(themeRoot, 'fonts/Vazirmatn-Variable.woff2'),
       fontFamily: raw.mermaid?.fontFamily ?? 'Vazirmatn',
-      // Resolve through Node so npm's valid hoisted and nested layouts both work.
-      mmdcPath: MMDC_PATH,
+      mmdcPath: null,
       puppeteerConfig: raw.mermaid?.puppeteerConfig
         ? resolveConfigFile(configRoot, raw.mermaid.puppeteerConfig)
         : resolve(themeRoot, 'puppeteer-ci.json'),

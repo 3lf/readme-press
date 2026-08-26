@@ -26,7 +26,7 @@ import {
 } from '../src/artifacts.mjs';
 import { runBuild } from '../src/build.mjs';
 import { assertNoDiagnosticErrors, normalizeDiagnostics } from '../src/diagnostics.mjs';
-import { preflightQa, requireChrome } from '../src/preflight.mjs';
+import { preflightQa, requireChrome, resolveMermaidCli } from '../src/preflight.mjs';
 
 test('publishes a staged manifest last and removes only previously owned stale files', () => {
   const temporary = mkdtempSync(join(tmpdir(), 'readme-press-publish-'));
@@ -464,6 +464,12 @@ test('preflight failures name the missing tool and installation path', () => {
   } finally {
     process.env.PATH = originalPath;
   }
+});
+
+test('resolves Mermaid CLI from the installed package bin contract', () => {
+  const executable = resolveMermaidCli();
+  assert.match(executable, /@mermaid-js\/mermaid-cli\/.+\/cli\.js$/u);
+  assert.equal(existsSync(executable), true);
 });
 
 test('preflight reports executable permission failures', { skip: process.platform === 'win32' }, () => {
