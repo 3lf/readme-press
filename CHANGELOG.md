@@ -14,7 +14,8 @@ Release-specific changes are added here by their release pull request.
 
 - Raw author HTML is sanitized by default with `security.rawHtml: 'safe'`.
 - External network access is denied by default in both transformation and
-  Chromium rendering.
+  Chromium body and cover rendering. Cover subresources remain governed for the
+  complete capture lifecycle and are included in the manifest request inventory.
 - Diagnostics are strict by default and stop publication on warnings that can
   affect the generated artifact.
 - Unknown core configuration keys are rejected by default. The `qa` and

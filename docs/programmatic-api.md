@@ -29,6 +29,11 @@ import { defineConfig } from 'readme-press/config';
 
 `transformReadme`, `selectBook`, `GithubSlugger`, `looseAnchor`, and `wrapLatinHtml` are stable exports for integrations that need README Press's document model without running the PDF pipeline.
 
+Direct `transformReadme` calls sanitize raw HTML and deny remote assets when
+`security` is omitted. The pipeline's internal body and cover renderers use the
+same deny-by-default network policy. Pass an explicit trusted or allowlisted
+policy only for inputs and hosts the caller has already approved.
+
 ## Errors
 
 Public failures may use `ReadmePressError`. It extends `Error` with stable `code`, `details`, `cause`, and `exitCode` fields. The CLI prints only the message by default; pass `--debug` to include the stack trace.
