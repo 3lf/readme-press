@@ -391,17 +391,36 @@ export async function runBuild({ configFile, quality = 'normal', releaseVersion:
 
   const repositoryQr = await writeRepositoryQr(outputDir, config.repository.url);
   const coverPdfs = new Map();
+  const coverDiagnostics = [];
   if (config.cover.enabled) {
     if (qualities.some((variant) => variant !== 'print')) {
       const coverPdf = resolve(outputDir, 'cover.pdf');
-      await renderCover(config.cover.file, coverPdf, { ...documentConfig, outputVariant: 'normal' });
+      const coverResult = await renderCover(
+        config.cover.file,
+        coverPdf,
+        { ...documentConfig, outputVariant: 'normal' },
+      );
+      coverDiagnostics.push(...coverResult.diagnostics);
       for (const variant of qualities.filter((value) => value !== 'print')) coverPdfs.set(variant, coverPdf);
     }
     if (qualities.includes('print')) {
       const printCoverPdf = resolve(outputDir, 'cover-print.pdf');
-      await renderCover(config.cover.file, printCoverPdf, { ...documentConfig, outputVariant: 'print' });
+      const coverResult = await renderCover(
+        config.cover.file,
+        printCoverPdf,
+        { ...documentConfig, outputVariant: 'print' },
+      );
+      coverDiagnostics.push(...coverResult.diagnostics);
       coverPdfs.set('print', printCoverPdf);
     }
+  }
+  if (coverDiagnostics.length) {
+    result.diagnostics.push(...coverDiagnostics);
+    result.diagnostics = normalizeDiagnostics(result.diagnostics, config.security.diagnostics);
+    for (const diagnostic of coverDiagnostics) {
+      console.warn(`${diagnostic.severity.toUpperCase()} ${diagnostic.code}: ${diagnostic.detail}`);
+    }
+    assertNoDiagnosticErrors(result.diagnostics);
   }
 
   const outputs = {};

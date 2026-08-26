@@ -179,8 +179,10 @@ test('cover capture waits for two byte-identical paints', async () => {
     },
   };
   const result = await captureStableScreenshot(page, {}, 3);
-  assert.equal(result.toString(), 'stable');
-  assert.equal(paints, 3);
+  assert.equal(result.buffer.toString(), 'stable');
+  assert.equal(result.stabilized, true);
+  assert.equal(result.attempts, 3);
+  assert.equal(paints, 4);
 
   let unstableCapture = 0;
   const unstable = {
@@ -190,10 +192,10 @@ test('cover capture waits for two byte-identical paints', async () => {
       return Buffer.from(String(unstableCapture));
     },
   };
-  await assert.rejects(
-    captureStableScreenshot(unstable, {}, 3),
-    /did not stabilize after 3 attempts/u,
-  );
+  const fallback = await captureStableScreenshot(unstable, {}, 3);
+  assert.equal(fallback.buffer.toString(), '3');
+  assert.equal(fallback.stabilized, false);
+  assert.equal(fallback.attempts, 3);
 });
 
 test('selects an introduction and configured parts without project knowledge', () => {

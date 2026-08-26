@@ -26,18 +26,46 @@ export async function captureStableScreenshot(
   options,
   maxAttempts = MAX_STABLE_SCREENSHOT_ATTEMPTS,
 ) {
+  await freezeCoverMotion(page);
   let previous = null;
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     await page.evaluate(() => new Promise((resolvePaint) => {
       requestAnimationFrame(() => requestAnimationFrame(resolvePaint));
     }));
     const current = Buffer.from(await page.screenshot(options));
-    if (previous?.equals(current)) return current;
+    if (previous?.equals(current)) {
+      return { buffer: current, stabilized: true, attempts: attempt };
+    }
     previous = current;
   }
-  throw new Error(
-    `Cover screenshot did not stabilize after ${maxAttempts} attempts.`,
-  );
+  return { buffer: previous, stabilized: false, attempts: maxAttempts };
+}
+
+export async function freezeCoverMotion(page) {
+  await page.evaluate(() => {
+    const styleId = 'readme-press-motion-freeze';
+    if (!document.getElementById(styleId)) {
+      const style = document.createElement('style');
+      style.id = styleId;
+      style.textContent = `
+        *, *::before, *::after {
+          animation-play-state: paused !important;
+          caret-color: transparent !important;
+          transition: none !important;
+        }
+      `;
+      document.head.append(style);
+    }
+    for (const animation of document.getAnimations()) {
+      try {
+        animation.currentTime = 0;
+        animation.pause();
+      } catch {
+        // Some browser-managed animations cannot be controlled. The bounded
+        // screenshot fallback below still produces a complete cover frame.
+      }
+    }
+  });
 }
 
 export async function renderCover(htmlPath, outPath, config) {
@@ -130,12 +158,12 @@ export async function renderCover(htmlPath, outPath, config) {
           return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
         });
 
-        const screenshot = await captureStableScreenshot(page, {
+        const capture = await captureStableScreenshot(page, {
           type: 'png',
           clip: { x: 0, y: 0, width: cssWidth, height: cssHeight },
           captureBeyondViewport: false,
         });
-        await writeFile(pngPath, screenshot);
+        await writeFile(pngPath, capture.buffer);
         if (requests.blocked.length) {
           throw new Error(`Network policy blocked cover request: ${requests.blocked.join(', ')}`);
         }
@@ -145,6 +173,7 @@ export async function renderCover(htmlPath, outPath, config) {
           // has observed pagehide keepalives and unload beacons.
           externalRequests: requests.observedExternal,
           blockedRequests: requests.blocked,
+          capture,
         };
       },
     );
@@ -191,8 +220,17 @@ export async function renderCover(htmlPath, outPath, config) {
     page.node.set(PDFName.of('Annots'), annotations);
   }
   await writeFile(outPath, await pdf.save({ useObjectStreams: false }));
+  const diagnostics = captureData.capture.stabilized === false
+    ? [{
+      code: 'ANIMATED_COVER_FALLBACK',
+      severity: 'warning',
+      promoteInStrict: false,
+      detail: `${config.outputVariant ?? 'normal'} cover used the final complete frame after ${captureData.capture.attempts} attempts.`,
+    }]
+    : [];
   return {
     externalRequests: stableRequestInventory(captureData.externalRequests),
     blockedRequests: stableRequestInventory(captureData.blockedRequests),
+    diagnostics,
   };
 }
