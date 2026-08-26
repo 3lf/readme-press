@@ -152,6 +152,9 @@ jobs:
           name: readme-press-${{ needs.build.outputs.version }}
           path: release-assets
 
+      - name: Verify downloaded release assets
+        run: (cd release-assets && sha256sum --check --strict SHA256SUMS.txt)
+
       - name: Create the draft GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
