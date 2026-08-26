@@ -27,6 +27,8 @@ Release-specific changes are added here by their release pull request.
 
 - Generated figure names are content-addressed and edition image selection is
   performed on the document tree instead of global string replacement.
+- Cover capture freezes CSS motion before sampling and records a non-blocking
+  warning when a continuously changing cover requires the final-frame fallback.
 - npm tarball smoke tests now verify the runtime API, TypeScript declarations,
   and all three PDF editions from a clean installation.
 

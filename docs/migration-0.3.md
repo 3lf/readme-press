@@ -33,7 +33,10 @@ export default defineConfig({
 Run the complete gate and inspect the manifest before upgrading:
 
 ```bash
-npm run verify:publish
+npx readme-press pipeline \
+  --config readme-press.config.mjs \
+  --release-version v0.2.1 \
+  --render-all
 ```
 
 The migration is ready when the build has no sanitizer or transform diagnostic,
@@ -82,3 +85,28 @@ warning so enabling strict diagnostics cannot break an otherwise compatible
 Configuration files, custom themes, QA modules, and release modules remain
 trusted executable code. These controls harden Markdown and assets; they do not
 sandbox project-owned JavaScript.
+
+## Roll back safely
+
+If the 0.3 migration changes output or blocks a required trusted input, pin the
+book project to the last verified 0.2.x release instead of weakening the new
+defaults implicitly:
+
+```bash
+npm install --save-dev --save-exact readme-press@0.2.1
+npx readme-press version
+npx readme-press pipeline \
+  --config readme-press.config.mjs \
+  --release-version v0.2.1 \
+  --render-all
+```
+
+Re-run the same source commit and compare the manifest, checksums, and all-page
+visual evidence with the last approved build. Record the pinned engine version
+in both local dependencies and CI.
+
+Never overwrite or reuse a version already published to npm. If a faulty
+version reached the registry, restore consumers to a known-good exact version
+and publish any correction under a new version number. Treat GitHub Release
+assets the same way: keep the historical release intact and create a new,
+verified corrective release.
