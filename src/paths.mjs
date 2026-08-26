@@ -1,4 +1,4 @@
-import { existsSync, realpathSync } from 'node:fs';
+import { existsSync, lstatSync, realpathSync, statSync } from 'node:fs';
 import { dirname, extname, isAbsolute, relative, resolve, sep, win32 } from 'node:path';
 
 function isContained(root, target) {
@@ -15,10 +15,10 @@ function decodeLocalReference(reference, label) {
   } catch {
     throw new Error(`${label} contains invalid percent encoding: ${value}`);
   }
-  if (decoded.includes('\\')) throw new Error(`${label} must use forward slashes: ${value}`);
   if (isAbsolute(decoded) || win32.isAbsolute(decoded)) {
     throw new Error(`${label} must be relative: ${value}`);
   }
+  if (decoded.includes('\\')) throw new Error(`${label} must use forward slashes: ${value}`);
   return decoded;
 }
 
@@ -63,18 +63,64 @@ export function resolveContainedOutput(outputDirectory, relativePath, {
   const target = resolve(root, decoded);
   if (!isContained(root, target)) throw new Error(`${label} escapes the output directory: ${relativePath}`);
 
+  assertContainedOutputSink(root, target, { label, reference: relativePath });
+  return target;
+}
+
+export function assertContainedOutputSink(outputDirectory, targetPath, {
+  label = 'Output path',
+  reference = targetPath,
+} = {}) {
+  const root = resolve(outputDirectory);
+  const target = resolve(targetPath);
+  if (!isContained(root, target)) throw new Error(`${label} escapes the output directory: ${reference}`);
+
   if (existsSync(root)) {
     const canonicalRoot = realpathSync(root);
+    const pathFromRoot = relative(root, target);
+    let current = root;
+    const components = pathFromRoot ? pathFromRoot.split(sep) : [];
+    for (let index = 0; index < components.length; index += 1) {
+      current = resolve(current, components[index]);
+      let info;
+      try {
+        info = lstatSync(current);
+      } catch (error) {
+        if (error?.code === 'ENOENT') break;
+        throw error;
+      }
+      if (info.isSymbolicLink()) {
+        let canonical;
+        try {
+          canonical = realpathSync(current);
+        } catch (error) {
+          if (error?.code === 'ENOENT') {
+            throw new Error(`${label} contains a dangling symbolic link: ${reference}`, { cause: error });
+          }
+          throw error;
+        }
+        if (!isContained(canonicalRoot, canonical)) {
+          throw new Error(`${label} escapes the output directory through a symbolic link: ${reference}`);
+        }
+        if (index < components.length - 1 && !statSync(current).isDirectory()) {
+          throw new Error(`${label} has a non-directory ancestor: ${reference}`);
+        }
+      } else if (index < components.length - 1 && !info.isDirectory()) {
+        throw new Error(`${label} has a non-directory ancestor: ${reference}`);
+      }
+    }
+
     if (existsSync(target)) {
       const canonicalTarget = realpathSync(target);
       if (!isContained(canonicalRoot, canonicalTarget)) {
-        throw new Error(`${label} escapes the output directory through a symbolic link: ${relativePath}`);
+        throw new Error(`${label} escapes the output directory through a symbolic link: ${reference}`);
       }
-    }
-    const existingParent = nearestExistingDirectory(dirname(target));
-    const canonicalParent = realpathSync(existingParent);
-    if (!isContained(canonicalRoot, canonicalParent)) {
-      throw new Error(`${label} escapes the output directory through a symbolic link: ${relativePath}`);
+    } else {
+      const existingParent = nearestExistingDirectory(dirname(target));
+      const canonicalParent = realpathSync(existingParent);
+      if (!isContained(canonicalRoot, canonicalParent)) {
+        throw new Error(`${label} escapes the output directory through a symbolic link: ${reference}`);
+      }
     }
   }
   return target;

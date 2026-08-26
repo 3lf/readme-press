@@ -449,7 +449,11 @@ function registerLocalImage(reference, ctx) {
     label: 'Image path',
   });
   if (!resolved.exists) {
-    ctx.diagnostics?.push({ code: 'MISSING_FIGURE_FILE', detail: reference });
+    if (!ctx.diagnostics?.some(
+      (diagnostic) => diagnostic.code === 'MISSING_FIGURE_FILE' && diagnostic.detail === reference,
+    )) {
+      ctx.diagnostics?.push({ code: 'MISSING_FIGURE_FILE', detail: reference });
+    }
     return null;
   }
 

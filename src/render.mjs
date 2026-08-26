@@ -80,9 +80,57 @@ async function listen(server) {
 }
 
 async function closeServer(server) {
+  server.closeIdleConnections?.();
+  server.closeAllConnections?.();
   await new Promise((resolveClose, reject) => {
-    server.close((error) => (error ? reject(error) : resolveClose()));
+    server.close((error) => {
+      if (error?.code === 'ERR_SERVER_NOT_RUNNING') resolveClose();
+      else if (error) reject(error);
+      else resolveClose();
+    });
   });
+}
+
+export async function runRendererLifecycle({
+  createServer: createServerResource,
+  listen: listenResource,
+  launch,
+  render,
+}) {
+  let server;
+  let browser;
+  let result;
+  let primaryError;
+  try {
+    server = await createServerResource();
+    const port = await listenResource(server);
+    browser = await launch();
+    result = await render({ browser, port, server });
+  } catch (error) {
+    primaryError = error;
+  }
+
+  const cleanupTasks = [];
+  if (browser) cleanupTasks.push(Promise.resolve().then(() => browser.close()));
+  if (server) cleanupTasks.push(Promise.resolve().then(() => closeServer(server)));
+  const cleanupResults = await Promise.allSettled(cleanupTasks);
+  const cleanupErrors = cleanupResults
+    .filter(({ status }) => status === 'rejected')
+    .map(({ reason }) => reason instanceof Error ? reason : new Error(String(reason)));
+
+  if (primaryError) {
+    if (cleanupErrors.length) {
+      if (primaryError.cause === undefined) primaryError.cause = cleanupErrors[0];
+      primaryError.cleanupErrors = cleanupErrors.slice(0, 5).map(({ message }) => message);
+    }
+    throw primaryError;
+  }
+  if (cleanupErrors.length) {
+    const [error] = cleanupErrors;
+    error.cleanupErrors = cleanupErrors.slice(0, 5).map(({ message }) => message);
+    throw error;
+  }
+  return result;
 }
 
 async function pageSizeData(page) {
@@ -110,18 +158,17 @@ export async function renderPagedHtml({
   timeout = 300_000,
 }) {
   const documentRoot = dirname(htmlPath);
-  const server = createStaticServer(await Promise.all([
-    { prefix: '/viewer/', root: VIEWER_ROOT },
-    { prefix: '/document/', root: documentRoot },
-  ].map(async (route) => ({ ...route, canonicalRoot: await realpath(route.root) }))));
-  const port = await listen(server);
-  let browser;
-
-  try {
-    browser = await puppeteer.launch({
+  return runRendererLifecycle({
+    createServer: async () => createStaticServer(await Promise.all([
+      { prefix: '/viewer/', root: VIEWER_ROOT },
+      { prefix: '/document/', root: documentRoot },
+    ].map(async (route) => ({ ...route, canonicalRoot: await realpath(route.root) })))),
+    listen,
+    launch: () => puppeteer.launch({
       headless: true,
       args: process.env.CI ? ['--no-sandbox'] : [],
-    });
+    }),
+    render: async ({ browser, port }) => {
     const page = await browser.newPage();
     page.setDefaultTimeout(timeout);
     const pageErrors = [];
@@ -160,8 +207,6 @@ export async function renderPagedHtml({
     });
     await writeFile(pdfPath, pdf);
     return { pageSizeData: sizes };
-  } finally {
-    await browser?.close();
-    await closeServer(server);
-  }
+    },
+  });
 }

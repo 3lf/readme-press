@@ -6,13 +6,18 @@ import {
   realpathSync,
   rmSync,
   symlinkSync,
+  unlinkSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
-import { resolveContainedOutput, resolveContainedSource } from '../src/paths.mjs';
-import { createStaticServer } from '../src/render.mjs';
+import {
+  assertContainedOutputSink,
+  resolveContainedOutput,
+  resolveContainedSource,
+} from '../src/paths.mjs';
+import { createStaticServer, runRendererLifecycle } from '../src/render.mjs';
 import { transformReadme } from '../src/transform.mjs';
 
 const PNG = Buffer.from(
@@ -64,7 +69,6 @@ test('rejects traversal, encoded traversal, absolute, and Windows-style source p
       '../outside.png',
       '%2e%2e/outside.png',
       '/tmp/outside.png',
-      'C:%5Coutside.png',
     ]) {
       assert.throws(() => resolveContainedSource({
         baseDirectory: project,
@@ -72,6 +76,17 @@ test('rejects traversal, encoded traversal, absolute, and Windows-style source p
         reference,
         label: 'Image path',
       }));
+    }
+    for (const reference of [
+      'C:%5Coutside.png',
+      'C:/outside.png',
+    ]) {
+      assert.throws(() => resolveContainedSource({
+        baseDirectory: project,
+        projectRoot: project,
+        reference,
+        label: 'Image path',
+      }), /Image path must be relative/u);
     }
   } finally {
     rmSync(temporary, { recursive: true, force: true });
@@ -117,8 +132,95 @@ test('accepts nested PDF outputs and rejects output escapes', () => {
       () => resolveContainedOutput(output, 'linked/book.pdf', { extension: '.pdf' }),
       /symbolic/u,
     );
+    symlinkSync(join(outside, 'missing'), join(output, 'dangling'));
+    assert.throws(
+      () => resolveContainedOutput(output, 'dangling/book.pdf', { extension: '.pdf' }),
+      /dangling symbolic link/u,
+    );
+
+    const nested = resolveContainedOutput(output, 'editions/race.pdf', { extension: '.pdf' });
+    mkdirSync(join(output, 'editions'));
+    unlinkSync(join(output, 'linked'));
+    rmSync(join(output, 'editions'), { recursive: true });
+    symlinkSync(outside, join(output, 'editions'));
+    assert.throws(
+      () => assertContainedOutputSink(output, nested, { label: 'outputs.normal' }),
+      /symbolic link/u,
+    );
   } finally {
     rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
+test('renderer lifecycle closes every acquired resource and preserves the primary error', async () => {
+  const events = [];
+  const server = {
+    closeAllConnections: () => events.push('server-connections'),
+    close: (callback) => {
+      events.push('server-close');
+      callback(new Error('server close failed'));
+    },
+  };
+  const browser = {
+    close: async () => {
+      events.push('browser-close');
+      throw new Error('browser close failed');
+    },
+  };
+
+  await assert.rejects(
+    runRendererLifecycle({
+      createServer: async () => server,
+      listen: async () => 1234,
+      launch: async () => browser,
+      render: async () => {
+        throw new Error('primary render failed');
+      },
+    }),
+    (error) => {
+      assert.match(error.message, /primary render failed/u);
+      assert.equal(error.cause?.message, 'browser close failed');
+      assert.deepEqual(error.cleanupErrors, ['browser close failed', 'server close failed']);
+      return true;
+    },
+  );
+  assert.deepEqual(events, ['browser-close', 'server-connections', 'server-close']);
+});
+
+test('renderer lifecycle closes a listening server when browser launch fails', async () => {
+  let closes = 0;
+  await assert.rejects(runRendererLifecycle({
+    createServer: async () => ({
+      closeAllConnections() {},
+      close(callback) {
+        closes += 1;
+        callback();
+      },
+    }),
+    listen: async () => 1234,
+    launch: async () => { throw new Error('launch failed'); },
+    render: async () => assert.fail('render should not run'),
+  }), /launch failed/u);
+  assert.equal(closes, 1);
+});
+
+test('deduplicates repeated missing figure diagnostics by source reference', async () => {
+  const project = mkdtempSync(join(tmpdir(), 'readme-press-missing-figures-'));
+  try {
+    const result = await transformReadme(markdownWith(`![First](missing.png)
+
+![Again](missing.png)
+
+![Other](other.png)`), transformConfig(project), { sourceDir: project });
+    assert.deepEqual(
+      result.diagnostics.filter(({ code }) => code === 'MISSING_FIGURE_FILE'),
+      [
+        { code: 'MISSING_FIGURE_FILE', detail: 'missing.png' },
+        { code: 'MISSING_FIGURE_FILE', detail: 'other.png' },
+      ],
+    );
+  } finally {
+    rmSync(project, { recursive: true, force: true });
   }
 });
 

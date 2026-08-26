@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import {
   mkdtempSync,
   mkdirSync,
+  realpathSync,
   readFileSync,
   readdirSync,
   rmSync,
@@ -71,6 +72,37 @@ test('keeps print output opt-in for existing configurations', async () => {
 };\n`);
     const config = await loadConfig('readme-press.config.mjs', temporary);
     assert.deepEqual(config.outputs, { normal: 'legacy.pdf', high: 'legacy-high.pdf' });
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
+test('requires projectRoot to resolve to an existing directory', async () => {
+  const temporary = mkdtempSync(join(tmpdir(), 'readme-press-project-root-'));
+  const writeConfig = (name, projectRoot) => writeFileSync(join(temporary, name), `export default {
+  source: 'README.md',
+  projectRoot: ${JSON.stringify(projectRoot)},
+  metadata: { title: 'Book', author: 'Author', edition: 'First' },
+  repository: { url: 'https://github.com/example/book' },
+  cover: { enabled: false },
+  structure: {
+    introHeading: 'Introduction',
+    githubTocHeading: 'Contents',
+    parts: [{ title: 'Part', startHeading: 'Chapter' }],
+  },
+};\n`);
+  try {
+    writeFileSync(join(temporary, 'README.md'), '# Introduction\n\n# Contents\n\n# Chapter\n');
+    writeConfig('missing.config.mjs', 'missing');
+    await assert.rejects(loadConfig('missing.config.mjs', temporary), /projectRoot.*directory/u);
+    writeFileSync(join(temporary, 'not-a-directory'), 'x');
+    writeConfig('file.config.mjs', 'not-a-directory');
+    await assert.rejects(loadConfig('file.config.mjs', temporary), /projectRoot.*directory/u);
+    mkdirSync(join(temporary, 'content'));
+    writeConfig('valid.config.mjs', 'content');
+    const config = await loadConfig('valid.config.mjs', temporary);
+    assert.equal(config.contentRoot, realpathSync(join(temporary, 'content')));
+    assert.equal(config.projectRoot, temporary);
   } finally {
     rmSync(temporary, { recursive: true, force: true });
   }

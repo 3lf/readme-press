@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { existsSync, realpathSync, statSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { resolveContainedOutput } from './paths.mjs';
@@ -55,6 +55,10 @@ export async function loadConfig(configFile = 'readme-press.config.mjs', cwd = p
   const contentRoot = raw.projectRoot
     ? resolveConfigFile(configRoot, raw.projectRoot)
     : dirname(sourcePath);
+  if (!existsSync(contentRoot) || !statSync(contentRoot).isDirectory()) {
+    throw new Error(`Configured projectRoot must be an existing directory: ${contentRoot}`);
+  }
+  const canonicalContentRoot = realpathSync(contentRoot);
   const themeName = typeof raw.theme === 'string' ? raw.theme : raw.theme?.name;
   const themeDirectory = typeof raw.theme === 'object' ? raw.theme.directory : null;
   const themeRoot = themeDirectory
@@ -78,7 +82,7 @@ export async function loadConfig(configFile = 'readme-press.config.mjs', cwd = p
     configFile: absoluteConfig,
     configRoot,
     projectRoot: configRoot,
-    contentRoot,
+    contentRoot: canonicalContentRoot,
     packageRoot: PACKAGE_ROOT,
     sourcePath,
     outputDir: resolveConfigFile(configRoot, raw.outputDir, 'dist'),

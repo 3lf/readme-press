@@ -26,6 +26,7 @@ import sharp from 'sharp';
 import { loadConfig } from './config.mjs';
 import { renderCover } from './cover.mjs';
 import { renderPagedHtml } from './render.mjs';
+import { assertContainedOutputSink } from './paths.mjs';
 import { normalizeReleaseVersion } from './release.mjs';
 import { buildDocument } from './template.mjs';
 import { transformReadme } from './transform.mjs';
@@ -398,7 +399,9 @@ export async function runBuild({ configFile, quality = 'normal', releaseVersion:
       htmlPath,
       pdfPath: bodyPdf,
     });
+    assertContainedOutputSink(outputDir, outputPath, { label: `outputs.${requested}` });
     mkdirSync(dirname(outputPath), { recursive: true });
+    assertContainedOutputSink(outputDir, outputPath, { label: `outputs.${requested}` });
     const finalized = await finalizePdf(
       bodyPdf,
       coverPdfs.get(requested) ?? null,
