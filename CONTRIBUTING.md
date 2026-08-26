@@ -32,6 +32,12 @@ Install the locked dependency tree with `npm ci`. Do not edit
 5. Keep generated fixture output, caches, tarballs, and consumer artifacts out
    of commits.
 
+Release PRs with renderer or security changes also require the manual visual
+gate in `docs/testing.md`. The owner supplies a same-environment production-book
+baseline, rasterizes every page at the documented DPI, and records a zero-diff
+result when the change is not expected to affect appearance. CI does not
+perform or approve this gate today.
+
 Use small commits with imperative English subjects. Pull requests should state
 the compatibility impact, security impact, tests run, and whether PDF rendering
 is expected to change.

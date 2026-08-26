@@ -47,7 +47,9 @@ covered in addition to direct CLI execution.
 
 ### Release visual regression
 
-For a renderer or security release, build the current production book and its
+This is a manual, owner-supplied release gate. Repository automation does not
+currently create or approve the production-book baseline. Before approving a
+renderer or security release, the owner must build the current production book and its
 approved baseline from clean, temporary source archives with the same Node,
 Chromium, Poppler, fonts, and raster DPI. Compare every rasterized page by
 cryptographic hash. When a milestone declares no visual change, every page in
@@ -61,4 +63,6 @@ transform diagnostics in safe mode, `qpdf --check` success, and a clean
 
 Pull requests should list the exact commands run and summarize artifact counts.
 Do not commit generated PDFs or caches. Release pull requests must additionally
-record the source tag and commit used for the real-book baseline and candidate.
+record the source tag and commit used for the real-book baseline and candidate,
+and attach or link the all-page hash comparison result. A green CI run does not
+substitute for this manual evidence.
