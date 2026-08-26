@@ -4,7 +4,7 @@ const ERROR_CODES = new Set([
 ]);
 
 export function normalizeDiagnostics(diagnostics, mode = 'warn') {
-  return diagnostics.map((diagnostic) => {
+  const normalized = diagnostics.map((diagnostic) => {
     const baseSeverity = diagnostic.severity
       ?? (ERROR_CODES.has(diagnostic.code) ? 'error' : 'warning');
     return {
@@ -12,6 +12,17 @@ export function normalizeDiagnostics(diagnostics, mode = 'warn') {
       severity: mode === 'strict' && baseSeverity === 'warning' ? 'error' : baseSeverity,
     };
   });
+  const ranks = { warning: 1, error: 2 };
+  const byIdentity = new Map();
+  for (const diagnostic of normalized) {
+    const identity = `${diagnostic.code}\0${JSON.stringify(diagnostic.detail ?? null)}`;
+    const existing = byIdentity.get(identity);
+    if (!existing) byIdentity.set(identity, diagnostic);
+    else if ((ranks[diagnostic.severity] ?? 0) > (ranks[existing.severity] ?? 0)) {
+      byIdentity.set(identity, { ...existing, severity: diagnostic.severity });
+    }
+  }
+  return [...byIdentity.values()];
 }
 
 export function assertNoDiagnosticErrors(diagnostics) {

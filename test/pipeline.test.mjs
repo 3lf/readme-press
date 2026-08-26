@@ -7,6 +7,7 @@ import {
   readFileSync,
   readdirSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -16,6 +17,7 @@ import {
   createStagingDirectory,
   publishStagedBuild,
   readGeneratedOwnership,
+  reapAbandonedStagingDirectories,
   removeStagingDirectory,
   writeStagedManifest,
 } from '../src/artifacts.mjs';
@@ -56,6 +58,96 @@ test('publishes a staged manifest last and removes only previously owned stale f
     );
   } finally {
     removeStagingDirectory(staging);
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
+test('canonical ownership aliases cannot delete a newly published artifact', () => {
+  const temporary = mkdtempSync(join(tmpdir(), 'readme-press-ownership-alias-'));
+  const output = join(temporary, 'dist');
+  mkdirSync(output);
+  writeFileSync(join(output, 'manifest.json'), JSON.stringify({ generatedFiles: ['./book.pdf'] }));
+  const staging = createStagingDirectory(output);
+  try {
+    writeFileSync(join(staging, 'book.pdf'), 'new book');
+    writeStagedManifest(staging, { outputs: { normal: { pdf: 'book.pdf' } } });
+    const ownership = readGeneratedOwnership(output);
+    assert.deepEqual(ownership.files, ['book.pdf']);
+    publishStagedBuild({ stagingDirectory: staging, outputDirectory: output, previousFiles: ownership.files });
+    assert.equal(readFileSync(join(output, 'book.pdf'), 'utf8'), 'new book');
+  } finally {
+    removeStagingDirectory(staging);
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
+test('rejects malformed ownership records without claiming user files', () => {
+  const temporary = mkdtempSync(join(tmpdir(), 'readme-press-invalid-ownership-'));
+  const output = join(temporary, 'dist');
+  mkdirSync(output);
+  try {
+    writeFileSync(join(output, 'user.txt'), 'user content');
+    writeFileSync(join(output, 'manifest.json'), JSON.stringify({
+      generatedFiles: [null, 1, '', '.', '../escape', '/absolute', 'user.txt\0suffix'],
+    }));
+    const ownership = readGeneratedOwnership(output);
+    assert.deepEqual(ownership.files, []);
+    assert.equal(ownership.diagnostics.length, 7);
+    assert.equal(readFileSync(join(output, 'user.txt'), 'utf8'), 'user content');
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
+test('cleanup failures leave the previous manifest authoritative', () => {
+  const temporary = mkdtempSync(join(tmpdir(), 'readme-press-manifest-last-'));
+  const output = join(temporary, 'dist');
+  const outside = join(temporary, 'outside');
+  mkdirSync(output);
+  mkdirSync(outside);
+  const previousManifest = '{"generatedFiles":["linked/stale.pdf"],"build":"previous"}\n';
+  writeFileSync(join(output, 'manifest.json'), previousManifest);
+  symlinkSync(outside, join(output, 'linked'));
+  const staging = createStagingDirectory(output);
+  try {
+    writeFileSync(join(staging, 'book.pdf'), 'new book');
+    writeStagedManifest(staging, { build: 'candidate' });
+    assert.throws(() => publishStagedBuild({
+      stagingDirectory: staging,
+      outputDirectory: output,
+      previousFiles: ['linked/stale.pdf'],
+    }), /symbolic link/u);
+    assert.equal(readFileSync(join(output, 'manifest.json'), 'utf8'), previousManifest);
+  } finally {
+    removeStagingDirectory(staging);
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
+test('reaps only dead same-output staging directories', () => {
+  const temporary = mkdtempSync(join(tmpdir(), 'readme-press-stage-reaper-'));
+  const output = join(temporary, 'dist');
+  try {
+    const abandoned = createStagingDirectory(output, {
+      reap: false,
+      owner: { host: 'test-host', pid: 111, timestamp: 1 },
+    });
+    const current = createStagingDirectory(output, {
+      reap: false,
+      owner: { host: 'test-host', pid: 222, timestamp: 2 },
+    });
+    writeFileSync(join(abandoned, 'partial.pdf'), 'partial');
+    const cleanup = reapAbandonedStagingDirectories(output, {
+      now: 10_000,
+      host: 'test-host',
+      isProcessAlive: (pid) => pid === 222,
+      foreignMinAgeMs: 60_000,
+    });
+    assert.equal(existsSync(abandoned), false);
+    assert.equal(existsSync(current), true);
+    assert.equal(cleanup.reaped, 1);
+    assert.deepEqual(cleanup.paths, [abandoned.split('/').at(-1)]);
+  } finally {
     rmSync(temporary, { recursive: true, force: true });
   }
 });
@@ -128,6 +220,17 @@ test('diagnostic policy promotes warnings only in strict mode', () => {
   const strict = normalizeDiagnostics(warning, 'strict');
   assert.equal(strict[0].severity, 'error');
   assert.throws(() => assertNoDiagnosticErrors(strict), /RAW_HTML_SANITIZED/u);
+});
+
+test('diagnostic normalization deduplicates code and detail with highest severity', () => {
+  assert.deepEqual(normalizeDiagnostics([
+    { code: 'RAW_HTML_SANITIZED', detail: '<script>' },
+    { code: 'RAW_HTML_SANITIZED', detail: '<script>', severity: 'error' },
+    { code: 'RAW_HTML_SANITIZED', detail: '<style>' },
+  ], 'warn'), [
+    { code: 'RAW_HTML_SANITIZED', detail: '<script>', severity: 'error' },
+    { code: 'RAW_HTML_SANITIZED', detail: '<style>', severity: 'warning' },
+  ]);
 });
 
 test('preflight failures name the missing tool and installation path', () => {

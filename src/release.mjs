@@ -9,6 +9,7 @@ import {
   writeFileSync,
 } from 'fs';
 import { dirname, resolve } from 'path';
+import { addGeneratedOwnership } from './artifacts.mjs';
 
 const VERSION_RE = /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/;
 
@@ -156,12 +157,10 @@ ${copy.validation.map((item) => `- ${markdownText(item)}`).join('\n')}
 `;
   atomicWrite(resolve(outputDir, 'release-notes.md'), notes);
   if (resolve(outputDir) === dist) {
-    manifest.generatedFiles = [...new Set([
-      ...(manifest.generatedFiles ?? []),
-      'manifest.json',
+    Object.assign(manifest, addGeneratedOwnership(manifest, dist, [
       'release-notes.md',
       'SHA256SUMS.txt',
-    ])].sort();
+    ]));
     atomicWrite(resolve(manifestPath), `${JSON.stringify(manifest, null, 2)}\n`);
   }
 

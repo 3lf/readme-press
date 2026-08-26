@@ -28,6 +28,7 @@ import {
   createStagingDirectory,
   publishStagedBuild,
   readGeneratedOwnership,
+  reapAbandonedStagingDirectories,
   removeStagingDirectory,
   writeStagedManifest,
 } from './artifacts.mjs';
@@ -336,7 +337,8 @@ export async function runBuild({ configFile, quality = 'normal', releaseVersion:
   };
 
   const ownership = readGeneratedOwnership(config.outputDir);
-  const outputDir = createStagingDirectory(config.outputDir);
+  const stagingCleanup = reapAbandonedStagingDirectories(config.outputDir);
+  const outputDir = createStagingDirectory(config.outputDir, { reap: false });
   try {
   const markdown = readFileSync(config.sourcePath, 'utf8');
   const sourceSha256 = createHash('sha256').update(markdown).digest('hex');
@@ -462,14 +464,25 @@ export async function runBuild({ configFile, quality = 'normal', releaseVersion:
       .map((image) => image.losslessUrl),
     repositoryQr,
     diagnostics: result.diagnostics,
+    publication: {
+      cleanup: {
+        reaped: stagingCleanup.reaped,
+        reapedPaths: stagingCleanup.paths,
+        reapedPathsTruncated: stagingCleanup.truncated,
+      },
+    },
   };
-  const completeManifest = writeStagedManifest(outputDir, manifest);
-  publishStagedBuild({
+  writeStagedManifest(outputDir, manifest);
+  const publication = publishStagedBuild({
     stagingDirectory: outputDir,
     outputDirectory: config.outputDir,
     previousFiles: ownership.files,
   });
-  return completeManifest;
+  const cleanup = publication.cleanup;
+  if (cleanup.reaped || cleanup.removed) {
+    console.log(`Publication cleanup: ${cleanup.reaped ?? 0} staging director${cleanup.reaped === 1 ? 'y' : 'ies'} reaped, ${cleanup.removed ?? 0} stale artifact(s) removed.`);
+  }
+  return publication.manifest;
   } finally {
     removeStagingDirectory(outputDir);
   }
