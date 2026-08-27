@@ -7,7 +7,6 @@ import {
   mkdtempSync,
   readFileSync,
   readdirSync,
-  realpathSync,
   renameSync,
   rmdirSync,
   rmSync,
@@ -15,10 +14,13 @@ import {
 } from 'node:fs';
 import { hostname as systemHostname } from 'node:os';
 import { dirname, join, relative, resolve, sep } from 'node:path';
-import { assertContainedOutputSink, resolveContainedOutput } from './paths.mjs';
+import {
+  assertContainedOutputSink,
+  outputComparisonIdentity,
+  resolveContainedOutput,
+} from './paths.mjs';
 
 const STAGE_VERSION = 'v1';
-const DEFAULT_FOREIGN_STAGE_AGE_MS = 24 * 60 * 60 * 1000;
 const TELEMETRY_PATH_LIMIT = 20;
 
 function portableRelative(root, path) {
@@ -46,8 +48,8 @@ function boundedCleanup(paths) {
   };
 }
 
-function canonicalOwnershipPath(outputDirectory, file, label = 'Generated file') {
-  if (typeof file !== 'string' || !file || file.includes('\0')) {
+function lexicalOwnershipPath(outputDirectory, file, label = 'Generated file') {
+  if (typeof file !== 'string' || !file) {
     throw new Error(`${label} must be a non-empty relative path.`);
   }
   const output = resolve(outputDirectory);
@@ -55,10 +57,12 @@ function canonicalOwnershipPath(outputDirectory, file, label = 'Generated file')
   if (existsSync(target) && lstatSync(target).isDirectory()) {
     throw new Error(`${label} must identify a file: ${file}`);
   }
-  if (existsSync(output) && existsSync(target)) {
-    return portableRelative(realpathSync(output), realpathSync(target));
-  }
   return portableRelative(output, target);
+}
+
+function ownershipComparisonIdentity(outputDirectory, file, label = 'Generated file') {
+  const lexical = lexicalOwnershipPath(outputDirectory, file, label);
+  return outputComparisonIdentity(outputDirectory, lexical, { label });
 }
 
 export function listArtifactFiles(root) {
@@ -75,10 +79,8 @@ export function listArtifactFiles(root) {
 }
 
 export function reapAbandonedStagingDirectories(outputDirectory, {
-  now = Date.now(),
   host = systemHostname(),
   isProcessAlive = processIsAlive,
-  foreignMinAgeMs = DEFAULT_FOREIGN_STAGE_AGE_MS,
 } = {}) {
   const output = resolve(outputDirectory);
   const parent = dirname(output);
@@ -99,8 +101,9 @@ export function reapAbandonedStagingDirectories(outputDirectory, {
     const ownerPid = Number(match[2]);
     const createdAt = Number(match[3]);
     const sameHost = ownerHostHash === localHostHash;
-    if (sameHost && isProcessAlive(ownerPid)) continue;
-    if (!sameHost && now - createdAt < foreignMinAgeMs) continue;
+    if (!Number.isSafeInteger(ownerPid) || ownerPid < 1) continue;
+    if (!Number.isSafeInteger(createdAt) || createdAt < 0) continue;
+    if (!sameHost || isProcessAlive(ownerPid)) continue;
     rmSync(path, { recursive: true, force: true });
     removed.push(entry.name);
   }
@@ -157,7 +160,7 @@ export function readGeneratedOwnership(outputDirectory) {
   const diagnostics = [];
   for (const file of manifest.generatedFiles) {
     try {
-      files.push(canonicalOwnershipPath(outputDirectory, file, 'Previous generated file'));
+      files.push(lexicalOwnershipPath(outputDirectory, file, 'Previous generated file'));
     } catch {
       diagnostics.push({
         code: 'INVALID_GENERATED_FILE_OWNERSHIP',
@@ -169,17 +172,17 @@ export function readGeneratedOwnership(outputDirectory) {
   return { files: [...new Set(files)].sort(), diagnostics };
 }
 
-function atomicCopy(source, output, target, label) {
+function atomicCopy(source, output, target, label, operations) {
   assertContainedOutputSink(output, target, { label });
   mkdirSync(dirname(target), { recursive: true });
   assertContainedOutputSink(output, target, { label });
   const temporary = `${target}.readme-press-${process.pid}-${randomUUID()}`;
   try {
     assertContainedOutputSink(output, temporary, { label: `${label} temporary file` });
-    copyFileSync(source, temporary);
+    operations.copyFile(source, temporary);
     assertContainedOutputSink(output, temporary, { label: `${label} temporary file` });
     assertContainedOutputSink(output, target, { label });
-    renameSync(temporary, target);
+    operations.rename(temporary, target);
   } finally {
     rmSync(temporary, { force: true });
   }
@@ -199,12 +202,23 @@ function pruneEmptyParents(path, root) {
 
 export function addGeneratedOwnership(manifest, outputDirectory, files) {
   const owned = [...(manifest.generatedFiles ?? []), ...files]
-    .map((file) => canonicalOwnershipPath(outputDirectory, file))
+    .map((file) => lexicalOwnershipPath(outputDirectory, file))
     .filter((file) => file !== 'manifest.json');
   return { ...manifest, generatedFiles: [...new Set([...owned, 'manifest.json'])].sort() };
 }
 
-export function publishStagedBuild({ stagingDirectory, outputDirectory, previousFiles }) {
+export function publishStagedBuild({
+  stagingDirectory,
+  outputDirectory,
+  previousFiles,
+  operations: overrides = {},
+}) {
+  const operations = {
+    copyFile: copyFileSync,
+    rename: renameSync,
+    writeFile: writeFileSync,
+    ...overrides,
+  };
   const output = resolve(outputDirectory);
   const files = listArtifactFiles(stagingDirectory);
   if (!files.includes('manifest.json')) throw new Error('Staged build has no manifest.json.');
@@ -212,22 +226,28 @@ export function publishStagedBuild({ stagingDirectory, outputDirectory, previous
   mkdirSync(output, { recursive: true });
   for (const file of nonManifest) {
     const target = resolveContainedOutput(output, file, { label: 'Generated artifact' });
-    atomicCopy(resolve(stagingDirectory, file), output, target, 'Generated artifact');
+    atomicCopy(resolve(stagingDirectory, file), output, target, 'Generated artifact', operations);
   }
 
-  const current = new Set(files.map((file) => canonicalOwnershipPath(output, file)));
+  const current = new Set(files.map((file) => ownershipComparisonIdentity(output, file)));
   const removed = [];
   for (const file of previousFiles) {
-    const canonical = canonicalOwnershipPath(output, file, 'Stale generated file');
-    if (current.has(canonical) || canonical === 'manifest.json') continue;
-    const target = resolveContainedOutput(output, canonical, { label: 'Stale generated file' });
+    const lexical = lexicalOwnershipPath(output, file, 'Stale generated file');
+    const identity = ownershipComparisonIdentity(output, lexical, 'Stale generated file');
+    if (current.has(identity) || lexical === 'manifest.json') continue;
+    const target = resolveContainedOutput(output, lexical, { label: 'Stale generated file' });
     assertContainedOutputSink(output, target, { label: 'Stale generated file' });
-    if (!existsSync(target)) continue;
-    const info = lstatSync(target);
+    let info;
+    try {
+      info = lstatSync(target);
+    } catch (error) {
+      if (error?.code === 'ENOENT') continue;
+      throw error;
+    }
     if (!info.isFile() && !info.isSymbolicLink()) continue;
     assertContainedOutputSink(output, target, { label: 'Stale generated file' });
     rmSync(target, { force: true });
-    removed.push(canonical);
+    removed.push(lexical);
     pruneEmptyParents(target, output);
   }
 
@@ -243,9 +263,9 @@ export function publishStagedBuild({ stagingDirectory, outputDirectory, previous
       removedPathsTruncated: removedCleanup.truncated,
     },
   };
-  writeFileSync(stagedManifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+  operations.writeFile(stagedManifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
   const manifestTarget = resolveContainedOutput(output, 'manifest.json', { label: 'Build manifest' });
-  atomicCopy(stagedManifestPath, output, manifestTarget, 'Build manifest');
+  atomicCopy(stagedManifestPath, output, manifestTarget, 'Build manifest', operations);
   return { files, cleanup: manifest.publication.cleanup, manifest };
 }
 

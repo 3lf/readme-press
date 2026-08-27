@@ -288,6 +288,76 @@ test('prepares checksums and neutral release notes from verified outputs', () =>
   }
 });
 
+test('release preparation rejects unsafe manifest PDF paths and accepts nested PDFs', () => {
+  const temporary = mkdtempSync(join(tmpdir(), 'readme-press-release-paths-'));
+  try {
+    const dist = join(temporary, 'dist');
+    const releaseOutput = join(temporary, 'release');
+    mkdirSync(dist);
+    const commit = 'a'.repeat(40);
+    const outside = join(temporary, 'outside.pdf');
+    writeFileSync(outside, 'outside pdf');
+    symlinkSync(outside, join(dist, 'linked.pdf'));
+    mkdirSync(join(dist, 'nested'));
+    writeFileSync(join(dist, 'nested/book.pdf'), 'nested pdf');
+    writeFileSync(join(dist, 'book-high.pdf'), 'high pdf');
+    writeFileSync(join(dist, 'line\nbreak.pdf'), 'control pdf');
+    writeFileSync(join(dist, 'tab\tbreak.pdf'), 'tab control pdf');
+
+    const outputRecord = (pdf, physicalPath) => {
+      const bytes = readFileSync(physicalPath);
+      return {
+        pdf,
+        pageCount: 8,
+        bytes: bytes.length,
+        sha256: createHash('sha256').update(bytes).digest('hex'),
+      };
+    };
+    const high = outputRecord('book-high.pdf', join(dist, 'book-high.pdf'));
+    const manifestPath = join(dist, 'manifest.json');
+    const writeManifest = (normal) => writeFileSync(manifestPath, JSON.stringify({
+      releaseVersion: 'v1.0.0',
+      sourceCommit: commit,
+      repository: { url: 'https://github.com/example/book' },
+      outputs: { normal, high },
+    }));
+
+    const invalid = [
+      ['../outside.pdf', outside],
+      ['%2e%2e/outside.pdf', outside],
+      [outside, outside],
+      ['C:/outside.pdf', outside],
+      ['linked.pdf', outside],
+      ['line\nbreak.pdf', join(dist, 'line\nbreak.pdf')],
+      ['tab\tbreak.pdf', join(dist, 'tab\tbreak.pdf')],
+    ];
+    for (const [pdf, physicalPath] of invalid) {
+      writeManifest(outputRecord(pdf, physicalPath));
+      assert.throws(
+        () => prepareRelease({
+          version: 'v1.0.0', manifestPath, outputDir: releaseOutput, commit,
+        }),
+        /Manifest normal PDF|ASCII control/u,
+        pdf,
+      );
+    }
+
+    writeManifest({ ...high, pdf: 'book\u0000.pdf' });
+    assert.throws(
+      () => prepareRelease({ version: 'v1.0.0', manifestPath, outputDir: releaseOutput, commit }),
+      /ASCII control/u,
+    );
+
+    writeManifest(outputRecord('nested/book.pdf', join(dist, 'nested/book.pdf')));
+    const result = prepareRelease({
+      version: 'v1.0.0', manifestPath, outputDir: releaseOutput, commit,
+    });
+    assert.equal(result.normal.path, join(dist, 'nested/book.pdf'));
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
 test('verifies every requested render directory against the manifest', () => {
   const temporary = mkdtempSync(join(tmpdir(), 'readme-press-render-'));
   try {

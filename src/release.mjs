@@ -10,6 +10,7 @@ import {
 } from 'fs';
 import { dirname, resolve } from 'path';
 import { addGeneratedOwnership } from './artifacts.mjs';
+import { resolveManifestPdfPath } from './manifest.mjs';
 
 const VERSION_RE = /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/;
 
@@ -65,7 +66,7 @@ function atomicWrite(path, content) {
 function requireOutput(manifest, quality, dist) {
   const output = manifest.outputs?.[quality];
   if (!output) throw new Error(`Manifest has no ${quality} output.`);
-  const pdfPath = resolve(dist, output.pdf);
+  const pdfPath = resolveManifestPdfPath(dist, output, { quality });
   if (!existsSync(pdfPath)) throw new Error(`Missing release file: ${output.pdf}`);
   const bytes = statSync(pdfPath).size;
   const sha256 = fileSha256(pdfPath);

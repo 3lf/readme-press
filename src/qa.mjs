@@ -9,6 +9,7 @@ import sharp from 'sharp';
 import { loadConfig } from './config.mjs';
 import { preflightQa } from './preflight.mjs';
 import { normalizeReleaseVersion } from './release.mjs';
+import { resolveManifestPdfPath } from './manifest.mjs';
 
 function runTool(command, args, options = {}) {
   try {
@@ -179,7 +180,7 @@ export async function runQa({
   for (const requested of qualities) {
     const output = manifest.outputs?.[requested];
     if (!output) throw new Error(`Manifest has no ${requested} output. Build it before QA.`);
-    const pdfPath = resolve(config.outputDir, output.pdf);
+    const pdfPath = resolveManifestPdfPath(config.outputDir, output, { quality: requested });
     const bytes = readFileSync(pdfPath);
     const doc = await PDFDocument.load(bytes);
     const pageCount = doc.getPageCount();
