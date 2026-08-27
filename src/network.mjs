@@ -132,7 +132,9 @@ export async function installRequestPolicy(page, policy, {
       async disable() {
         page.off('request', handleOfflineRequest);
         await drain();
-        await page.setOfflineMode(false);
+        if (typeof page.isClosed !== 'function' || !page.isClosed()) {
+          await page.setOfflineMode(false);
+        }
       },
     };
   }
@@ -166,7 +168,9 @@ export async function installRequestPolicy(page, policy, {
     async disable() {
       page.off('request', handleRequest);
       await drain();
-      await page.setRequestInterception(false);
+      if (typeof page.isClosed !== 'function' || !page.isClosed()) {
+        await page.setRequestInterception(false);
+      }
     },
   };
 }
