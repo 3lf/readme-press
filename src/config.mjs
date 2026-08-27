@@ -1,9 +1,17 @@
 import { existsSync, realpathSync, statSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { resolveContainedOutput } from './paths.mjs';
+import { outputComparisonIdentity, resolveContainedOutput } from './paths.mjs';
 
 const PACKAGE_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+
+const PIPELINE_PDF_NAMES = [
+  'body.pdf',
+  'body-high-quality.pdf',
+  'body-print.pdf',
+  'cover.pdf',
+  'cover-print.pdf',
+];
 
 const DEFAULT_LABELS = {
   colophon: 'شناسنامه',
@@ -72,9 +80,6 @@ export async function loadConfig(configFile = 'readme-press.config.mjs', cwd = p
   };
   if (raw.outputs?.print !== undefined) {
     outputs.print = required(raw.outputs.print, 'outputs.print');
-  }
-  if (new Set(Object.values(outputs)).size !== Object.values(outputs).length) {
-    throw new Error('Output filenames must be unique.');
   }
 
   const config = {
@@ -182,11 +187,47 @@ export async function loadConfig(configFile = 'readme-press.config.mjs', cwd = p
     release: raw.release ?? {},
   };
 
-  for (const [quality, output] of Object.entries(config.outputs)) {
+  const outputEntries = Object.entries(config.outputs).map(([quality, output]) => {
     resolveContainedOutput(config.outputDir, output, {
       extension: '.pdf',
       label: `outputs.${quality}`,
     });
+    return {
+      quality,
+      output,
+      identity: outputComparisonIdentity(config.outputDir, output, {
+        extension: '.pdf',
+        label: `outputs.${quality}`,
+      }),
+    };
+  });
+  const pipelineIdentities = new Set(PIPELINE_PDF_NAMES.map((name) => (
+    outputComparisonIdentity(config.outputDir, name, {
+      extension: '.pdf',
+      label: `Pipeline-owned output ${name}`,
+    })
+  )));
+  const configuredIdentities = new Map();
+  for (const { quality, output, identity } of outputEntries) {
+    if (pipelineIdentities.has(identity)) {
+      throw new Error(`outputs.${quality} uses a pipeline-owned PDF name: ${output}`);
+    }
+    const previous = configuredIdentities.get(identity);
+    if (previous) {
+      throw new Error(`Output filenames must be unique after path normalization: outputs.${previous} and outputs.${quality}.`);
+    }
+    configuredIdentities.set(identity, quality);
+  }
+  for (const { quality, output } of outputEntries) {
+    const linearized = String(output).replace(/\.pdf$/iu, '.linearized.pdf');
+    const identity = outputComparisonIdentity(config.outputDir, linearized, {
+      extension: '.pdf',
+      label: `outputs.${quality} linearization file`,
+    });
+    const collision = configuredIdentities.get(identity);
+    if (collision) {
+      throw new Error(`outputs.${quality} linearization file collides with outputs.${collision}.`);
+    }
   }
 
   for (const [label, path] of [

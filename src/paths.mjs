@@ -55,7 +55,14 @@ export function resolveContainedOutput(outputDirectory, relativePath, {
   extension,
   label = 'Output path',
 } = {}) {
+  const raw = String(relativePath ?? '');
+  if (/[\u0000-\u001f\u007f]/u.test(raw)) {
+    throw new Error(`${label} must not contain ASCII control characters.`);
+  }
   const decoded = decodeLocalReference(relativePath, label);
+  if (/[\u0000-\u001f\u007f]/u.test(decoded)) {
+    throw new Error(`${label} must not contain ASCII control characters.`);
+  }
   if (extension && extname(decoded).toLowerCase() !== extension.toLowerCase()) {
     throw new Error(`${label} must end in ${extension}: ${relativePath}`);
   }
@@ -65,6 +72,23 @@ export function resolveContainedOutput(outputDirectory, relativePath, {
 
   assertContainedOutputSink(root, target, { label, reference: relativePath });
   return target;
+}
+
+export function outputComparisonIdentity(outputDirectory, relativePath, {
+  extension,
+  label = 'Output path',
+  platform = process.platform,
+} = {}) {
+  const target = resolveContainedOutput(outputDirectory, relativePath, { extension, label });
+  let canonicalTarget;
+  if (existsSync(target)) {
+    canonicalTarget = realpathSync(target);
+  } else {
+    const existingParent = nearestExistingDirectory(dirname(target));
+    canonicalTarget = resolve(realpathSync(existingParent), relative(existingParent, target));
+  }
+  const normalized = canonicalTarget.normalize('NFC');
+  return platform === 'darwin' || platform === 'win32' ? normalized.toLowerCase() : normalized;
 }
 
 export function assertContainedOutputSink(outputDirectory, targetPath, {
