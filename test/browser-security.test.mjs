@@ -100,11 +100,15 @@ test('cover capture keeps explicit network policies active until the page closes
 <div class="cover"><span class="repo-url">Repository</span></div>
 <script>
   const readBounds = Element.prototype.getBoundingClientRect;
-  let delayedRequestScheduled = false;
+  let captureBoundaryRequestStarted = false;
   Element.prototype.getBoundingClientRect = function getBoundingClientRect() {
-    if (!delayedRequestScheduled && this.classList.contains('cover')) {
-      delayedRequestScheduled = true;
-      setTimeout(() => fetch('${base}/delayed').catch(() => {}), 25);
+    if (!captureBoundaryRequestStarted && this.classList.contains('cover')) {
+      captureBoundaryRequestStarted = true;
+      // Start egress only at the final post-stabilization layout boundary. A
+      // synchronous request makes that boundary deterministic across Chromium speeds.
+      const request = new XMLHttpRequest();
+      request.open('GET', '${base}/delayed', false);
+      try { request.send(); } catch {}
     }
     return readBounds.call(this);
   };
