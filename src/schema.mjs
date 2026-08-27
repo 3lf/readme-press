@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { PROSE_RULE_MATCHERS } from './content-rules.mjs';
 import { ReadmePressError } from './errors.mjs';
 
 const stringRecordSchema = z.record(z.string(), z.string());
@@ -58,9 +59,12 @@ const mermaidSchema = z.object({
   cacheDir: z.string().optional(), config: z.string().optional(), font: z.string().optional(),
   fontFamily: z.string().optional(), puppeteerConfig: z.string().optional(),
 }).passthrough();
+const proseMatcherShape = Object.fromEntries(
+  PROSE_RULE_MATCHERS.map((matcher) => [matcher, z.string().min(1).optional()]),
+);
 const proseRuleSchema = z.object({
-  contains: z.string().optional(), startsWith: z.string().optional(), className: z.string(),
-}).passthrough().refine((rule) => Boolean(rule.contains || rule.startsWith), {
+  ...proseMatcherShape, className: z.string(),
+}).passthrough().refine((rule) => PROSE_RULE_MATCHERS.some((matcher) => Boolean(rule[matcher])), {
   message: 'at least one of contains or startsWith is required',
 });
 const chapterRuleSchema = z.object({ titleStartsWith: z.string().min(1), className: z.string() }).passthrough();

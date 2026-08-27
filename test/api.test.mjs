@@ -78,6 +78,15 @@ test('configuration contracts accept valid chapter rules and reject inert or mis
       && /contains or startsWith/u.test(error.message),
   );
   assert.throws(
+    () => api.validateConfig({
+      ...validConfig,
+      contentRules: { calloutClassRules: [{ className: 'never-matches' }] },
+    }),
+    (error) => error.code === 'ERR_CONFIG_VALIDATION'
+      && /contentRules\.calloutClassRules\.0/u.test(error.message)
+      && /contains or startsWith/u.test(error.message),
+  );
+  assert.throws(
     () => api.validateConfig({ ...validConfig, security: { netwrok: 'deny' } }),
     (error) => error.code === 'ERR_CONFIG_UNKNOWN_SECURITY_KEYS'
       && error.details.keys.includes('security.netwrok'),
