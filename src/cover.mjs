@@ -40,16 +40,18 @@ export async function renderCover(htmlPath, outPath, config) {
     captureData = await withRequestPolicy(
       page,
       networkPolicy,
-      { offlineForDeny: true },
+      {
+        offlineForDeny: true,
+        blockedRequestLabel: 'Network policy blocked cover request',
+      },
       async (requests) => {
-        try {
-          await page.setViewport({
-            width: Math.ceil(cssWidth),
-            height: Math.ceil(cssHeight),
-            deviceScaleFactor: scale,
-          });
-          await page.goto(pathToFileURL(htmlPath).href, { waitUntil: 'networkidle0' });
-          await page.evaluate((data) => {
+        await page.setViewport({
+          width: Math.ceil(cssWidth),
+          height: Math.ceil(cssHeight),
+          deviceScaleFactor: scale,
+        });
+        await page.goto(pathToFileURL(htmlPath).href, { waitUntil: 'networkidle0' });
+        await page.evaluate((data) => {
             document.title = data.documentTitle;
             document.documentElement.dir = data.direction;
             document.documentElement.lang = data.language;
@@ -73,7 +75,7 @@ export async function renderCover(htmlPath, outPath, config) {
             const note = document.querySelector('[data-readme-press="repository-note"]');
             if (note) note.innerHTML = data.repositoryNote;
             document.querySelector('.cover')?.setAttribute('aria-label', data.documentTitle);
-          }, {
+        }, {
             documentTitle: config.metadata.title,
             series: config.cover.series,
             titlePrefix: config.cover.titlePrefix,
@@ -87,44 +89,43 @@ export async function renderCover(htmlPath, outPath, config) {
             direction: config.metadata.direction,
             language: config.metadata.language,
             variant: config.outputVariant ?? 'normal',
-          });
-          await page.evaluate(() => document.fonts.ready);
-          if (requests.blocked.length) {
-            throw new Error(`Network policy blocked cover request: ${requests.blocked.join(', ')}`);
-          }
-          await page.evaluate(() => new Promise((resolvePaint) => {
-            requestAnimationFrame(() => requestAnimationFrame(resolvePaint));
-          }));
-
-          const size = await page.$eval('.cover', (element) => {
-            const rect = element.getBoundingClientRect();
-            return { width: rect.width, height: rect.height };
-          });
-          if (Math.abs(size.width - cssWidth) > 0.75 || Math.abs(size.height - cssHeight) > 0.75) {
-            throw new Error(`Cover canvas is ${size.width}×${size.height} CSS pixels; expected ${cssWidth}×${cssHeight}`);
-          }
-          const repoBounds = await page.$eval('.repo-url', (element) => {
-            const rect = element.getBoundingClientRect();
-            return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
-          });
-
-          await page.screenshot({
-            path: pngPath,
-            type: 'png',
-            clip: { x: 0, y: 0, width: cssWidth, height: cssHeight },
-            captureBeyondViewport: false,
-          });
-          if (requests.blocked.length) {
-            throw new Error(`Network policy blocked cover request: ${requests.blocked.join(', ')}`);
-          }
-          return {
-            repoBounds,
-            externalRequests: stableRequestInventory(requests.observedExternal),
-            blockedRequests: stableRequestInventory(requests.blocked),
-          };
-        } finally {
-          await page.close();
+        });
+        await page.evaluate(() => document.fonts.ready);
+        if (requests.blocked.length) {
+          throw new Error(`Network policy blocked cover request: ${requests.blocked.join(', ')}`);
         }
+        await page.evaluate(() => new Promise((resolvePaint) => {
+          requestAnimationFrame(() => requestAnimationFrame(resolvePaint));
+        }));
+
+        const size = await page.$eval('.cover', (element) => {
+          const rect = element.getBoundingClientRect();
+          return { width: rect.width, height: rect.height };
+        });
+        if (Math.abs(size.width - cssWidth) > 0.75 || Math.abs(size.height - cssHeight) > 0.75) {
+          throw new Error(`Cover canvas is ${size.width}×${size.height} CSS pixels; expected ${cssWidth}×${cssHeight}`);
+        }
+        const repoBounds = await page.$eval('.repo-url', (element) => {
+          const rect = element.getBoundingClientRect();
+          return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+        });
+
+        await page.screenshot({
+          path: pngPath,
+          type: 'png',
+          clip: { x: 0, y: 0, width: cssWidth, height: cssHeight },
+          captureBeyondViewport: false,
+        });
+        if (requests.blocked.length) {
+          throw new Error(`Network policy blocked cover request: ${requests.blocked.join(', ')}`);
+        }
+        return {
+          repoBounds,
+          // Keep the live arrays until the policy-controlled close lifecycle
+          // has observed pagehide keepalives and unload beacons.
+          externalRequests: requests.observedExternal,
+          blockedRequests: requests.blocked,
+        };
       },
     );
   } finally {
@@ -171,7 +172,7 @@ export async function renderCover(htmlPath, outPath, config) {
   }
   await writeFile(outPath, await pdf.save({ useObjectStreams: false }));
   return {
-    externalRequests: captureData.externalRequests,
-    blockedRequests: captureData.blockedRequests,
+    externalRequests: stableRequestInventory(captureData.externalRequests),
+    blockedRequests: stableRequestInventory(captureData.blockedRequests),
   };
 }

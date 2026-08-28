@@ -81,6 +81,7 @@ export async function installRequestPolicy(page, policy, {
   const blocked = [];
   const errors = [];
   const pending = new Set();
+  let activity = 0;
   const recordError = (error) => {
     errors.push(error instanceof Error ? error : new Error(String(error)));
   };
@@ -88,8 +89,13 @@ export async function installRequestPolicy(page, policy, {
     pending.add(promise);
     promise.catch(() => {}).finally(() => pending.delete(promise));
   };
-  const drain = async () => {
-    while (pending.size) await Promise.allSettled([...pending]);
+  const drain = async ({ settleMs = 0 } = {}) => {
+    let observedActivity;
+    do {
+      observedActivity = activity;
+      while (pending.size) await Promise.allSettled([...pending]);
+      if (settleMs > 0) await new Promise((resolve) => setTimeout(resolve, settleMs));
+    } while (pending.size || activity !== observedActivity);
   };
   const observeRequest = (request) => {
     const url = request.url();
@@ -98,47 +104,15 @@ export async function installRequestPolicy(page, policy, {
     return { remote, url };
   };
 
-  if (policy.mode === 'trusted') {
-    const handleTrustedRequest = (request) => {
-      try { observeRequest(request); } catch (error) { recordError(error); }
-    };
-    page.on('request', handleTrustedRequest);
-    return {
-      observedExternal,
-      blocked,
-      errors,
-      async disable() {
-        page.off('request', handleTrustedRequest);
-        await drain();
-      },
-    };
-  }
-
-  if (policy.mode === 'deny' && offlineForDeny) {
-    const handleOfflineRequest = (request) => {
-      try {
-        const { remote, url } = observeRequest(request);
-        if (remote) blocked.push(url);
-      } catch (error) {
-        recordError(error);
-      }
-    };
-    page.on('request', handleOfflineRequest);
+  const useOfflineMode = policy.mode === 'deny' && offlineForDeny;
+  if (useOfflineMode) {
     await page.setOfflineMode(true);
-    return {
-      observedExternal,
-      blocked,
-      errors,
-      async disable() {
-        page.off('request', handleOfflineRequest);
-        await drain();
-        if (typeof page.isClosed !== 'function' || !page.isClosed()) {
-          await page.setOfflineMode(false);
-        }
-      },
-    };
   }
 
+  // Interception is also required in trusted mode. Chromium can detach a
+  // closing document before passive request observers receive its keepalive
+  // fetches and beacons; interception keeps those requests observable until
+  // they have been explicitly continued or aborted.
   await page.setRequestInterception(true);
   const settleRequest = async (request) => {
     let url = '<unavailable>';
@@ -158,6 +132,7 @@ export async function installRequestPolicy(page, policy, {
     }
   };
   const handleRequest = (request) => {
+    activity += 1;
     track(settleRequest(request));
   };
   page.on('request', handleRequest);
@@ -165,31 +140,91 @@ export async function installRequestPolicy(page, policy, {
     observedExternal,
     blocked,
     errors,
+    drain,
     async disable() {
       page.off('request', handleRequest);
       await drain();
       if (typeof page.isClosed !== 'function' || !page.isClosed()) {
         await page.setRequestInterception(false);
+        if (useOfflineMode) await page.setOfflineMode(false);
       }
     },
   };
 }
 
 export async function withRequestPolicy(page, policy, options, operation) {
-  const requests = await installRequestPolicy(page, policy, options);
+  const {
+    closePage = true,
+    blockedRequestLabel = 'Network policy blocked request',
+    ...requestOptions
+  } = options ?? {};
+  const requests = await installRequestPolicy(page, policy, requestOptions);
   let result;
   let primaryError;
+  const cleanupErrors = [];
+
+  const diagnostics = () => ({
+    blockedRequests: [...new Set(requests.blocked)].sort(),
+    policyErrors: requests.errors.map((error) => error.message),
+  });
+  const attachDiagnostics = (error) => {
+    Object.assign(error, diagnostics());
+    return error;
+  };
+  const recordCleanupError = (error) => {
+    cleanupErrors.push(error instanceof Error ? error : new Error(String(error)));
+  };
+
   try {
     result = await operation(requests);
   } catch (error) {
     primaryError = error;
   }
+
+  if (closePage && (typeof page.isClosed !== 'function' || !page.isClosed())) {
+    try {
+      // Closing a scripted document can release pagehide keepalive fetches and
+      // unload beacons after interception is removed. Navigate while the policy
+      // is still installed, drain every settlement, then close the inert page.
+      await page.goto('about:blank', { waitUntil: 'load' });
+    } catch (error) {
+      recordCleanupError(error);
+    }
+  }
+  try {
+    // Chromium dispatches unload beacons just after the replacement
+    // navigation resolves. Require a quiet policy window before auditing.
+    await requests.drain({ settleMs: 50 });
+  } catch (error) {
+    recordCleanupError(error);
+  }
+
+  if (!primaryError && requests.blocked.length) {
+    primaryError = new Error(
+      `${blockedRequestLabel}: ${[...new Set(requests.blocked)].sort().join(', ')}`,
+    );
+  }
+  primaryError ??= requests.errors[0];
+  if (primaryError) attachDiagnostics(primaryError);
+
+  if (closePage && (typeof page.isClosed !== 'function' || !page.isClosed())) {
+    try {
+      await page.close();
+    } catch (error) {
+      recordCleanupError(error);
+    }
+  }
   try {
     await requests.disable();
   } catch (error) {
-    primaryError ??= error;
+    recordCleanupError(error);
   }
-  primaryError ??= requests.errors[0];
+
+  if (!primaryError && cleanupErrors.length) primaryError = cleanupErrors[0];
+  if (primaryError && cleanupErrors.length) {
+    if (primaryError.cause === undefined) primaryError.cause = cleanupErrors[0];
+    primaryError.cleanupErrors = cleanupErrors.slice(0, 5).map(({ message }) => message);
+  }
   if (primaryError) throw primaryError;
   return result;
 }

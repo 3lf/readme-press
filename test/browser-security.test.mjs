@@ -7,6 +7,7 @@ import test from 'node:test';
 import puppeteer from 'puppeteer';
 import { renderCover } from '../src/cover.mjs';
 import { installRequestPolicy, normalizeNetworkPolicy } from '../src/network.mjs';
+import { renderPagedHtml } from '../src/render.mjs';
 
 function coverConfig(network) {
   return {
@@ -140,6 +141,153 @@ test('cover capture keeps explicit network policies active until the page closes
     assert.deepEqual(trusted.blockedRequests, []);
     assert.deepEqual(paths, ['/delayed']);
   } finally {
+    await closeServer(canary);
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
+test('cover teardown applies network policy to pagehide keepalive and unload beacon egress', {
+  timeout: 120_000,
+}, async () => {
+  const paths = [];
+  const canary = createServer((request, response) => {
+    paths.push(request.url);
+    request.resume();
+    response.writeHead(204, {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST',
+    }).end();
+  });
+  await new Promise((resolve, reject) => {
+    canary.once('error', reject);
+    canary.listen(0, '127.0.0.1', resolve);
+  });
+  const address = canary.address();
+  assert.ok(address && typeof address !== 'string');
+  const base = `http://127.0.0.1:${address.port}`;
+  const expectedUrls = [`${base}/pagehide-keepalive`, `${base}/unload-beacon`];
+  const temporary = mkdtempSync(join(tmpdir(), 'readme-press-cover-close-policy-'));
+
+  try {
+    const htmlPath = join(temporary, 'cover.html');
+    writeFileSync(htmlPath, `<!doctype html>
+<style>html,body{margin:0}.cover{width:17cm;height:24cm}</style>
+<div class="cover"><span class="repo-url">Repository</span></div>
+<script>
+  addEventListener('pagehide', () => {
+    fetch('${base}/pagehide-keepalive', {
+      method: 'POST',
+      body: 'pagehide',
+      keepalive: true,
+    }).catch(() => {});
+  });
+  addEventListener('unload', () => {
+    navigator.sendBeacon('${base}/unload-beacon', 'unload');
+  });
+</script>`);
+
+    for (let run = 0; run < 2; run += 1) {
+      for (const [name, policy] of [
+        ['deny', normalizeNetworkPolicy('deny')],
+        ['allowlist', normalizeNetworkPolicy({ mode: 'allowlist', allowHosts: ['example.com'] })],
+      ]) {
+        await assert.rejects(
+          renderCover(htmlPath, join(temporary, `${name}-${run}.pdf`), coverConfig(policy)),
+          (error) => {
+            assert.match(error.message, /Network policy blocked cover request/u);
+            for (const url of expectedUrls) assert.match(error.message, new RegExp(url.replaceAll('/', '\\/'), 'u'));
+            assert.deepEqual(error.blockedRequests, expectedUrls);
+            assert.deepEqual(error.policyErrors, []);
+            assert.equal(error.cleanupErrors, undefined);
+            return true;
+          },
+          `${name} run ${run} did not reject close-time egress`,
+        );
+        await new Promise((resolve) => setTimeout(resolve, 250));
+        assert.deepEqual(paths, [], `${name} run ${run} released close-time egress`);
+      }
+
+      const trusted = await renderCover(
+        htmlPath,
+        join(temporary, `trusted-${run}.pdf`),
+        coverConfig(normalizeNetworkPolicy('trusted')),
+      );
+      assert.deepEqual(trusted.externalRequests, expectedUrls);
+      assert.deepEqual(trusted.blockedRequests, []);
+      assert.deepEqual(paths.splice(0).sort(), ['/pagehide-keepalive', '/unload-beacon']);
+    }
+  } finally {
+    canary.closeAllConnections?.();
+    await closeServer(canary);
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
+test('body teardown applies network policy to pagehide keepalive and unload beacon egress', {
+  timeout: 120_000,
+}, async () => {
+  const paths = [];
+  const canary = createServer((request, response) => {
+    paths.push(request.url);
+    request.resume();
+    response.writeHead(204, {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST',
+    }).end();
+  });
+  await new Promise((resolve, reject) => {
+    canary.once('error', reject);
+    canary.listen(0, '127.0.0.1', resolve);
+  });
+  const address = canary.address();
+  assert.ok(address && typeof address !== 'string');
+  const base = `http://127.0.0.1:${address.port}`;
+  const expectedUrls = [`${base}/body-pagehide`, `${base}/body-unload`];
+  const temporary = mkdtempSync(join(tmpdir(), 'readme-press-body-close-policy-'));
+
+  try {
+    const htmlPath = join(temporary, 'body.html');
+    writeFileSync(htmlPath, `<!doctype html>
+<style>@page{size:A5;margin:12mm}</style>
+<main><h1>Body policy</h1><p>Teardown canary.</p></main>
+<script>
+  top.addEventListener('pagehide', () => {
+    top.fetch('${base}/body-pagehide', {
+      method: 'POST',
+      body: 'pagehide',
+      keepalive: true,
+    }).catch(() => {});
+    top.navigator.sendBeacon('${base}/body-unload', 'unload');
+  });
+</script>`);
+
+    await assert.rejects(
+      renderPagedHtml({
+        htmlPath,
+        pdfPath: join(temporary, 'deny.pdf'),
+        network: normalizeNetworkPolicy('deny'),
+        timeout: 60_000,
+      }),
+      (error) => {
+        assert.match(error.message, /Network policy blocked request/u);
+        assert.deepEqual(error.blockedRequests, expectedUrls);
+        assert.deepEqual(error.policyErrors, []);
+        return true;
+      },
+    );
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    assert.deepEqual(paths, []);
+
+    const trusted = await renderPagedHtml({
+      htmlPath,
+      pdfPath: join(temporary, 'trusted.pdf'),
+      network: normalizeNetworkPolicy('trusted'),
+      timeout: 60_000,
+    });
+    assert.deepEqual(trusted.externalRequests, expectedUrls);
+    assert.deepEqual(paths.sort(), ['/body-pagehide', '/body-unload']);
+  } finally {
+    canary.closeAllConnections?.();
     await closeServer(canary);
     rmSync(temporary, { recursive: true, force: true });
   }
