@@ -114,6 +114,37 @@ test('stale cleanup unlinks an owned symlink without deleting its user target', 
   }
 });
 
+test('stale owned symlink is removed when its target is a current generated file', () => {
+  const temporary = mkdtempSync(join(tmpdir(), 'readme-press-current-target-symlink-'));
+  const output = join(temporary, 'dist');
+  mkdirSync(output);
+  writeFileSync(join(output, 'user.txt'), 'previous user content');
+  symlinkSync('user.txt', join(output, 'old-generated.txt'));
+  writeFileSync(join(output, 'manifest.json'), JSON.stringify({
+    generatedFiles: ['manifest.json', 'old-generated.txt'],
+  }));
+  const staging = createStagingDirectory(output);
+
+  try {
+    writeFileSync(join(staging, 'user.txt'), 'new generated artifact');
+    writeStagedManifest(staging, { outputs: {} });
+    const ownership = readGeneratedOwnership(output);
+    const publication = publishStagedBuild({
+      stagingDirectory: staging,
+      outputDirectory: output,
+      previousFiles: ownership.files,
+    });
+
+    assert.equal(readFileSync(join(output, 'user.txt'), 'utf8'), 'new generated artifact');
+    assert.throws(() => lstatSync(join(output, 'old-generated.txt')), { code: 'ENOENT' });
+    assert.deepEqual(publication.cleanup.removedPaths, ['old-generated.txt']);
+    assert.deepEqual(publication.manifest.generatedFiles, ['manifest.json', 'user.txt']);
+  } finally {
+    removeStagingDirectory(staging);
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
 test('rejects malformed ownership records without claiming user files', () => {
   const temporary = mkdtempSync(join(tmpdir(), 'readme-press-invalid-ownership-'));
   const output = join(temporary, 'dist');

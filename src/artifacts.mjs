@@ -233,8 +233,7 @@ export function publishStagedBuild({
   const removed = [];
   for (const file of previousFiles) {
     const lexical = lexicalOwnershipPath(output, file, 'Stale generated file');
-    const identity = ownershipComparisonIdentity(output, lexical, 'Stale generated file');
-    if (current.has(identity) || lexical === 'manifest.json') continue;
+    if (lexical === 'manifest.json') continue;
     const target = resolveContainedOutput(output, lexical, { label: 'Stale generated file' });
     assertContainedOutputSink(output, target, { label: 'Stale generated file' });
     let info;
@@ -244,7 +243,18 @@ export function publishStagedBuild({
       if (error?.code === 'ENOENT') continue;
       throw error;
     }
-    if (!info.isFile() && !info.isSymbolicLink()) continue;
+    // A previous lexical artifact can be a symlink to a current artifact.
+    // Compare regular-file identities only after removing that stale link;
+    // following it here would incorrectly preserve the old lexical path.
+    if (info.isSymbolicLink()) {
+      rmSync(target, { force: true });
+      removed.push(lexical);
+      pruneEmptyParents(target, output);
+      continue;
+    }
+    const identity = ownershipComparisonIdentity(output, lexical, 'Stale generated file');
+    if (current.has(identity)) continue;
+    if (!info.isFile()) continue;
     assertContainedOutputSink(output, target, { label: 'Stale generated file' });
     rmSync(target, { force: true });
     removed.push(lexical);
