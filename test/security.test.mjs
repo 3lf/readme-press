@@ -314,6 +314,36 @@ test('safe raw HTML removes executable markup, handlers, styles, and dangerous U
   assert.doesNotMatch(sanitized, /script|iframe|onclick|onerror|style=|javascript:/iu);
 });
 
+test('safe raw HTML preserves benign GitHub layout boundaries used by the real book', () => {
+  const boundaries = [
+    '<div dir="rtl">',
+    '<div align="center">',
+    '</div>',
+    '<br>\n<div align="center">',
+  ];
+  for (const boundary of boundaries) {
+    assert.equal(sanitizeRawHtml(boundary), boundary);
+  }
+
+  const downloads = `<table width="100%">
+<tr>
+<td align="center" width="33%">
+<a href="https://github.com/3lf/llm-for-humans/releases/latest/download/book.pdf"><img src="images/download.svg" alt="Download" width="300"></a>
+<br>
+<sub>Same complete book;<br>optimized for everyday reading.</sub>
+</td>
+</tr>
+</table>
+</div>`;
+  assert.equal(sanitizeRawHtml(downloads), downloads);
+
+  const hostile = sanitizeRawHtml(
+    '<div align="center" onclick="evil()"><a href="javascript:evil()">Visible</a></div>',
+  );
+  assert.match(hostile, />Visible<\/a><\/div>$/u);
+  assert.doesNotMatch(hostile, /onclick|javascript:/iu);
+});
+
 test('cover repository notes allow only limited inline markup', () => {
   const sanitized = sanitizeInlineMarkup(
     'Get it from <strong>GitHub</strong><br><em>today</em><script>bad()</script><a href="https://evil.example">link</a>',
@@ -511,11 +541,11 @@ test('request interception fails closed and drains every settlement', async () =
   assert.match(requests.errors[1].message, /continue failed/u);
 });
 
-test('boundary markup fast path requires balanced divs and accepts br elements', () => {
+test('boundary markup fast path preserves safe Markdown HTML boundaries', () => {
   assert.equal(sanitizeRawHtml('<div class="note"><br></div>'), '<div class="note"><br></div>');
   assert.equal(sanitizeRawHtml('<div><div></div></div>'), '<div><div></div></div>');
-  assert.notEqual(sanitizeRawHtml('<div><br>'), '<div><br>');
-  assert.notEqual(sanitizeRawHtml('</div>'), '</div>');
+  assert.equal(sanitizeRawHtml('<div><br>'), '<div><br>');
+  assert.equal(sanitizeRawHtml('</div>'), '</div>');
   assert.doesNotMatch(sanitizeRawHtml('<div><span onclick="bad()">x'), /onclick/u);
 });
 
