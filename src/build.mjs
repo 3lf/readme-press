@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
+import { createRequire } from 'node:module';
 import {
   cpSync,
   existsSync,
@@ -30,6 +31,9 @@ import { assertContainedOutputSink } from './paths.mjs';
 import { normalizeReleaseVersion } from './release.mjs';
 import { buildDocument } from './template.mjs';
 import { transformReadme } from './transform.mjs';
+
+const require = createRequire(import.meta.url);
+const TWEMOJI_ROOT = dirname(require.resolve('@twemoji/svg/package.json'));
 
 function normalizeDestinationNames(doc) {
   const dests = doc.catalog.lookup(PDFName.of('Dests'), PDFDict);
@@ -346,7 +350,7 @@ export async function runBuild({ configFile, quality = 'normal', releaseVersion:
   const themeFonts = resolve(config.themeRoot, 'fonts');
   if (existsSync(themeFonts)) cpSync(themeFonts, resolve(outputDir, 'fonts'), { recursive: true });
   for (const file of result.usedEmoji) {
-    const source = resolve(config.packageRoot, 'node_modules/@twemoji/svg', file);
+    const source = resolve(TWEMOJI_ROOT, file);
     if (existsSync(source)) cpSync(source, resolve(outputDir, 'assets/twemoji', file));
     else result.diagnostics.push({ code: 'MISSING_TWEMOJI', detail: file });
   }

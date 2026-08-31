@@ -35,6 +35,19 @@ function requireFile(condition, message) {
   if (!condition) throw new Error(message);
 }
 
+function requirePackedBuild(outputDir) {
+  for (const file of [
+    'clean-install.pdf',
+    'clean-install-print.pdf',
+    'clean-install-high-quality.pdf',
+    'assets/twemoji/1f4da.svg',
+    'assets/twemoji/1f9ea.svg',
+  ]) {
+    requireFile(existsSync(join(consumer, outputDir, file)),
+      `${file} was not created in the ${outputDir} packed-package build.`);
+  }
+}
+
 try {
   mkdirSync(packageDirectory);
   mkdirSync(consumer);
@@ -84,6 +97,8 @@ try {
 # Introduction 📚
 
 This is a clean consumer project built from the packed README Press artifact.
+
+Emoji asset coverage: 📚 🧪 📚.
 
 # Contents
 
@@ -160,12 +175,7 @@ export default defineConfig({
     version,
     '--render-all',
   ]);
-  requireFile(existsSync(join(consumer, 'dist/clean-install.pdf')),
-    'Normal PDF was not created in the clean project.');
-  requireFile(existsSync(join(consumer, 'dist/clean-install-high-quality.pdf')),
-    'High-quality PDF was not created in the clean project.');
-  requireFile(existsSync(join(consumer, 'dist/clean-install-print.pdf')),
-    'Print PDF was not created in the clean project.');
+  requirePackedBuild('dist');
 
   console.log(`Package smoke test passed: ${packed.entryCount} files, ${packed.size} packed bytes.`);
 } finally {
