@@ -509,9 +509,31 @@ The literal javascript:alert(1) remains prose and \`javascript:alert(1)\` remain
 
 test('request interception fails closed and drains every settlement', async () => {
   let handler;
+  const ownerSession = {
+    detached: false,
+    on() {},
+    off() {},
+    async send(method) {
+      if (method === 'Target.getTargetInfo') return { targetInfo: { targetId: 'owner' } };
+      return {};
+    },
+    async detach() { this.detached = true; },
+  };
+  const browserSession = {
+    detached: false,
+    on() {},
+    off() {},
+    connection() { return { session: () => null, async send() {} }; },
+    async send() {},
+    async detach() { this.detached = true; },
+  };
   const page = {
     on(event, callback) { if (event === 'request') handler = callback; },
     off() {},
+    async createCDPSession() { return ownerSession; },
+    browser() {
+      return { target: () => ({ createCDPSession: async () => browserSession }) };
+    },
     async setRequestInterception() {},
   };
   const policy = normalizeNetworkPolicy({ mode: 'allowlist', allowHosts: ['example.com'] });

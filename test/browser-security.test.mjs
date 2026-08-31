@@ -41,6 +41,20 @@ async function closeServer(server) {
   });
 }
 
+async function withWatchdog(promise, label, timeout = 10_000) {
+  let timer;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`${label} timed out after ${timeout} ms.`)), timeout);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 test('deny mode stops a browser network canary before it reaches the server', async () => {
   let canaryRequests = 0;
   const canary = createServer((_request, response) => {
@@ -72,6 +86,56 @@ test('deny mode stops a browser network canary before it reaches the server', as
   } finally {
     await browser.close();
     await new Promise((resolve, reject) => canary.close((error) => (error ? reject(error) : resolve())));
+  }
+});
+
+test('cover network policy closes popup targets before their first request', {
+  timeout: 60_000,
+}, async () => {
+  const paths = [];
+  const canary = createServer((request, response) => {
+    paths.push(request.url);
+    response.writeHead(200, { 'Content-Type': 'text/html' }).end('<p>popup canary</p>');
+  });
+  await new Promise((resolve, reject) => {
+    canary.once('error', reject);
+    canary.listen(0, '127.0.0.1', resolve);
+  });
+  const address = canary.address();
+  assert.ok(address && typeof address !== 'string');
+  const popupUrl = `http://127.0.0.1:${address.port}/popup-canary`;
+  const temporary = mkdtempSync(join(tmpdir(), 'readme-press-popup-policy-'));
+
+  try {
+    const htmlPath = join(temporary, 'cover.html');
+    writeFileSync(htmlPath, `<!doctype html>
+<style>html,body{margin:0}.cover{width:17cm;height:24cm}</style>
+<div class="cover"><span class="repo-url">Repository</span></div>
+<script>addEventListener('load', () => window.open('${popupUrl}', '_blank'));</script>`);
+
+    for (const [name, policy] of [
+      ['deny', normalizeNetworkPolicy('deny')],
+      ['allowlist', normalizeNetworkPolicy({ mode: 'allowlist', allowHosts: ['example.com'] })],
+    ]) {
+      await assert.rejects(
+        withWatchdog(
+          renderCover(htmlPath, join(temporary, `${name}.pdf`), coverConfig(policy)),
+          `${name} popup guard`,
+        ),
+        (error) => {
+          assert.match(error.message, /Network policy blocked cover request/u);
+          assert.match(error.message, /\/popup-canary/u);
+          assert.notEqual(error.message, `${name} popup guard timed out after 10000 ms.`);
+          return true;
+        },
+      );
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      assert.deepEqual(paths, [], `${name} popup reached the canary server`);
+    }
+  } finally {
+    canary.closeAllConnections?.();
+    await closeServer(canary);
+    rmSync(temporary, { recursive: true, force: true });
   }
 });
 

@@ -73,6 +73,96 @@ export function assertNetworkAsset(reference, policy, label = 'Remote asset') {
   throw new Error(`${label} is blocked by security.network=${policy.mode}: ${reference}`);
 }
 
+async function installChildTargetGuard(page, policy, {
+  allowedOrigins,
+  observeExternal,
+  block,
+  recordError,
+  track,
+}) {
+  if (policy.mode === 'trusted') return { async disable() {} };
+
+  const ownerSession = await page.createCDPSession();
+  const browserSession = await page.browser().target().createCDPSession();
+  const connection = browserSession.connection();
+  const { targetInfo: owner } = await ownerSession.send('Target.getTargetInfo');
+  const pendingPopupUrls = [];
+
+  const onWindowOpen = ({ url }) => {
+    if (!isRemoteUrl(url) || allowedOrigins.includes(parsedUrl(url)?.origin)) return;
+    observeExternal(url);
+    if (!networkAllowsUrl(url, policy, allowedOrigins)) {
+      pendingPopupUrls.push(url);
+      block(url);
+    }
+  };
+  const settleAttachedTarget = async ({ sessionId, targetInfo }) => {
+    const childSession = connection?.session(sessionId);
+    const popupFromOwner = targetInfo.type === 'page' && targetInfo.openerId === owner.targetId;
+    const targetUrl = isRemoteUrl(targetInfo.url) ? targetInfo.url : null;
+    const blockedUrl = popupFromOwner
+      ? pendingPopupUrls.shift()
+        ?? (targetUrl && !networkAllowsUrl(targetUrl, policy, allowedOrigins) ? targetUrl : null)
+      : null;
+
+    if (popupFromOwner) {
+      if (targetUrl && targetUrl !== blockedUrl) {
+        observeExternal(targetUrl);
+        if (!networkAllowsUrl(targetUrl, policy, allowedOrigins)) block(targetUrl);
+      }
+      if (!childSession) throw new Error(`Unable to inspect paused browser target ${targetInfo.targetId}.`);
+      const onPausedRequest = ({ requestId, request }) => track((async () => {
+        const url = request.url;
+        if (isRemoteUrl(url) && !allowedOrigins.includes(parsedUrl(url)?.origin)) {
+          observeExternal(url);
+          if (!networkAllowsUrl(url, policy, allowedOrigins)) block(url);
+        }
+        await childSession.send('Fetch.failRequest', {
+          requestId,
+          errorReason: 'BlockedByClient',
+        });
+      })().catch((error) => recordError(error)));
+      childSession.on('Fetch.requestPaused', onPausedRequest);
+      await childSession.send('Fetch.enable', {
+        patterns: [{ urlPattern: '*', requestStage: 'Request' }],
+      });
+      await childSession.send('Runtime.runIfWaitingForDebugger');
+      await connection.send('Target.closeTarget', { targetId: targetInfo.targetId });
+      return;
+    }
+    if (!childSession) throw new Error(`Unable to inspect paused browser target ${targetInfo.targetId}.`);
+    await childSession.send('Runtime.runIfWaitingForDebugger');
+  };
+  const onAttachedTarget = (event) => track(
+    settleAttachedTarget(event).catch((error) => recordError(error)),
+  );
+
+  ownerSession.on('Page.windowOpen', onWindowOpen);
+  browserSession.on('Target.attachedToTarget', onAttachedTarget);
+  await ownerSession.send('Page.enable');
+  await browserSession.send('Target.setAutoAttach', {
+    autoAttach: true,
+    waitForDebuggerOnStart: true,
+    flatten: true,
+  });
+
+  return {
+    async disable() {
+      ownerSession.off('Page.windowOpen', onWindowOpen);
+      browserSession.off('Target.attachedToTarget', onAttachedTarget);
+      if (!browserSession.detached) {
+        await browserSession.send('Target.setAutoAttach', {
+          autoAttach: false,
+          waitForDebuggerOnStart: false,
+          flatten: true,
+        });
+        await browserSession.detach();
+      }
+      if (!ownerSession.detached) await ownerSession.detach();
+    },
+  };
+}
+
 export async function installRequestPolicy(page, policy, {
   allowedOrigins = [],
   offlineForDeny = false,
@@ -103,6 +193,16 @@ export async function installRequestPolicy(page, policy, {
     if (remote) observedExternal.push(url);
     return { remote, url };
   };
+  const observeExternal = (url) => observedExternal.push(url);
+  const block = (url) => blocked.push(url);
+
+  const childTargets = await installChildTargetGuard(page, policy, {
+    allowedOrigins,
+    observeExternal,
+    block,
+    recordError,
+    track,
+  });
 
   const useOfflineMode = policy.mode === 'deny' && offlineForDeny;
   if (useOfflineMode) {
@@ -144,6 +244,7 @@ export async function installRequestPolicy(page, policy, {
     async disable() {
       page.off('request', handleRequest);
       await drain();
+      await childTargets.disable();
       if (typeof page.isClosed !== 'function' || !page.isClosed()) {
         await page.setRequestInterception(false);
         if (useOfflineMode) await page.setOfflineMode(false);
