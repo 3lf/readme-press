@@ -12,12 +12,16 @@ import {
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
+import { loadConfig } from '../src/config.mjs';
+import { sanitizeInlineMarkup, sanitizeRawHtml } from '../src/html.mjs';
+import { installRequestPolicy, normalizeNetworkPolicy } from '../src/network.mjs';
 import {
   assertContainedOutputSink,
   resolveContainedOutput,
   resolveContainedSource,
 } from '../src/paths.mjs';
 import { createStaticServer, runRendererLifecycle } from '../src/render.mjs';
+import { buildDocument } from '../src/template.mjs';
 import { transformReadme } from '../src/transform.mjs';
 
 const PNG = Buffer.from(
@@ -295,4 +299,362 @@ test('the rendering server refuses files reached through a symbolic link', async
     await new Promise((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
     rmSync(temporary, { recursive: true, force: true });
   }
+});
+
+test('safe raw HTML removes executable markup, handlers, styles, and dangerous URLs', () => {
+  const sanitized = sanitizeRawHtml(`<div class="note" onclick="evil()" style="color:red">
+<script>alert(1)</script>
+<iframe src="https://evil.example"></iframe>
+<a href="javascript:alert(1)">safe label</a>
+<img src="figure.png" onerror="evil()" style="display:none">
+</div>`);
+  assert.match(sanitized, /class="note"/u);
+  assert.match(sanitized, />safe label<\/a>/u);
+  assert.match(sanitized, /src="figure\.png"/u);
+  assert.doesNotMatch(sanitized, /script|iframe|onclick|onerror|style=|javascript:/iu);
+});
+
+test('safe raw HTML preserves benign GitHub layout boundaries used by the real book', () => {
+  const boundaries = [
+    '<div dir="rtl">',
+    '<div align="center">',
+    '</div>',
+    '<br>\n<div align="center">',
+  ];
+  for (const boundary of boundaries) {
+    assert.equal(sanitizeRawHtml(boundary), boundary);
+  }
+
+  const downloads = `<table width="100%">
+<tr>
+<td align="center" width="33%">
+<a href="https://github.com/3lf/llm-for-humans/releases/latest/download/book.pdf"><img src="images/download.svg" alt="Download" width="300"></a>
+<br>
+<sub>Same complete book;<br>optimized for everyday reading.</sub>
+</td>
+</tr>
+</table>
+</div>`;
+  assert.equal(sanitizeRawHtml(downloads), downloads);
+
+  const hostile = sanitizeRawHtml(
+    '<div align="center" onclick="evil()"><a href="javascript:evil()">Visible</a></div>',
+  );
+  assert.match(hostile, />Visible<\/a><\/div>$/u);
+  assert.doesNotMatch(hostile, /onclick|javascript:/iu);
+});
+
+test('cover repository notes allow only limited inline markup', () => {
+  const sanitized = sanitizeInlineMarkup(
+    'Get it from <strong>GitHub</strong><br><em>today</em><script>bad()</script><a href="https://evil.example">link</a>',
+  );
+  assert.equal(sanitized, 'Get it from <strong>GitHub</strong><br><em>today</em>link');
+});
+
+test('safe and deny raw HTML modes are enforced during transformation', async () => {
+  const project = mkdtempSync(join(tmpdir(), 'readme-press-raw-html-'));
+  try {
+    const safeConfig = {
+      ...transformConfig(project),
+      security: {
+        rawHtml: 'safe',
+        network: normalizeNetworkPolicy('deny'),
+      },
+    };
+    const safe = await transformReadme(markdownWith(
+      '<span onclick="evil()" style="color:red">Visible</span><script>bad()</script>',
+    ), safeConfig, { sourceDir: project });
+    const html = safe.chapters.map((chapter) => chapter.html).join('\n');
+    assert.match(html, /Visible/u);
+    assert.doesNotMatch(html, /onclick|style=|script|bad\(\)/iu);
+    assert.ok(safe.diagnostics.some((diagnostic) => diagnostic.code === 'RAW_HTML_SANITIZED'));
+
+    await assert.rejects(
+      transformReadme(markdownWith('<br>'), {
+        ...safeConfig,
+        security: { ...safeConfig.security, rawHtml: 'deny' },
+      }, { sourceDir: project }),
+      /Raw HTML is disabled/u,
+    );
+  } finally {
+    rmSync(project, { recursive: true, force: true });
+  }
+});
+
+test('network policy rejects remote images unless their host is allowlisted', async () => {
+  const project = mkdtempSync(join(tmpdir(), 'readme-press-network-transform-'));
+  try {
+    const base = transformConfig(project);
+    await assert.rejects(
+      transformReadme(markdownWith('![Remote](https://assets.example/figure.png)'), {
+        ...base,
+        security: { rawHtml: 'safe', network: normalizeNetworkPolicy('deny') },
+      }, { sourceDir: project }),
+      /blocked by security\.network=deny/u,
+    );
+    await assert.rejects(
+      transformReadme(markdownWith('![Local file](file:///etc/passwd)'), {
+        ...base,
+        security: { rawHtml: 'trusted', network: normalizeNetworkPolicy('trusted') },
+      }, { sourceDir: project }),
+      /unsafe URL protocol/u,
+    );
+    const allowed = await transformReadme(
+      markdownWith('![Remote](https://assets.example/figure.png)'),
+      {
+        ...base,
+        security: {
+          rawHtml: 'safe',
+          network: normalizeNetworkPolicy({ mode: 'allowlist', allowHosts: ['assets.example'] }),
+        },
+      },
+      { sourceDir: project },
+    );
+    assert.match(allowed.chapters.at(-1).html, /https:\/\/assets\.example\/figure\.png/u);
+  } finally {
+    rmSync(project, { recursive: true, force: true });
+  }
+});
+
+test('unwraps unsafe Markdown links and reports stable scheme diagnostics', async () => {
+  const project = mkdtempSync(join(tmpdir(), 'readme-press-link-schemes-'));
+  try {
+    const result = await transformReadme(markdownWith(`
+[JavaScript](javascript:alert(1))
+[mixed case](JaVaScRiPt:alert(1))
+[encoded colon](javascript&#58;alert(1))
+[encoded tab](java&#9;script:alert(1))
+[data](data:text/html;base64,QQ==)
+[file](file:///etc/passwd)
+[unknown](ftp://host/x)
+[HTTPS](https://example.com/x)
+[HTTP](http://example.com/x)
+[email](mailto:a@b.c)
+[fragment](#chapter)
+[relative](./relative)
+[protocol relative](//example.com/x)
+`), transformConfig(project), { sourceDir: project });
+    const html = result.chapters.find((chapter) => chapter.title === 'Chapter').html;
+
+    for (const unsafe of ['javascript:', 'data:', 'file:', 'ftp:']) {
+      assert.doesNotMatch(html, new RegExp(`href="${unsafe}`, 'iu'));
+    }
+    for (const visible of [
+      'JavaScript', 'mixed case', 'encoded colon', 'encoded tab', 'data', 'file', 'unknown',
+    ]) {
+      assert.match(html, new RegExp(visible, 'u'));
+    }
+    for (const allowed of [
+      'https://example.com/x',
+      'http://example.com/x',
+      'mailto:a@b.c',
+      '#chapter',
+      './relative',
+      '//example.com/x',
+    ]) {
+      assert.match(html, new RegExp(`href="${allowed.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')}"`, 'u'));
+    }
+    assert.deepEqual(
+      result.diagnostics.filter((item) => item.code === 'UNSAFE_LINK_SCHEME'),
+      [
+        { code: 'UNSAFE_LINK_SCHEME', detail: 'javascript' },
+        { code: 'UNSAFE_LINK_SCHEME', detail: 'javascript' },
+        { code: 'UNSAFE_LINK_SCHEME', detail: 'javascript' },
+        { code: 'UNSAFE_LINK_SCHEME', detail: 'javascript' },
+        { code: 'UNSAFE_LINK_SCHEME', detail: 'data' },
+        { code: 'UNSAFE_LINK_SCHEME', detail: 'file' },
+        { code: 'UNSAFE_LINK_SCHEME', detail: 'ftp' },
+      ],
+    );
+  } finally {
+    rmSync(project, { recursive: true, force: true });
+  }
+});
+
+test('unwraps unsafe full, collapsed, and shortcut reference links once per definition', async () => {
+  const project = mkdtempSync(join(tmpdir(), 'readme-press-reference-links-'));
+  try {
+    const result = await transformReadme(markdownWith(`
+[Full][unsafe]
+[Second use][unsafe]
+[Collapsed][]
+[Shortcut]
+[Safe][safe]
+
+The literal javascript:alert(1) remains prose and \`javascript:alert(1)\` remains code.
+
+[unsafe]: javascript:alert(1)
+[collapsed]: data:text/html,unsafe
+[shortcut]: file:///etc/passwd
+[safe]: https://example.com/safe
+`), transformConfig(project), { sourceDir: project });
+    const html = result.chapters.find((chapter) => chapter.title === 'Chapter').html;
+    assert.doesNotMatch(html, /href="(?:javascript|data|file):/iu);
+    for (const label of ['Full', 'Second use', 'Collapsed', 'Shortcut']) assert.match(html, new RegExp(label, 'u'));
+    assert.match(html, /href="https:\/\/example\.com\/safe"/u);
+    assert.match(html.replace(/<[^>]*>/gu, ''), /literal javascript:alert\(1\) remains prose/u);
+    assert.match(html, /<code[^>]*>javascript:alert\(1\)<\/code>/u);
+    assert.deepEqual(
+      result.diagnostics.filter(({ code }) => code === 'UNSAFE_LINK_SCHEME'),
+      [
+        { code: 'UNSAFE_LINK_SCHEME', detail: 'javascript' },
+        { code: 'UNSAFE_LINK_SCHEME', detail: 'data' },
+        { code: 'UNSAFE_LINK_SCHEME', detail: 'file' },
+      ],
+    );
+  } finally {
+    rmSync(project, { recursive: true, force: true });
+  }
+});
+
+test('request interception fails closed and drains every settlement', async () => {
+  let handler;
+  const ownerSession = {
+    detached: false,
+    on() {},
+    off() {},
+    async send(method) {
+      if (method === 'Target.getTargetInfo') return { targetInfo: { targetId: 'owner' } };
+      return {};
+    },
+    async detach() { this.detached = true; },
+  };
+  const browserSession = {
+    detached: false,
+    on() {},
+    off() {},
+    connection() { return { session: () => null, async send() {} }; },
+    async send() {},
+    async detach() { this.detached = true; },
+  };
+  const page = {
+    on(event, callback) { if (event === 'request') handler = callback; },
+    off() {},
+    async createCDPSession() { return ownerSession; },
+    browser() {
+      return { target: () => ({ createCDPSession: async () => browserSession }) };
+    },
+    async setRequestInterception() {},
+  };
+  const policy = normalizeNetworkPolicy({ mode: 'allowlist', allowHosts: ['example.com'] });
+  const requests = await installRequestPolicy(page, policy);
+  let malformedAborts = 0;
+  let malformedContinues = 0;
+  handler({
+    url: () => 'https://bad_host.example/file',
+    abort: async () => { malformedAborts += 1; },
+    continue: async () => { malformedContinues += 1; },
+  });
+  let rejectedContinues = 0;
+  handler({
+    url: () => 'https://example.com/file',
+    abort: async () => assert.fail('allowed request must not abort'),
+    continue: async () => {
+      rejectedContinues += 1;
+      throw new Error('continue failed');
+    },
+  });
+  await requests.disable();
+  assert.equal(malformedAborts, 1);
+  assert.equal(malformedContinues, 0);
+  assert.equal(rejectedContinues, 1);
+  assert.equal(requests.errors.length, 2);
+  assert.match(requests.errors[0].message, /invalid allowlist host/u);
+  assert.match(requests.errors[1].message, /continue failed/u);
+});
+
+test('boundary markup fast path preserves safe Markdown HTML boundaries', () => {
+  assert.equal(sanitizeRawHtml('<div class="note"><br></div>'), '<div class="note"><br></div>');
+  assert.equal(sanitizeRawHtml('<div><div></div></div>'), '<div><div></div></div>');
+  assert.equal(sanitizeRawHtml('<div><br>'), '<div><br>');
+  assert.equal(sanitizeRawHtml('</div>'), '</div>');
+  assert.doesNotMatch(sanitizeRawHtml('<div><span onclick="bad()">x'), /onclick/u);
+});
+
+test('validates exact allowlist hosts before constructing CSP sources', async () => {
+  for (const host of [
+    '"*"',
+    'evil.com/path',
+    '*.com',
+    '[::1]:999',
+    'example.com:443',
+    'user@example.com',
+    'example.com; script-src *',
+  ]) {
+    assert.throws(
+      () => normalizeNetworkPolicy({ mode: 'allowlist', allowHosts: [host] }),
+      /invalid allowlist host/u,
+    );
+  }
+
+  const policy = normalizeNetworkPolicy({
+    mode: 'allowlist',
+    allowHosts: [' Example.COM ', '127.0.0.1', '[::1]'],
+  });
+  assert.deepEqual(policy.allowHosts, ['example.com', '127.0.0.1', '[::1]']);
+
+  const config = await loadConfig('test/fixtures/basic/readme-press.config.mjs', process.cwd());
+  config.security = { rawHtml: 'safe', network: policy };
+  const html = buildDocument({ parts: [], chapters: [] }, config);
+  assert.match(html, /https:\/\/example\.com/u);
+  assert.match(html, /https:\/\/127\.0\.0\.1/u);
+  assert.match(html, /https:\/\/\[::1\]/u);
+});
+
+test('rejects non-HTTP repository URLs at config load', async () => {
+  const project = mkdtempSync(join(tmpdir(), 'readme-press-repository-url-'));
+  try {
+    writeFileSync(join(project, 'readme-press.config.mjs'), `export default {
+  metadata: { title: 'Book', author: 'Author', edition: 'First' },
+  repository: { url: 'file:///tmp/book' },
+  structure: {
+    introHeading: 'Introduction',
+    githubTocHeading: 'Contents',
+    parts: [{ title: 'Part', startHeading: 'Chapter' }],
+  },
+};\n`);
+    await assert.rejects(
+      loadConfig('readme-press.config.mjs', project),
+      /repository\.url must use HTTP or HTTPS/u,
+    );
+  } finally {
+    rmSync(project, { recursive: true, force: true });
+  }
+});
+
+test('document templates context-encode config values and emit CSP in safe mode', async () => {
+  const config = await loadConfig('test/fixtures/basic/readme-press.config.mjs', process.cwd());
+  config.metadata = {
+    ...config.metadata,
+    title: '</title><script>bad()</script>',
+    author: 'Author" onload="bad()',
+  };
+  config.security = {
+    rawHtml: 'safe',
+    network: normalizeNetworkPolicy('deny'),
+  };
+  const html = buildDocument({
+    parts: [],
+    chapters: [{
+      isIntroduction: true,
+      title: 'Introduction',
+      slug: 'intro',
+      html: '<p>Body</p>',
+      htmlByQuality: { normal: '<p>Body</p>' },
+      tocHeadings: [],
+    }],
+  }, config);
+  assert.match(html, /Content-Security-Policy/u);
+  assert.match(html, /&lt;\/title&gt;&lt;script&gt;bad\(\)&lt;\/script&gt;/u);
+  assert.match(html, /Author&quot; onload=&quot;bad\(\)/u);
+  assert.doesNotMatch(html, /<script>bad\(\)<\/script>/u);
+});
+
+test('document templates emit restrictive CSP in deny mode', async () => {
+  const config = await loadConfig('test/fixtures/basic/readme-press.config.mjs', process.cwd());
+  config.security = { rawHtml: 'deny', network: normalizeNetworkPolicy('deny') };
+  const html = buildDocument({ parts: [], chapters: [] }, config);
+  assert.match(html, /Content-Security-Policy/u);
+  assert.match(html, /default-src &#39;none&#39;/u);
+  assert.match(html, /script-src &#39;none&#39;/u);
 });
