@@ -137,6 +137,8 @@ export default {
 
 The source convention is deliberately small: one introduction heading, one hand-written GitHub contents heading, and level-one chapter headings after the contents. The configured start heading for each part controls the printed structure.
 
+Set the optional `projectRoot` to the existing directory that owns source images when it differs from the README directory. Local assets must remain inside that root, including after symbolic links are resolved.
+
 `outputs.print` is optional. Omit it to keep the original two-edition pipeline. The bundled theme's print edition keeps lossless color figures while replacing page, cover, code-panel, table, and callout fills with white.
 
 ## Run locally

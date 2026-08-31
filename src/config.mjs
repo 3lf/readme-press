@@ -1,8 +1,17 @@
-import { existsSync } from 'node:fs';
+import { existsSync, realpathSync, statSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { outputComparisonIdentity, resolveContainedOutput } from './paths.mjs';
 
 const PACKAGE_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+
+const PIPELINE_PDF_NAMES = [
+  'body.pdf',
+  'body-high-quality.pdf',
+  'body-print.pdf',
+  'cover.pdf',
+  'cover-print.pdf',
+];
 
 const DEFAULT_LABELS = {
   colophon: 'شناسنامه',
@@ -38,8 +47,8 @@ function required(value, label) {
   return value;
 }
 
-function resolveProjectFile(projectRoot, value, fallback) {
-  return resolve(projectRoot, value ?? fallback);
+function resolveConfigFile(configRoot, value, fallback) {
+  return resolve(configRoot, value ?? fallback);
 }
 
 export async function loadConfig(configFile = 'readme-press.config.mjs', cwd = process.cwd()) {
@@ -49,11 +58,19 @@ export async function loadConfig(configFile = 'readme-press.config.mjs', cwd = p
   const raw = loaded.default ?? loaded.config;
   if (!raw || typeof raw !== 'object') throw new Error('README Press config must export a default object.');
 
-  const projectRoot = dirname(absoluteConfig);
+  const configRoot = dirname(absoluteConfig);
+  const sourcePath = resolveConfigFile(configRoot, raw.source, 'README.md');
+  const contentRoot = raw.projectRoot
+    ? resolveConfigFile(configRoot, raw.projectRoot)
+    : dirname(sourcePath);
+  if (!existsSync(contentRoot) || !statSync(contentRoot).isDirectory()) {
+    throw new Error(`Configured projectRoot must be an existing directory: ${contentRoot}`);
+  }
+  const canonicalContentRoot = realpathSync(contentRoot);
   const themeName = typeof raw.theme === 'string' ? raw.theme : raw.theme?.name;
   const themeDirectory = typeof raw.theme === 'object' ? raw.theme.directory : null;
   const themeRoot = themeDirectory
-    ? resolveProjectFile(projectRoot, themeDirectory)
+    ? resolveConfigFile(configRoot, themeDirectory)
     : resolve(PACKAGE_ROOT, 'themes', themeName ?? 'lapis-rtl');
   const repositoryUrl = required(raw.repository?.url, 'repository.url').replace(/\/$/, '');
   const repositoryDisplay = raw.repository?.display ?? repositoryUrl.replace(/^https?:\/\//, '');
@@ -64,24 +81,23 @@ export async function loadConfig(configFile = 'readme-press.config.mjs', cwd = p
   if (raw.outputs?.print !== undefined) {
     outputs.print = required(raw.outputs.print, 'outputs.print');
   }
-  if (new Set(Object.values(outputs)).size !== Object.values(outputs).length) {
-    throw new Error('Output filenames must be unique.');
-  }
 
   const config = {
     ...raw,
     configFile: absoluteConfig,
-    projectRoot,
+    configRoot,
+    projectRoot: configRoot,
+    contentRoot: canonicalContentRoot,
     packageRoot: PACKAGE_ROOT,
-    sourcePath: resolveProjectFile(projectRoot, raw.source, 'README.md'),
-    outputDir: resolveProjectFile(projectRoot, raw.outputDir, 'dist'),
+    sourcePath,
+    outputDir: resolveConfigFile(configRoot, raw.outputDir, 'dist'),
     themeRoot,
     theme: {
       name: themeName ?? null,
       directory: themeRoot,
       stylesheet: resolve(themeRoot, raw.theme?.stylesheet ?? 'book.css'),
-      cover: resolveProjectFile(
-        projectRoot,
+      cover: resolveConfigFile(
+        configRoot,
         raw.cover?.file,
         themeDirectory ? `${themeDirectory}/cover.html` : `${themeRoot}/cover.html`,
       ),
@@ -129,7 +145,7 @@ export async function loadConfig(configFile = 'readme-press.config.mjs', cwd = p
     cover: {
       enabled: raw.cover?.enabled !== false,
       file: raw.cover?.file
-        ? resolveProjectFile(projectRoot, raw.cover.file)
+        ? resolveConfigFile(configRoot, raw.cover.file)
         : resolve(themeRoot, 'cover.html'),
       series: raw.cover?.series ?? raw.labels?.coverSeries ?? DEFAULT_LABELS.coverSeries,
       titlePrefix: raw.cover?.titlePrefix ?? raw.metadata?.titlePrefix ?? '',
@@ -145,17 +161,17 @@ export async function loadConfig(configFile = 'readme-press.config.mjs', cwd = p
       classRules: raw.images?.classRules ?? [],
     },
     mermaid: {
-      cacheDir: resolveProjectFile(projectRoot, raw.mermaid?.cacheDir, '.readme-press-cache/mermaid'),
+      cacheDir: resolveConfigFile(configRoot, raw.mermaid?.cacheDir, '.readme-press-cache/mermaid'),
       configPath: raw.mermaid?.config
-        ? resolveProjectFile(projectRoot, raw.mermaid.config)
+        ? resolveConfigFile(configRoot, raw.mermaid.config)
         : resolve(themeRoot, 'mermaid.config.json'),
       fontPath: raw.mermaid?.font
-        ? resolveProjectFile(projectRoot, raw.mermaid.font)
+        ? resolveConfigFile(configRoot, raw.mermaid.font)
         : resolve(themeRoot, 'fonts/Vazirmatn-Variable.woff2'),
       fontFamily: raw.mermaid?.fontFamily ?? 'Vazirmatn',
       mmdcPath: resolve(PACKAGE_ROOT, 'node_modules/.bin/mmdc'),
       puppeteerConfig: raw.mermaid?.puppeteerConfig
-        ? resolveProjectFile(projectRoot, raw.mermaid.puppeteerConfig)
+        ? resolveConfigFile(configRoot, raw.mermaid.puppeteerConfig)
         : resolve(themeRoot, 'puppeteer-ci.json'),
     },
     contentRules: {
@@ -166,10 +182,53 @@ export async function loadConfig(configFile = 'readme-press.config.mjs', cwd = p
     },
     qa: {
       ...(raw.qa ?? {}),
-      script: raw.qa?.script ? resolveProjectFile(projectRoot, raw.qa.script) : null,
+      script: raw.qa?.script ? resolveConfigFile(configRoot, raw.qa.script) : null,
     },
     release: raw.release ?? {},
   };
+
+  const outputEntries = Object.entries(config.outputs).map(([quality, output]) => {
+    resolveContainedOutput(config.outputDir, output, {
+      extension: '.pdf',
+      label: `outputs.${quality}`,
+    });
+    return {
+      quality,
+      output,
+      identity: outputComparisonIdentity(config.outputDir, output, {
+        extension: '.pdf',
+        label: `outputs.${quality}`,
+      }),
+    };
+  });
+  const pipelineIdentities = new Set(PIPELINE_PDF_NAMES.map((name) => (
+    outputComparisonIdentity(config.outputDir, name, {
+      extension: '.pdf',
+      label: `Pipeline-owned output ${name}`,
+    })
+  )));
+  const configuredIdentities = new Map();
+  for (const { quality, output, identity } of outputEntries) {
+    if (pipelineIdentities.has(identity)) {
+      throw new Error(`outputs.${quality} uses a pipeline-owned PDF name: ${output}`);
+    }
+    const previous = configuredIdentities.get(identity);
+    if (previous) {
+      throw new Error(`Output filenames must be unique after path normalization: outputs.${previous} and outputs.${quality}.`);
+    }
+    configuredIdentities.set(identity, quality);
+  }
+  for (const { quality, output } of outputEntries) {
+    const linearized = String(output).replace(/\.pdf$/iu, '.linearized.pdf');
+    const identity = outputComparisonIdentity(config.outputDir, linearized, {
+      extension: '.pdf',
+      label: `outputs.${quality} linearization file`,
+    });
+    const collision = configuredIdentities.get(identity);
+    if (collision) {
+      throw new Error(`outputs.${quality} linearization file collides with outputs.${collision}.`);
+    }
+  }
 
   for (const [label, path] of [
     ['source', config.sourcePath],

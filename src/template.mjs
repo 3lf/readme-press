@@ -104,6 +104,7 @@ ${groups}
 }
 
 function chapterSection(ch, part, partCount, config) {
+  const chapterHtml = ch.htmlByQuality?.[config.outputVariant ?? 'normal'] ?? ch.html;
   if (ch.isIntroduction) {
     return `<section class="chapter chapter-introduction">
   <header class="chapter-opener">
@@ -113,7 +114,7 @@ function chapterSection(ch, part, partCount, config) {
     <div class="co-rule"><span class="seg"></span><span class="dia"></span><span class="seg"></span></div>
   </header>
   <div class="chapter-body">
-${ch.html}
+${chapterHtml}
   </div>
 </section>`;
   }
@@ -136,7 +137,7 @@ ${ch.html}
     <div class="co-rule"><span class="seg"></span><span class="dia"></span><span class="seg"></span></div>
   </header>
   <div class="chapter-body">
-${ch.html}
+${chapterHtml}
   </div>
 </section>`;
 }

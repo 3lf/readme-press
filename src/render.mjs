@@ -1,5 +1,5 @@
 import { createServer } from 'node:http';
-import { readFile, stat, writeFile } from 'node:fs/promises';
+import { readFile, realpath, stat, writeFile } from 'node:fs/promises';
 import { basename, dirname, extname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
@@ -27,7 +27,7 @@ function within(root, path) {
   return path === root || path.startsWith(`${root}${sep}`);
 }
 
-function createStaticServer(routes) {
+export function createStaticServer(routes) {
   return createServer(async (request, response) => {
     try {
       const url = new URL(request.url ?? '/', 'http://127.0.0.1');
@@ -38,22 +38,31 @@ function createStaticServer(routes) {
       }
 
       const relative = decodeURIComponent(url.pathname.slice(route.prefix.length)) || 'index.html';
+      if (relative.includes('\\')) {
+        response.writeHead(403).end();
+        return;
+      }
       const path = resolve(route.root, relative);
       if (!within(route.root, path)) {
         response.writeHead(403).end();
         return;
       }
+      const canonicalPath = await realpath(path);
+      if (!within(route.canonicalRoot, canonicalPath)) {
+        response.writeHead(403).end();
+        return;
+      }
 
-      const info = await stat(path);
+      const info = await stat(canonicalPath);
       if (!info.isFile()) {
         response.writeHead(404).end();
         return;
       }
 
-      response.setHeader('Content-Type', MIME_TYPES.get(extname(path).toLowerCase())
+      response.setHeader('Content-Type', MIME_TYPES.get(extname(canonicalPath).toLowerCase())
         ?? 'application/octet-stream');
       response.setHeader('Cache-Control', 'no-store');
-      response.end(await readFile(path));
+      response.end(await readFile(canonicalPath));
     } catch {
       response.writeHead(404).end();
     }
@@ -71,9 +80,57 @@ async function listen(server) {
 }
 
 async function closeServer(server) {
+  server.closeIdleConnections?.();
+  server.closeAllConnections?.();
   await new Promise((resolveClose, reject) => {
-    server.close((error) => (error ? reject(error) : resolveClose()));
+    server.close((error) => {
+      if (error?.code === 'ERR_SERVER_NOT_RUNNING') resolveClose();
+      else if (error) reject(error);
+      else resolveClose();
+    });
   });
+}
+
+export async function runRendererLifecycle({
+  createServer: createServerResource,
+  listen: listenResource,
+  launch,
+  render,
+}) {
+  let server;
+  let browser;
+  let result;
+  let primaryError;
+  try {
+    server = await createServerResource();
+    const port = await listenResource(server);
+    browser = await launch();
+    result = await render({ browser, port, server });
+  } catch (error) {
+    primaryError = error;
+  }
+
+  const cleanupTasks = [];
+  if (browser) cleanupTasks.push(Promise.resolve().then(() => browser.close()));
+  if (server) cleanupTasks.push(Promise.resolve().then(() => closeServer(server)));
+  const cleanupResults = await Promise.allSettled(cleanupTasks);
+  const cleanupErrors = cleanupResults
+    .filter(({ status }) => status === 'rejected')
+    .map(({ reason }) => reason instanceof Error ? reason : new Error(String(reason)));
+
+  if (primaryError) {
+    if (cleanupErrors.length) {
+      if (primaryError.cause === undefined) primaryError.cause = cleanupErrors[0];
+      primaryError.cleanupErrors = cleanupErrors.slice(0, 5).map(({ message }) => message);
+    }
+    throw primaryError;
+  }
+  if (cleanupErrors.length) {
+    const [error] = cleanupErrors;
+    error.cleanupErrors = cleanupErrors.slice(0, 5).map(({ message }) => message);
+    throw error;
+  }
+  return result;
 }
 
 async function pageSizeData(page) {
@@ -101,18 +158,17 @@ export async function renderPagedHtml({
   timeout = 300_000,
 }) {
   const documentRoot = dirname(htmlPath);
-  const server = createStaticServer([
-    { prefix: '/viewer/', root: VIEWER_ROOT },
-    { prefix: '/document/', root: documentRoot },
-  ]);
-  const port = await listen(server);
-  let browser;
-
-  try {
-    browser = await puppeteer.launch({
+  return runRendererLifecycle({
+    createServer: async () => createStaticServer(await Promise.all([
+      { prefix: '/viewer/', root: VIEWER_ROOT },
+      { prefix: '/document/', root: documentRoot },
+    ].map(async (route) => ({ ...route, canonicalRoot: await realpath(route.root) })))),
+    listen,
+    launch: () => puppeteer.launch({
       headless: true,
       args: process.env.CI ? ['--no-sandbox'] : [],
-    });
+    }),
+    render: async ({ browser, port }) => {
     const page = await browser.newPage();
     page.setDefaultTimeout(timeout);
     const pageErrors = [];
@@ -151,8 +207,6 @@ export async function renderPagedHtml({
     });
     await writeFile(pdfPath, pdf);
     return { pageSizeData: sizes };
-  } finally {
-    await browser?.close();
-    await closeServer(server);
-  }
+    },
+  });
 }

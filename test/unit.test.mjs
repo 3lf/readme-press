@@ -4,9 +4,11 @@ import { createHash } from 'node:crypto';
 import {
   mkdtempSync,
   mkdirSync,
+  realpathSync,
   readFileSync,
   readdirSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -71,6 +73,86 @@ test('keeps print output opt-in for existing configurations', async () => {
 };\n`);
     const config = await loadConfig('readme-press.config.mjs', temporary);
     assert.deepEqual(config.outputs, { normal: 'legacy.pdf', high: 'legacy-high.pdf' });
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
+test('rejects output aliases, pipeline-owned PDF names, and ASCII controls', async () => {
+  const temporary = mkdtempSync(join(tmpdir(), 'readme-press-output-names-'));
+  const writeConfig = (name, outputs) => writeFileSync(join(temporary, name), `export default {
+  source: 'README.md',
+  outputDir: 'dist',
+  metadata: { title: 'Book', author: 'Author', edition: 'First' },
+  repository: { url: 'https://github.com/example/book' },
+  cover: { enabled: false },
+  structure: {
+    introHeading: 'Introduction',
+    githubTocHeading: 'Contents',
+    parts: [{ title: 'Part', startHeading: 'Chapter' }],
+  },
+  outputs: ${JSON.stringify(outputs)},
+};\n`);
+  try {
+    writeFileSync(join(temporary, 'README.md'), '# Introduction\n\n# Contents\n\n# Chapter\n');
+    mkdirSync(join(temporary, 'dist'));
+
+    const rejected = [
+      ['dot-alias.config.mjs', { normal: 'book.pdf', high: './book.pdf' }],
+      ['linearized-alias.config.mjs', { normal: 'book.pdf', high: 'book.linearized.pdf' }],
+      ...['body.pdf', 'body-high-quality.pdf', 'body-print.pdf', 'cover.pdf', 'cover-print.pdf']
+        .map((output, index) => [`reserved-${index}.config.mjs`, { normal: output, high: 'book-high.pdf' }]),
+      ['newline.config.mjs', { normal: 'book\nextra.pdf', high: 'book-high.pdf' }],
+      ['tab.config.mjs', { normal: 'book\textra.pdf', high: 'book-high.pdf' }],
+      ['nul.config.mjs', { normal: 'book\0extra.pdf', high: 'book-high.pdf' }],
+    ];
+    if (process.platform === 'darwin' || process.platform === 'win32') {
+      rejected.push(['case-alias.config.mjs', { normal: 'Book.pdf', high: 'book.pdf' }]);
+    }
+
+    for (const [name, outputs] of rejected) {
+      writeConfig(name, outputs);
+      await assert.rejects(loadConfig(name, temporary), /output|pipeline|control|unique|reserved/iu, name);
+    }
+
+    writeFileSync(join(temporary, 'dist', 'book.pdf'), 'book');
+    symlinkSync('book.pdf', join(temporary, 'dist', 'alias.pdf'));
+    writeConfig('symlink-alias.config.mjs', { normal: 'book.pdf', high: 'alias.pdf' });
+    await assert.rejects(
+      loadConfig('symlink-alias.config.mjs', temporary),
+      /output|unique|alias/iu,
+    );
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
+test('requires projectRoot to resolve to an existing directory', async () => {
+  const temporary = mkdtempSync(join(tmpdir(), 'readme-press-project-root-'));
+  const writeConfig = (name, projectRoot) => writeFileSync(join(temporary, name), `export default {
+  source: 'README.md',
+  projectRoot: ${JSON.stringify(projectRoot)},
+  metadata: { title: 'Book', author: 'Author', edition: 'First' },
+  repository: { url: 'https://github.com/example/book' },
+  cover: { enabled: false },
+  structure: {
+    introHeading: 'Introduction',
+    githubTocHeading: 'Contents',
+    parts: [{ title: 'Part', startHeading: 'Chapter' }],
+  },
+};\n`);
+  try {
+    writeFileSync(join(temporary, 'README.md'), '# Introduction\n\n# Contents\n\n# Chapter\n');
+    writeConfig('missing.config.mjs', 'missing');
+    await assert.rejects(loadConfig('missing.config.mjs', temporary), /projectRoot.*directory/u);
+    writeFileSync(join(temporary, 'not-a-directory'), 'x');
+    writeConfig('file.config.mjs', 'not-a-directory');
+    await assert.rejects(loadConfig('file.config.mjs', temporary), /projectRoot.*directory/u);
+    mkdirSync(join(temporary, 'content'));
+    writeConfig('valid.config.mjs', 'content');
+    const config = await loadConfig('valid.config.mjs', temporary);
+    assert.equal(config.contentRoot, realpathSync(join(temporary, 'content')));
+    assert.equal(config.projectRoot, temporary);
   } finally {
     rmSync(temporary, { recursive: true, force: true });
   }
