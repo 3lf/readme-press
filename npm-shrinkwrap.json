@@ -1372,9 +1372,9 @@
       }
     },
     "node_modules/@vivliostyle/core": {
-      "version": "2.44.1",
-      "resolved": "https://registry.npmjs.org/@vivliostyle/core/-/core-2.44.1.tgz",
-      "integrity": "sha512-J0G35Qt2I4sKZFLuV2DM1ZpgGn3SnEHtdEB/wQaaNGvh+TnAlz6jnvl1QuCLpvjwYgvVikXrxghGO82D4mL4Ew==",
+      "version": "2.45.0",
+      "resolved": "https://registry.npmjs.org/@vivliostyle/core/-/core-2.45.0.tgz",
+      "integrity": "sha512-ugKexK0/srYpY5GtiyReehpgvfko5Wy1GyMvQNwYW3ybiwL41af3JVE8PoiGvY1Y6MgKNSm8wXf2CZrb6t9mZg==",
       "license": "AGPL-3.0",
       "dependencies": {
         "fast-diff": "^1.2.0"
@@ -1384,12 +1384,12 @@
       }
     },
     "node_modules/@vivliostyle/viewer": {
-      "version": "2.44.1",
-      "resolved": "https://registry.npmjs.org/@vivliostyle/viewer/-/viewer-2.44.1.tgz",
-      "integrity": "sha512-qQqHiagvl73iuDQoevvSCaVlaEvZD2R35luMQgHlrzHeY35ZNeCvwS/NzyP+WYWLbdSzDdooXALASWU+bIExJw==",
+      "version": "2.45.0",
+      "resolved": "https://registry.npmjs.org/@vivliostyle/viewer/-/viewer-2.45.0.tgz",
+      "integrity": "sha512-KLdn2lkkMnJ3WLfE29s275nI8GAFMzk8El7ZUtM/MvlvGjWQWGQk0cAVq6rizZW+DgK91BXgEyGsUfTT1HY0hQ==",
       "license": "AGPL-3.0",
       "dependencies": {
-        "@vivliostyle/core": "^2.44.1",
+        "@vivliostyle/core": "^2.45.0",
         "i18next-ko": "^3.0.1",
         "knockout": "^3.5.0"
       },
