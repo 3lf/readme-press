@@ -5,8 +5,8 @@
    regression tests for traversal, symlinks, and output containment.
 2. Add HTML and browser trust controls: centralized escaping, safe raw-HTML
    allowlists, cover sanitization, CSP, network enforcement, and security docs.
-3. Make builds transactional and deterministic through staged generation,
-   manifest-owned cleanup, structured diagnostics, tool preflight, and safe
+3. Stage complete builds before manifest-last publication, keep cleanup
+   manifest-owned, and add structured diagnostics, tool preflight, and safe
    release-note generation.
 4. Stabilize runtime contracts with schema validation, strict CLI parsing,
    public error codes, TypeScript declarations, API documentation, and packed

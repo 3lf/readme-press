@@ -1,13 +1,16 @@
-import { createHash } from 'crypto';
+import { createHash, randomUUID } from 'crypto';
 import {
   existsSync,
   mkdirSync,
   readFileSync,
   readdirSync,
+  renameSync,
   statSync,
   writeFileSync,
 } from 'fs';
 import { dirname, resolve } from 'path';
+import { addGeneratedOwnership } from './artifacts.mjs';
+import { resolveManifestPdfPath } from './manifest.mjs';
 
 const VERSION_RE = /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/;
 
@@ -32,10 +35,38 @@ function formatMegabytes(bytes) {
   return `${(bytes / 1_000_000).toFixed(1)} MB`;
 }
 
+function markdownText(value) {
+  return String(value ?? '')
+    .replace(/\r?\n/gu, ' ')
+    .replace(/([\\`*_\[\]<>#!])/gu, '\\$1');
+}
+
+function markdownTableCell(value) {
+  return markdownText(value).replaceAll('|', '\\|');
+}
+
+function markdownInlineCode(value) {
+  const text = String(value ?? '');
+  const longest = Math.max(0, ...[...text.matchAll(/`+/gu)].map((match) => match[0].length));
+  const fence = '`'.repeat(longest + 1);
+  const padding = text.startsWith('`') || text.endsWith('`') ? ' ' : '';
+  return `${fence}${padding}${text}${padding}${fence}`;
+}
+
+function markdownLinkDestination(value) {
+  return `<${String(value).replaceAll('>', '%3E')}>`;
+}
+
+function atomicWrite(path, content) {
+  const temporary = `${path}.readme-press-${process.pid}-${randomUUID()}`;
+  writeFileSync(temporary, content, 'utf8');
+  renameSync(temporary, path);
+}
+
 function requireOutput(manifest, quality, dist) {
   const output = manifest.outputs?.[quality];
   if (!output) throw new Error(`Manifest has no ${quality} output.`);
-  const pdfPath = resolve(dist, output.pdf);
+  const pdfPath = resolveManifestPdfPath(dist, output, { quality });
   if (!existsSync(pdfPath)) throw new Error(`Missing release file: ${output.pdf}`);
   const bytes = statSync(pdfPath).size;
   const sha256 = fileSha256(pdfPath);
@@ -78,7 +109,7 @@ export function prepareRelease({ version: rawVersion, manifestPath, outputDir, c
   const checksums = Object.values(outputs)
     .map((output) => `${output.sha256}  ${output.pdf}`)
     .join('\n');
-  writeFileSync(resolve(outputDir, 'SHA256SUMS.txt'), `${checksums}\n`, 'utf8');
+  atomicWrite(resolve(outputDir, 'SHA256SUMS.txt'), `${checksums}\n`);
 
   const hasPrint = Boolean(outputs.print);
   const copy = {
@@ -107,25 +138,32 @@ export function prepareRelease({ version: rawVersion, manifestPath, outputDir, c
   const commitUrl = `${manifest.repository?.url ?? ''}/commit/${sourceCommit}`;
   const rows = qualities.map((quality) => {
     const output = outputs[quality];
-    return `| \`${output.pdf}\` | ${copy[`${quality}Purpose`]} | ${output.pageCount} | ${formatMegabytes(output.bytes)} |`;
+    return `| ${markdownInlineCode(output.pdf)} | ${markdownTableCell(copy[`${quality}Purpose`])} | ${output.pageCount} | ${formatMegabytes(output.bytes)} |`;
   }).join('\n');
-  const notes = `${copy.intro}
+  const notes = `${markdownText(copy.intro)}
 
-## ${copy.filesTitle}
+## ${markdownText(copy.filesTitle)}
 
-| ${copy.file} | ${copy.purpose} | ${copy.pages} | ${copy.size} |
+| ${markdownTableCell(copy.file)} | ${markdownTableCell(copy.purpose)} | ${markdownTableCell(copy.pages)} | ${markdownTableCell(copy.size)} |
 |---|---|---:|---:|
 ${rows}
 
-${copy.parity}
+${markdownText(copy.parity)}
 
-## ${copy.validationTitle}
+## ${markdownText(copy.validationTitle)}
 
-${copy.validation.map((item) => `- ${item}`).join('\n')}
-- ${copy.sourceCommit}: [\`${sourceCommit.slice(0, 12)}\`](${commitUrl})
-- ${copy.version}: \`${version}\`
+${copy.validation.map((item) => `- ${markdownText(item)}`).join('\n')}
+- ${markdownText(copy.sourceCommit)}: [${markdownInlineCode(sourceCommit.slice(0, 12))}](${markdownLinkDestination(commitUrl)})
+- ${markdownText(copy.version)}: ${markdownInlineCode(version)}
 `;
-  writeFileSync(resolve(outputDir, 'release-notes.md'), notes, 'utf8');
+  atomicWrite(resolve(outputDir, 'release-notes.md'), notes);
+  if (resolve(outputDir) === dist) {
+    Object.assign(manifest, addGeneratedOwnership(manifest, dist, [
+      'release-notes.md',
+      'SHA256SUMS.txt',
+    ]));
+    atomicWrite(resolve(manifestPath), `${JSON.stringify(manifest, null, 2)}\n`);
+  }
 
   return {
     version,

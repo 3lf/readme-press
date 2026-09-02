@@ -447,9 +447,8 @@ function registerLocalImage(reference, ctx) {
     label: 'Image path',
   });
   if (!resolved.exists) {
-    if (!ctx.diagnostics?.some(
-      (diagnostic) => diagnostic.code === 'MISSING_FIGURE_FILE' && diagnostic.detail === reference,
-    )) {
+    if (!ctx.missingImages.has(reference)) {
+      ctx.missingImages.add(reference);
       ctx.diagnostics?.push({ code: 'MISSING_FIGURE_FILE', detail: reference });
     }
     return null;
@@ -805,6 +804,7 @@ export async function transformReadme(markdown, config, ctxExtra = {}) {
     usedEmoji: new Set(),
     diagrams: new Map(),
     images: new Map(),
+    missingImages: new Set(),
     diagnostics: [],
     repository: config.repository,
     imageOptions: config.images,

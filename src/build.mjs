@@ -24,8 +24,18 @@ import {
 } from 'pdf-lib';
 import QRCode from 'qrcode';
 import sharp from 'sharp';
+import {
+  createStagingDirectory,
+  publishStagedBuild,
+  readGeneratedOwnership,
+  reapAbandonedStagingDirectories,
+  removeStagingDirectory,
+  writeStagedManifest,
+} from './artifacts.mjs';
 import { loadConfig } from './config.mjs';
 import { renderCover } from './cover.mjs';
+import { assertNoDiagnosticErrors, normalizeDiagnostics } from './diagnostics.mjs';
+import { preflightBuild } from './preflight.mjs';
 import { renderPagedHtml } from './render.mjs';
 import { assertContainedOutputSink } from './paths.mjs';
 import { normalizeReleaseVersion } from './release.mjs';
@@ -263,16 +273,9 @@ async function finalizePdf(bodyPdf, coverPdf, outputPath, config, result, render
   const normalizedDestinations = normalizeDestinationNames(bodyDoc);
   writeFileSync(outputPath, await bodyDoc.save());
 
-  let linearized = false;
   const linearizedPdf = outputPath.replace(/\.pdf$/i, '.linearized.pdf');
-  try {
-    execFileSync('qpdf', ['--linearize', outputPath, linearizedPdf], { stdio: ['ignore', 'inherit', 'inherit'] });
-    renameSync(linearizedPdf, outputPath);
-    linearized = true;
-  } catch (error) {
-    if (error.code === 'ENOENT') console.warn('qpdf is unavailable; the PDF was not linearized.');
-    else throw error;
-  }
+  execFileSync('qpdf', ['--linearize', outputPath, linearizedPdf], { stdio: ['ignore', 'inherit', 'inherit'] });
+  renameSync(linearizedPdf, outputPath);
 
   const bytes = readFileSync(outputPath);
   return {
@@ -282,7 +285,7 @@ async function finalizePdf(bodyPdf, coverPdf, outputPath, config, result, render
     repositoryFooter,
     normalizedDestinations,
     outlines,
-    linearized,
+    linearized: true,
   };
 }
 
@@ -304,6 +307,7 @@ export async function runBuild({ configFile, quality = 'normal', releaseVersion:
     throw new Error(`Unknown quality: ${quality}. Use normal, high, print, or all.`);
   }
   const config = await loadConfig(configFile);
+  await preflightBuild(config);
   const configuredQualities = ['normal', 'print', 'high'].filter((variant) => config.outputs[variant]);
   if (quality !== 'all' && !configuredQualities.includes(quality)) {
     throw new Error(`The ${quality} output is not configured.`);
@@ -332,9 +336,12 @@ export async function runBuild({ configFile, quality = 'normal', releaseVersion:
     },
   };
 
+  const ownership = readGeneratedOwnership(config.outputDir);
+  const stagingCleanup = reapAbandonedStagingDirectories(config.outputDir);
+  const outputDir = createStagingDirectory(config.outputDir, { reap: false });
+  try {
   const markdown = readFileSync(config.sourcePath, 'utf8');
   const sourceSha256 = createHash('sha256').update(markdown).digest('hex');
-  const outputDir = config.outputDir;
   mkdirSync(resolve(outputDir, 'assets/twemoji'), { recursive: true });
   mkdirSync(resolve(outputDir, 'assets/diagrams'), { recursive: true });
 
@@ -342,9 +349,12 @@ export async function runBuild({ configFile, quality = 'normal', releaseVersion:
     sourceDir: dirname(config.sourcePath),
     projectRoot: config.contentRoot,
   });
+  result.diagnostics.push(...ownership.diagnostics);
+  result.diagnostics = normalizeDiagnostics(result.diagnostics, config.security.diagnostics);
   for (const diagnostic of result.diagnostics) {
-    console.warn(`${diagnostic.code}: ${diagnostic.detail}`);
+    console.warn(`${diagnostic.severity.toUpperCase()} ${diagnostic.code}: ${diagnostic.detail}`);
   }
+  assertNoDiagnosticErrors(result.diagnostics);
 
   cpSync(config.theme.stylesheet, resolve(outputDir, 'book.css'));
   const themeFonts = resolve(config.themeRoot, 'fonts');
@@ -352,8 +362,10 @@ export async function runBuild({ configFile, quality = 'normal', releaseVersion:
   for (const file of result.usedEmoji) {
     const source = resolve(TWEMOJI_ROOT, file);
     if (existsSync(source)) cpSync(source, resolve(outputDir, 'assets/twemoji', file));
-    else result.diagnostics.push({ code: 'MISSING_TWEMOJI', detail: file });
+    else result.diagnostics.push({ code: 'MISSING_TWEMOJI', severity: 'error', detail: file });
   }
+  result.diagnostics = normalizeDiagnostics(result.diagnostics, config.security.diagnostics);
+  assertNoDiagnosticErrors(result.diagnostics);
   for (const [file, path] of result.diagrams) {
     cpSync(path, resolve(outputDir, 'assets/diagrams', file));
   }
@@ -452,7 +464,26 @@ export async function runBuild({ configFile, quality = 'normal', releaseVersion:
       .map((image) => image.losslessUrl),
     repositoryQr,
     diagnostics: result.diagnostics,
+    publication: {
+      cleanup: {
+        reaped: stagingCleanup.reaped,
+        reapedPaths: stagingCleanup.paths,
+        reapedPathsTruncated: stagingCleanup.truncated,
+      },
+    },
   };
-  writeFileSync(resolve(outputDir, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
-  return manifest;
+  writeStagedManifest(outputDir, manifest);
+  const publication = publishStagedBuild({
+    stagingDirectory: outputDir,
+    outputDirectory: config.outputDir,
+    previousFiles: ownership.files,
+  });
+  const cleanup = publication.cleanup;
+  if (cleanup.reaped || cleanup.removed) {
+    console.log(`Publication cleanup: ${cleanup.reaped ?? 0} staging director${cleanup.reaped === 1 ? 'y' : 'ies'} reaped, ${cleanup.removed ?? 0} stale artifact(s) removed.`);
+  }
+  return publication.manifest;
+  } finally {
+    removeStagingDirectory(outputDir);
+  }
 }
