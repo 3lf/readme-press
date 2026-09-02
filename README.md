@@ -16,7 +16,7 @@
   <a href="https://github.com/3lf/readme-press/actions/workflows/ci.yml"><img alt="CI status" src="https://github.com/3lf/readme-press/actions/workflows/ci.yml/badge.svg"></a>
   <a href="https://github.com/3lf/readme-press/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/3lf/readme-press?display_name=tag&sort=semver"></a>
   <a href="./LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-17365D"></a>
-  <img alt="Node.js 22 or newer" src="https://img.shields.io/badge/node-%E2%89%A522-17365D">
+  <img alt="Node.js 22 or 24" src="https://img.shields.io/badge/node-22%20%7C%2024-17365D">
 </p>
 
 <p align="center">
@@ -161,7 +161,7 @@ npx readme-press build --config readme-press.config.mjs --quality all
 
 System requirements:
 
-- Node.js 22 or newer
+- Node.js 22 or 24; Node.js 22 is the canonical PDF rendering environment
 - Python 3 for source-block QA
 - `qpdf` for linearized release PDFs
 - Poppler tools for full QA: `pdfinfo`, `pdffonts`, `pdftotext`, `pdfimages`, and `pdftoppm`
@@ -224,14 +224,12 @@ The bundled theme includes Estedad, Vazirmatn, and JetBrains Mono under the SIL 
 
 ```bash
 npm ci
-npm test
-npm run test:syntax
-npm run test:action
-npm run test:integration
-npm run test:package
-npm run pack:check
-npm audit --audit-level=low
+npm run verify:source
+npm run verify:artifacts
+npm run verify:publish
 go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 .github/workflows/*.yml
 ```
 
 The integration suite builds and fully renders standard, print, and high-quality English and Persian fixtures, checks their PDF containers and links, verifies white print backgrounds, compares lossless image pixels, and validates release metadata. The package smoke test then packs the exact npm artifact, installs it in a clean project, audits the consumer dependency tree, and builds and verifies all three PDF editions through the installed CLI.
+
+See the [programmatic API](./docs/programmatic-api.md), [testing strategy](./docs/testing.md), [contribution guide](./CONTRIBUTING.md), [security policy](./SECURITY.md), and [changelog](./CHANGELOG.md) for the complete maintenance contracts.

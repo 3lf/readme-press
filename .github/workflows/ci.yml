@@ -9,13 +9,36 @@ permissions:
   contents: read
 
 jobs:
-  verify:
+  compatibility:
+    name: Source contract (Node.js ${{ matrix.node }})
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [22, 24]
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Verify source and public contracts
+        run: npm run verify:source
+
+  verify:
+    needs: compatibility
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: 22
           cache: npm
@@ -26,22 +49,11 @@ jobs:
       - name: Install locked dependencies
         run: npm ci
 
-      - name: Check syntax and unit tests
-        run: |
-          npm run test:syntax
-          npm run test:action
-          npm test
+      - name: Verify generated and packed artifacts
+        run: npm run verify:artifacts
 
       - name: Validate GitHub workflows
         run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 .github/workflows/*.yml
-
-      - name: Check source package contents and dependency audit
-        run: |
-          npm run pack:check
-          npm audit --audit-level=low
-
-      - name: Test the packed package in a clean project
-        run: npm run test:package
 
       - name: Prepare the integration fixture
         run: npm run fixture:prepare

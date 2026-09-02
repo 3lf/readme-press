@@ -23,7 +23,7 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
 
@@ -55,7 +55,7 @@ jobs:
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: 22
           cache: npm
@@ -66,13 +66,8 @@ jobs:
       - name: Install and verify the locked engine
         run: |
           npm ci
-          npm run test:syntax
-          npm run test:action
-          npm test
-          npm run test:package
+          npm run verify:publish
           go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 .github/workflows/*.yml
-          npm run pack:check
-          npm audit --audit-level=low
 
       - name: Prepare the release fixture
         run: npm run fixture:prepare
@@ -130,7 +125,7 @@ jobs:
           fi
 
       - name: Upload verified release assets
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: readme-press-${{ steps.version.outputs.version }}
           if-no-files-found: error
@@ -152,10 +147,13 @@ jobs:
       actions: read
       contents: write
     steps:
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: readme-press-${{ needs.build.outputs.version }}
           path: release-assets
+
+      - name: Verify downloaded release assets
+        run: (cd release-assets && sha256sum --check --strict SHA256SUMS.txt)
 
       - name: Create the draft GitHub Release
         env:

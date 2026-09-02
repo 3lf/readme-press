@@ -41,7 +41,7 @@
     "README.fa.md"
   ],
   "engines": {
-    "node": ">=22"
+    "node": "^22.0.0 || ^24.0.0"
   },
   "scripts": {
     "test": "node --test test/*.test.mjs",
@@ -54,7 +54,9 @@
     "fixture:qa": "node bin/readme-press.mjs qa --config test/fixtures/basic/readme-press.config.mjs --quality all --release-version v0.1.0 --render-all && node bin/readme-press.mjs qa --config test/fixtures/persian/readme-press.config.mjs --quality all --release-version v0.1.0 --render-all",
     "test:integration": "npm run fixture:build && npm run fixture:qa",
     "pack:check": "npm pack --dry-run",
-    "verify:publish": "npm run test:syntax && npm run test:action && npm test && npm run test:types && npm run test:integration && npm run test:package && npm run pack:check && npm audit --audit-level=low",
+    "verify:source": "npm run test:syntax && npm run test:action && npm test && npm run test:types",
+    "verify:artifacts": "npm run test:integration && npm run test:package && npm run pack:check && npm audit --audit-level=low",
+    "verify:publish": "npm run verify:source && npm run verify:artifacts",
     "prepublishOnly": "npm run verify:publish"
   },
   "dependencies": {

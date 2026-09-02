@@ -432,3 +432,11 @@ test('production theme exposes one cover entrypoint', () => {
   assert.match(bookCss, /data-readme-press-variant='print'/);
   assert.match(coverCss, /data-readme-press-variant='print'/);
 });
+
+test('release workflow verifies downloaded checksums before creating a release', () => {
+  const workflow = readFileSync(join(root, '.github/workflows/release.yml'), 'utf8');
+  const checksum = workflow.indexOf('sha256sum --check --strict SHA256SUMS.txt');
+  const release = workflow.indexOf('gh release create');
+  assert.ok(checksum > 0);
+  assert.ok(release > checksum);
+});
