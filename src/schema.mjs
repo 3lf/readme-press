@@ -49,7 +49,9 @@ const coverSchema = z.object({
   titlePrefix: z.string().optional(), title: z.string().optional(), tagline: z.string().optional(),
   repositoryNote: z.string().optional(),
 }).passthrough();
-const imageClassRuleSchema = z.object({ endsWith: z.string(), className: z.string() }).passthrough();
+const imageClassRuleSchema = z.object({
+  endsWith: z.string(), className: z.string(), label: z.string().min(1).optional(),
+}).passthrough();
 const imagesSchema = z.object({
   normalJpegQuality: z.number().int().min(1).max(100).optional(),
   tallRatio: z.number().positive().optional(),
@@ -63,11 +65,13 @@ const proseMatcherShape = Object.fromEntries(
   PROSE_RULE_MATCHERS.map((matcher) => [matcher, z.string().min(1).optional()]),
 );
 const proseRuleSchema = z.object({
-  ...proseMatcherShape, className: z.string(),
+  ...proseMatcherShape, className: z.string(), label: z.string().min(1).optional(),
 }).passthrough().refine((rule) => PROSE_RULE_MATCHERS.some((matcher) => Boolean(rule[matcher])), {
   message: 'at least one of contains or startsWith is required',
 });
-const chapterRuleSchema = z.object({ titleStartsWith: z.string().min(1), className: z.string() }).passthrough();
+const chapterRuleSchema = z.object({
+  titleStartsWith: z.string().min(1), className: z.string(), label: z.string().min(1).optional(),
+}).passthrough();
 const contentRulesSchema = z.object({
   calloutClassRules: z.array(proseRuleSchema).optional(),
   paragraphClassRules: z.array(proseRuleSchema).optional(),
