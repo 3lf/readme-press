@@ -19,6 +19,7 @@ import { highlight } from './highlight.mjs';
 import { escapeHtmlAttribute, escapeHtmlText, sanitizeRawHtml } from './html.mjs';
 import { assertNetworkAsset, normalizeNetworkPolicy } from './network.mjs';
 import { resolveContainedSource } from './paths.mjs';
+import { matchesProseRule } from './content-rules.mjs';
 
 /* ---------------- emoji helpers (twemoji naming rules) ---------------- */
 
@@ -380,8 +381,9 @@ function cleanChapterMdast(nodes, ctx) {
     if (!marker) return;
     const meta = CALLOUT_KINDS[marker] ?? { kind: 'note', label: 'نکته' };
     const className = ['callout', `callout-${meta.kind}`];
+    const calloutText = fullText.replace(marker, '').trim();
     for (const rule of ctx.contentRules.calloutClassRules) {
-      if (fullText.includes(rule.contains)) className.push(rule.className);
+      if (matchesProseRule(calloutText, rule)) className.push(rule.className);
     }
     node.data = {
       hName: 'aside',
@@ -403,8 +405,7 @@ function cleanChapterMdast(nodes, ctx) {
   visit(root, 'paragraph', (node) => {
     const text = mdastToString(node);
     for (const rule of ctx.contentRules.paragraphClassRules) {
-      const matches = rule.startsWith ? text.startsWith(rule.startsWith) : text.includes(rule.contains);
-      if (!matches) continue;
+      if (!matchesProseRule(text, rule)) continue;
       node.data = {
         ...(node.data ?? {}),
         hProperties: {

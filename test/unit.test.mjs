@@ -221,6 +221,51 @@ Body.
   assert.doesNotMatch(html, /Legacy leading marker\.\s*💡|متن فارسی با شروع درست\s*💡/u);
 });
 
+test('callout class rules support contains, startsWith, combined OR, and non-matches', async () => {
+  const result = await transformReadme(`# Introduction
+
+> 💡 Contains the first needle.
+
+> 💡 Starts here and continues.
+
+> 💡 Combined text has a second needle.
+
+> 💡 Ordinary callout.
+
+# Contents
+
+- [Chapter](#chapter)
+
+# Chapter
+
+Body.
+`, {
+    repository: { url: 'https://github.com/example/book', branch: 'main' },
+    images: { classRules: [] },
+    contentRules: {
+      calloutClassRules: [
+        { contains: 'first needle', className: 'matched-contains' },
+        { startsWith: 'Starts here', className: 'matched-start' },
+        { contains: 'second needle', startsWith: 'Never combined', className: 'matched-combined' },
+        { contains: 'absent', startsWith: 'Never', className: 'must-not-match' },
+      ],
+      paragraphClassRules: [],
+    },
+    mermaid: {},
+    structure: {
+      introHeading: 'Introduction',
+      githubTocHeading: 'Contents',
+      parts: [{ title: 'Part one', startHeading: 'Chapter' }],
+    },
+    toc: { maxDepth: 2 },
+  });
+  const html = result.chapters.map((chapter) => chapter.html).join('\n');
+  for (const className of ['matched-contains', 'matched-start', 'matched-combined']) {
+    assert.equal((html.match(new RegExp(className, 'gu')) ?? []).length, 1, className);
+  }
+  assert.doesNotMatch(html, /must-not-match/u);
+});
+
 test('prepares checksums and neutral release notes from verified outputs', () => {
   const temporary = mkdtempSync(join(tmpdir(), 'readme-press-release-'));
   try {

@@ -64,6 +64,9 @@ try {
     'README.md',
     'README.fa.md',
     'bin/readme-press.mjs',
+    'docs/programmatic-api.md',
+    'src/config.d.ts',
+    'src/index.d.ts',
     'src/render.mjs',
     'themes/lapis-rtl/book.css',
     'npm-shrinkwrap.json',
@@ -91,6 +94,46 @@ try {
   const installedVersion = run(process.execPath, [cli, 'version'], consumer, { capture: true }).trim();
   requireFile(installedVersion === packageJson.version,
     `Installed CLI reports ${installedVersion}; expected ${packageJson.version}.`);
+
+  writeFileSync(join(consumer, 'api-smoke.mjs'), `import {
+  ReadmePressError,
+  runBuild,
+  validateConfig,
+} from 'readme-press';
+import { defineConfig } from 'readme-press/config';
+if (typeof runBuild !== 'function' || typeof validateConfig !== 'function') throw new Error('Missing API export');
+if (defineConfig({ value: true }).value !== true) throw new Error('Config helper changed value');
+if (new ReadmePressError('x', { code: 'ERR_TEST' }).code !== 'ERR_TEST') throw new Error('Error contract failed');
+`);
+  run(process.execPath, ['api-smoke.mjs']);
+
+  writeFileSync(join(consumer, 'consumer.ts'), `import { runBuild, validateConfig, type BuildManifest } from 'readme-press';
+import { defineConfig, type ReadmePressConfig } from 'readme-press/config';
+const config = defineConfig({
+  metadata: { title: 'Typed', author: 'Author', edition: 'First' },
+  repository: { url: 'https://github.com/example/typed' },
+  structure: {
+    introHeading: 'Introduction',
+    githubTocHeading: 'Contents',
+    parts: [{ title: 'Part', startHeading: 'Chapter' }],
+  },
+}) satisfies ReadmePressConfig;
+validateConfig(config);
+const result: Promise<BuildManifest> = runBuild({ quality: 'normal' });
+void result;
+`);
+  writeFileSync(join(consumer, 'tsconfig.json'), `${JSON.stringify({
+    compilerOptions: {
+      target: 'ES2022',
+      module: 'NodeNext',
+      moduleResolution: 'NodeNext',
+      strict: true,
+      noEmit: true,
+      skipLibCheck: false,
+    },
+    include: ['consumer.ts'],
+  }, null, 2)}\n`);
+  run(process.execPath, [join(root, 'node_modules/typescript/bin/tsc'), '-p', 'tsconfig.json']);
 
   writeFileSync(join(consumer, 'README.md'), `<div dir="ltr">
 

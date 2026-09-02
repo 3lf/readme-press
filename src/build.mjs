@@ -349,6 +349,7 @@ export async function runBuild({ configFile, quality = 'normal', releaseVersion:
     sourceDir: dirname(config.sourcePath),
     projectRoot: config.contentRoot,
   });
+  result.diagnostics.push(...config.validationDiagnostics);
   result.diagnostics.push(...ownership.diagnostics);
   result.diagnostics = normalizeDiagnostics(result.diagnostics, config.security.diagnostics);
   for (const diagnostic of result.diagnostics) {

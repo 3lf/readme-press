@@ -1,3 +1,5 @@
+import { ReadmePressError } from './errors.mjs';
+
 const ERROR_CODES = new Set([
   'MISSING_FIGURE_FILE',
   'MISSING_TWEMOJI',
@@ -29,5 +31,11 @@ export function assertNoDiagnosticErrors(diagnostics) {
   const errors = diagnostics.filter((diagnostic) => diagnostic.severity === 'error');
   if (!errors.length) return;
   const summary = errors.map((diagnostic) => `${diagnostic.code}: ${diagnostic.detail}`).join('\n');
-  throw new Error(`README Press stopped because of ${errors.length} diagnostic error(s):\n${summary}`);
+  throw new ReadmePressError(
+    `README Press stopped because of ${errors.length} diagnostic error(s):\n${summary}`,
+    {
+      code: 'ERR_DIAGNOSTICS',
+      details: { diagnostics: errors },
+    },
+  );
 }
