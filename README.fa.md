@@ -92,7 +92,7 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v7
-      - uses: 3lf/readme-press@v0.2.0
+      - uses: 3lf/readme-press@v0.2.1
         with:
           command: pipeline
           config: book/readme-press.config.mjs
@@ -234,6 +234,6 @@ go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 .github/workflows/*.yml
 
 تست یکپارچه نسخه عادی، چاپی و باکیفیت نمونه‌های انگلیسی و فارسی رو می‌سازه، تک‌تک صفحه‌ها رو رندر می‌کنه، ساختار PDF و لینک‌ها رو بررسی می‌کنه، سفیدی پس‌زمینه چاپی و پیکسل تصاویر بدون افت رو می‌سنجه و اطلاعات Release رو اعتبارسنجی می‌کنه. تست بسته هم دقیقاً همون tarball مربوط به npm رو می‌سازه، داخل یه پروژه خالی نصبش می‌کنه، وابستگی‌های سمت مصرف‌کننده رو ممیزی می‌کنه و با CLI نصب‌شده هر سه نسخه PDF رو می‌سازه و بررسی می‌کنه.
 
-قراردادهای کامل نگهداری داخل [API برنامه‌نویسی](./docs/programmatic-api.md)، [راهبرد تست](./docs/testing.md)، [راهنمای مشارکت](./CONTRIBUTING.md)، [سیاست امنیت](./SECURITY.md) و [تاریخچه تغییرها](./CHANGELOG.md) نوشته شده‌اند.
+قراردادهای کامل نگهداری داخل [API برنامه‌نویسی](./docs/programmatic-api.md)، [راهنمای مهاجرت ۰٫۳](./docs/migration-0.3.md)، [راهبرد تست](./docs/testing.md)، [راهنمای مشارکت](./CONTRIBUTING.md)، [سیاست امنیت](./SECURITY.md) و [تاریخچه تغییرها](./CHANGELOG.md) نوشته شده‌اند.
 
 </div>

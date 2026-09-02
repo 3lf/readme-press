@@ -11,6 +11,8 @@ export interface Diagnostic {
   code: string;
   detail: string;
   severity?: 'warning' | 'error';
+  /** Set to false for compatibility notices that must not break strict builds. */
+  promoteInStrict?: boolean;
 }
 
 export interface ReadmePressConfig {

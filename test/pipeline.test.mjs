@@ -435,6 +435,11 @@ test('diagnostic policy promotes warnings only in strict mode', () => {
   assert.equal(normalizeDiagnostics(warning, 'warn')[0].severity, 'warning');
   const strict = normalizeDiagnostics(warning, 'strict');
   assert.equal(strict[0].severity, 'error');
+  const compatibility = normalizeDiagnostics([{
+    ...warning[0],
+    promoteInStrict: false,
+  }], 'strict');
+  assert.equal(compatibility[0].severity, 'warning');
   assert.throws(() => assertNoDiagnosticErrors(strict), /RAW_HTML_SANITIZED/u);
 });
 

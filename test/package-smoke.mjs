@@ -64,6 +64,7 @@ try {
     'README.md',
     'README.fa.md',
     'bin/readme-press.mjs',
+    'docs/migration-0.3.md',
     'docs/programmatic-api.md',
     'src/config.d.ts',
     'src/index.d.ts',

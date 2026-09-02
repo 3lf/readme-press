@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -353,6 +353,62 @@ test('body teardown applies network policy to pagehide keepalive and unload beac
   } finally {
     canary.closeAllConnections?.();
     await closeServer(canary);
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
+test('an always-changing cover produces a PDF with a non-blocking fallback warning', async () => {
+  const temporary = mkdtempSync(join(tmpdir(), 'readme-press-animated-cover-'));
+  const htmlPath = join(temporary, 'cover.html');
+  const pdfPath = join(temporary, 'cover.pdf');
+  try {
+    writeFileSync(htmlPath, `<!doctype html>
+<style>
+  html, body { margin: 0; }
+  @keyframes pulse { from { opacity: 0.5; } to { opacity: 1; } }
+  .cover { width: 96px; height: 96px; overflow: hidden; animation: pulse 10ms infinite; }
+</style>
+<div class="cover"><span class="repo-url"></span><span id="tick"></span></div>
+<script>
+  let tick = 0;
+  setInterval(() => {
+    tick += 1;
+    document.querySelector('#tick').textContent = String(tick);
+    document.querySelector('.cover').style.background =
+      'rgb(' + (tick % 256) + ', ' + (Math.floor(tick / 2) % 256) + ', 255)';
+  }, 1);
+</script>`);
+    const result = await renderCover(htmlPath, pdfPath, {
+      page: { widthCm: 2.54, heightCm: 2.54, coverDpi: 96 },
+      metadata: {
+        title: 'Animated cover',
+        author: 'README Press',
+        creator: 'README Press',
+        direction: 'ltr',
+        language: 'en',
+        localDate: '',
+        latinDate: '',
+      },
+      cover: {
+        series: '',
+        titlePrefix: '',
+        title: 'Animated cover',
+        tagline: '',
+        repositoryNote: '',
+      },
+      repository: { url: 'https://github.com/3lf/readme-press', display: '3lf/readme-press' },
+      labels: { latestLink: 'Latest release' },
+      security: { network: normalizeNetworkPolicy('trusted') },
+      outputVariant: 'normal',
+    });
+    assert.equal(existsSync(pdfPath), true);
+    assert.deepEqual(result.diagnostics, [{
+      code: 'ANIMATED_COVER_FALLBACK',
+      severity: 'warning',
+      promoteInStrict: false,
+      detail: 'normal cover used the final complete frame after 5 attempts.',
+    }]);
+  } finally {
     rmSync(temporary, { recursive: true, force: true });
   }
 });

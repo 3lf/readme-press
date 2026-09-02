@@ -90,7 +90,7 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v7
-      - uses: 3lf/readme-press@v0.2.0
+      - uses: 3lf/readme-press@v0.2.1
         with:
           command: pipeline
           config: book/readme-press.config.mjs
@@ -232,4 +232,4 @@ go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 .github/workflows/*.yml
 
 The integration suite builds and fully renders standard, print, and high-quality English and Persian fixtures, checks their PDF containers and links, verifies white print backgrounds, compares lossless image pixels, and validates release metadata. The package smoke test then packs the exact npm artifact, installs it in a clean project, audits the consumer dependency tree, and builds and verifies all three PDF editions through the installed CLI.
 
-See the [programmatic API](./docs/programmatic-api.md), [testing strategy](./docs/testing.md), [contribution guide](./CONTRIBUTING.md), [security policy](./SECURITY.md), and [changelog](./CHANGELOG.md) for the complete maintenance contracts.
+See the [programmatic API](./docs/programmatic-api.md), [0.3 migration guide](./docs/migration-0.3.md), [testing strategy](./docs/testing.md), [contribution guide](./CONTRIBUTING.md), [security policy](./SECURITY.md), and [changelog](./CHANGELOG.md) for the complete maintenance contracts.
