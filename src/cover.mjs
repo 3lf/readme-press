@@ -6,6 +6,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { PDFArray, PDFDocument, PDFHexString, PDFName, PDFString } from 'pdf-lib';
 import puppeteer from 'puppeteer';
+import { createSecurityDefaults } from './defaults.mjs';
 import { normalizeNetworkPolicy, withRequestPolicy } from './network.mjs';
 
 const CSS_DPI = 96;
@@ -79,12 +80,19 @@ export async function renderCover(htmlPath, outPath, config) {
   let captureData = null;
   const browser = await puppeteer.launch({
     headless: true,
-    args: process.env.CI ? ['--no-sandbox'] : [],
+    args: [
+      '--deterministic-mode',
+      '--num-raster-threads=1',
+      ...(process.env.CI ? ['--no-sandbox'] : []),
+    ],
   });
 
   try {
     const page = await browser.newPage();
-    const networkPolicy = config.security?.network ?? normalizeNetworkPolicy('trusted');
+    const networkPolicy = normalizeNetworkPolicy(
+      config.security?.network ?? createSecurityDefaults().network,
+      config.security?.allowHosts ?? [],
+    );
     captureData = await withRequestPolicy(
       page,
       networkPolicy,
@@ -98,7 +106,9 @@ export async function renderCover(htmlPath, outPath, config) {
           height: Math.ceil(cssHeight),
           deviceScaleFactor: scale,
         });
-        await page.goto(pathToFileURL(htmlPath).href, { waitUntil: 'networkidle0' });
+        await page.goto(pathToFileURL(htmlPath).href, {
+          waitUntil: networkPolicy.mode === 'deny' ? 'load' : 'networkidle0',
+        });
         await page.evaluate((data) => {
             document.title = data.documentTitle;
             document.documentElement.dir = data.direction;
@@ -142,6 +152,7 @@ export async function renderCover(htmlPath, outPath, config) {
         if (requests.blocked.length) {
           throw new Error(`Network policy blocked cover request: ${requests.blocked.join(', ')}`);
         }
+        await page.evaluate(() => window.stop());
         await page.evaluate(() => new Promise((resolvePaint) => {
           requestAnimationFrame(() => requestAnimationFrame(resolvePaint));
         }));
@@ -173,10 +184,14 @@ export async function renderCover(htmlPath, outPath, config) {
           // has observed pagehide keepalives and unload beacons.
           externalRequests: requests.observedExternal,
           blockedRequests: requests.blocked,
+          policyErrors: requests.errors,
           capture,
         };
       },
     );
+    if (captureData.blockedRequests.length) {
+      throw new Error(`Network policy blocked cover request: ${captureData.blockedRequests.join(', ')}`);
+    }
   } finally {
     await browser.close();
   }
@@ -232,5 +247,6 @@ export async function renderCover(htmlPath, outPath, config) {
     externalRequests: stableRequestInventory(captureData.externalRequests),
     blockedRequests: stableRequestInventory(captureData.blockedRequests),
     diagnostics,
+    policyErrors: stableRequestInventory(captureData.policyErrors.map(({ message }) => message)),
   };
 }

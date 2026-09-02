@@ -14,6 +14,7 @@ import rehypeRaw from 'rehype-raw';
 import rehypeStringify from 'rehype-stringify';
 import { visit, SKIP, EXIT } from 'unist-util-visit';
 import { toString as mdastToString } from 'mdast-util-to-string';
+import { createSecurityDefaults } from './defaults.mjs';
 import { renderMermaid } from './mermaid.mjs';
 import { highlight } from './highlight.mjs';
 import { escapeHtmlAttribute, escapeHtmlText, sanitizeRawHtml } from './html.mjs';
@@ -799,6 +800,7 @@ function stringifyImageVariant(tree, processor, quality) {
 /* ---------------- public API ---------------- */
 
 export async function transformReadme(markdown, config, ctxExtra = {}) {
+  const securityDefaults = createSecurityDefaults();
   const ctx = {
     slugger: new GithubSlugger(),
     headings: [],
@@ -812,8 +814,11 @@ export async function transformReadme(markdown, config, ctxExtra = {}) {
     contentRules: config.contentRules,
     mermaid: config.mermaid,
     projectRoot: config.contentRoot ?? config.projectRoot,
-    rawHtml: config.security?.rawHtml ?? 'trusted',
-    network: config.security?.network ?? normalizeNetworkPolicy('trusted'),
+    rawHtml: config.security?.rawHtml ?? securityDefaults.rawHtml,
+    network: normalizeNetworkPolicy(
+      config.security?.network ?? securityDefaults.network,
+      config.security?.allowHosts ?? [],
+    ),
     ...ctxExtra,
   };
 

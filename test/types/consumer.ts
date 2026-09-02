@@ -3,6 +3,7 @@ import {
   normalizeReleaseVersion,
   runBuild,
   runQa,
+  transformReadme,
   validateConfig,
   type BuildManifest,
 } from 'readme-press';
@@ -46,8 +47,26 @@ async function consumeQa(): Promise<BuildManifest> {
   return result.manifest;
 }
 
+async function consumeTransform(): Promise<void> {
+  await transformReadme('# Introduction\n\n# Contents\n\n# Chapter', {
+    repository: { url: 'https://github.com/example/typed-book' },
+    structure: config.structure,
+    toc: {},
+    images: { normalJpegQuality: 82, tallRatio: 1.4, classRules: [] },
+    contentRules: {
+      calloutClassRules: [],
+      paragraphClassRules: [],
+      chapterClassRules: [],
+      treeAriaLabel: 'Document hierarchy',
+    },
+    mermaid: {},
+    projectRoot: '.',
+  });
+}
+
 // @ts-expect-error output quality names are closed
 void runBuild({ quality: 'ultra' });
 
 void consume;
 void consumeQa;
+void consumeTransform;

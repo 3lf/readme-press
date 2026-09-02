@@ -56,7 +56,7 @@ test('loads and resolves a consumer configuration', async () => {
   assert.ok(config.theme.stylesheet.endsWith('/themes/lapis-rtl/book.css'));
 });
 
-test('keeps print output opt-in for existing configurations', async () => {
+test('uses secure defaults while keeping print output opt-in', async () => {
   const temporary = mkdtempSync(join(tmpdir(), 'readme-press-config-'));
   try {
     writeFileSync(join(temporary, 'README.md'), '# Introduction\n\n# Contents\n\n# Chapter\n');
@@ -75,12 +75,12 @@ test('keeps print output opt-in for existing configurations', async () => {
     const config = await loadConfig('readme-press.config.mjs', temporary);
     assert.deepEqual(config.outputs, { normal: 'legacy.pdf', high: 'legacy-high.pdf' });
     assert.deepEqual(config.security, {
-      rawHtml: 'trusted',
-      network: { mode: 'trusted', allowHosts: [] },
-      diagnostics: 'warn',
+      rawHtml: 'safe',
+      network: { mode: 'deny', allowHosts: [] },
+      diagnostics: 'strict',
+      strictConfig: true,
     });
-    assert.equal(config.validationDiagnostics[0].code, 'SECURITY_DEFAULTS_DEPRECATED');
-    assert.equal(config.validationDiagnostics[0].promoteInStrict, false);
+    assert.deepEqual(config.validationDiagnostics, []);
   } finally {
     rmSync(temporary, { recursive: true, force: true });
   }
@@ -197,7 +197,6 @@ test('cover capture waits for two byte-identical paints', async () => {
   assert.equal(fallback.stabilized, false);
   assert.equal(fallback.attempts, 3);
 });
-
 test('selects an introduction and configured parts without project knowledge', () => {
   const tree = unified().use(remarkParse).parse(`# Intro
 

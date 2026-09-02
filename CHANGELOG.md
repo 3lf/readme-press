@@ -8,6 +8,22 @@ project follows semantic versioning within its pre-1.0 compatibility policy.
 
 Release-specific changes are added here by their release pull request.
 
+## [0.3.0] - 2026-08-21
+
+### Changed
+
+- Raw author HTML is sanitized by default with `security.rawHtml: 'safe'`.
+- External network access is denied by default in both transformation and
+  Chromium body and cover rendering. Cover subresources remain governed for the
+  complete capture lifecycle and are included in the manifest request inventory.
+- Diagnostics are strict by default and stop publication on warnings that can
+  affect the generated artifact.
+- Unknown core configuration keys are rejected by default. The `qa` and
+  `release` extension objects remain open to project-specific keys.
+
+Explicit 0.2.x compatibility settings remain supported. See the
+[migration guide](./docs/migration-0.3.md) before upgrading an existing book.
+
 ## [0.2.1] - 2026-08-21
 
 ### Added
@@ -50,6 +66,7 @@ Release-specific changes are added here by their release pull request.
 - A reusable composite GitHub Action and guarded release workflows.
 - Clean-install npm package smoke testing and expanded PDF QA.
 
-[Unreleased]: https://github.com/3lf/readme-press/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/3lf/readme-press/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/3lf/readme-press/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/3lf/readme-press/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/3lf/readme-press/releases/tag/v0.2.0

@@ -151,10 +151,23 @@ export interface LoadedConfig extends Omit<ReadmePressConfig, 'theme' | 'page' |
     rawHtml: RawHtmlMode;
     network: NetworkPolicy;
     diagnostics: DiagnosticsMode;
-    strictConfig?: boolean;
+    strictConfig: boolean;
   };
   qa: Record<string, unknown> & { script?: string | null };
   release: Record<string, unknown>;
+}
+
+/** The normalized document-model fields accepted by the direct transform API. */
+export interface TransformReadmeConfig {
+  repository: ReadmePressConfig['repository'];
+  structure: ReadmePressConfig['structure'];
+  toc?: ReadmePressConfig['toc'];
+  images: Required<NonNullable<ReadmePressConfig['images']>>;
+  contentRules: Required<NonNullable<ReadmePressConfig['contentRules']>>;
+  mermaid: Partial<LoadedConfig['mermaid']>;
+  contentRoot?: string;
+  projectRoot?: string;
+  security?: ReadmePressConfig['security'];
 }
 
 export interface BuildOutput {
@@ -166,6 +179,7 @@ export interface BuildOutput {
   bytes: number;
   sha256: string;
   linearized: boolean;
+  externalRequests: string[];
   [key: string]: unknown;
 }
 

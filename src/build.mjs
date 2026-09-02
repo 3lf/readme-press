@@ -250,7 +250,15 @@ function stampFooters(doc, footer, hasCover) {
   };
 }
 
-async function finalizePdf(bodyPdf, coverPdf, outputPath, config, result, renderData) {
+async function finalizePdf(
+  bodyPdf,
+  coverPdf,
+  outputPath,
+  config,
+  result,
+  renderData,
+  coverExternalRequests = [],
+) {
   const bodyDoc = await PDFDocument.load(readFileSync(bodyPdf));
   applyPageBoxes(bodyDoc, renderData.pageSizeData);
   const outlines = addOutlines(bodyDoc, result, config);
@@ -286,6 +294,10 @@ async function finalizePdf(bodyPdf, coverPdf, outputPath, config, result, render
     normalizedDestinations,
     outlines,
     linearized: true,
+    externalRequests: stableExternalRequests(
+      renderData.externalRequests,
+      coverExternalRequests,
+    ),
   };
 }
 
@@ -300,6 +312,10 @@ function sourceCommit(projectRoot) {
   } catch {
     return null;
   }
+}
+
+export function stableExternalRequests(...inventories) {
+  return [...new Set(inventories.flat())].sort();
 }
 
 export async function runBuild({ configFile, quality = 'normal', releaseVersion: rawVersion } = {}) {
@@ -391,6 +407,7 @@ export async function runBuild({ configFile, quality = 'normal', releaseVersion:
 
   const repositoryQr = await writeRepositoryQr(outputDir, config.repository.url);
   const coverPdfs = new Map();
+  const coverRequests = new Map();
   const coverDiagnostics = [];
   if (config.cover.enabled) {
     if (qualities.some((variant) => variant !== 'print')) {
@@ -401,7 +418,10 @@ export async function runBuild({ configFile, quality = 'normal', releaseVersion:
         { ...documentConfig, outputVariant: 'normal' },
       );
       coverDiagnostics.push(...coverResult.diagnostics);
-      for (const variant of qualities.filter((value) => value !== 'print')) coverPdfs.set(variant, coverPdf);
+      for (const variant of qualities.filter((value) => value !== 'print')) {
+        coverPdfs.set(variant, coverPdf);
+        coverRequests.set(variant, coverResult.externalRequests);
+      }
     }
     if (qualities.includes('print')) {
       const printCoverPdf = resolve(outputDir, 'cover-print.pdf');
@@ -412,6 +432,7 @@ export async function runBuild({ configFile, quality = 'normal', releaseVersion:
       );
       coverDiagnostics.push(...coverResult.diagnostics);
       coverPdfs.set('print', printCoverPdf);
+      coverRequests.set('print', coverResult.externalRequests);
     }
   }
   if (coverDiagnostics.length) {
@@ -446,6 +467,7 @@ export async function runBuild({ configFile, quality = 'normal', releaseVersion:
       documentConfig,
       result,
       renderData,
+      coverRequests.get(requested) ?? [],
     );
     outputs[requested] = {
       quality: requested,

@@ -48,10 +48,10 @@ test('Zod validation warns for unknown core keys and leaves qa/release extensibl
     typoKey: true,
     qa: { projectSpecificGate: true },
     release: { providerSpecificCopy: 'value' },
-  });
+  }, { strict: false });
   assert.deepEqual(result.diagnostics.map((diagnostic) => diagnostic.detail), ['typoKey']);
   assert.throws(
-    () => api.validateConfig({ ...validConfig, typoKey: true }, { strict: true }),
+    () => api.validateConfig({ ...validConfig, typoKey: true }),
     (error) => error.code === 'ERR_CONFIG_UNKNOWN_KEYS'
       && error.details.keys.includes('typoKey'),
   );
@@ -98,6 +98,44 @@ test('configuration contracts accept valid chapter rules and reject inert or mis
     }),
     (error) => error.code === 'ERR_CONFIG_UNKNOWN_SECURITY_KEYS'
       && error.details.keys.includes('security.network.allowHost'),
+  );
+});
+
+test('direct Markdown transformation defaults to safe HTML and denied network access', async () => {
+  const config = {
+    repository: { url: 'https://github.com/example/book' },
+    images: { classRules: [], tallRatio: 1.4 },
+    contentRules: {
+      calloutClassRules: [],
+      paragraphClassRules: [],
+      chapterClassRules: [],
+      treeAriaLabel: 'Document hierarchy',
+    },
+    mermaid: {},
+    contentRoot: process.cwd(),
+    structure: validConfig.structure,
+    toc: {},
+  };
+  const result = await api.transformReadme(`# Introduction
+
+# Contents
+
+# Chapter
+
+<script>alert('unsafe')</script>
+`, config);
+  assert.equal(result.chapters.some(({ html }) => html.includes('<script')), false);
+  assert.ok(result.diagnostics.some(({ code }) => code === 'RAW_HTML_SANITIZED'));
+  await assert.rejects(
+    api.transformReadme(`# Introduction
+
+# Contents
+
+# Chapter
+
+![Remote](https://assets.example/figure.png)
+`, config),
+    /blocked by security\.network=deny/u,
   );
 });
 

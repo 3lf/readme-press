@@ -1,9 +1,9 @@
 # Migrating from 0.2.x to 0.3.0
 
-README Press 0.2.1 keeps the 0.2.0 rendering defaults so existing books can
-upgrade without a layout change. When any security setting is omitted, the
-build manifest records a non-blocking `SECURITY_DEFAULTS_DEPRECATED` warning.
-That warning identifies the settings that need an explicit migration decision.
+README Press 0.2.1 kept the 0.2.0 rendering defaults so existing books could
+upgrade without a layout change. When a security setting was omitted, the build
+manifest recorded a non-blocking `SECURITY_DEFAULTS_DEPRECATED` warning that
+identified settings needing an explicit migration decision.
 
 Version 0.3.0 changes four defaults:
 
@@ -14,9 +14,9 @@ Version 0.3.0 changes four defaults:
 | `security.diagnostics` | `warn` | `strict` |
 | `security.strictConfig` | `false` | `true` |
 
-## Recommended migration on 0.2.1
+## Before upgrading from 0.2.1
 
-Opt in to the future defaults while still using 0.2.1:
+Opt in to the 0.3 defaults while still using 0.2.1:
 
 ```js
 export default defineConfig({
@@ -30,12 +30,12 @@ export default defineConfig({
 });
 ```
 
-Run the complete gate and inspect the manifest before upgrading:
+Build and inspect every edition before upgrading:
 
 ```bash
 npx readme-press pipeline \
   --config readme-press.config.mjs \
-  --release-version v0.2.1 \
+  --release-version v1.0.0 \
   --render-all
 ```
 
@@ -78,9 +78,9 @@ Project-specific `qa` and `release` keys remain extension-friendly. Fix every
 `UNKNOWN_CONFIG_KEY` warning before enabling the setting.
 
 With `diagnostics: 'strict'`, sanitizer, transform, and artifact warnings become
-errors before publication. The 0.2.1 compatibility-default notice remains a
-warning so enabling strict diagnostics cannot break an otherwise compatible
-0.2.x build.
+errors before publication. The 0.2.1 compatibility-default notice was
+non-promoted so strict diagnostics could not break an otherwise compatible
+0.2.x build. Version 0.3.0 no longer emits that notice.
 
 Configuration files, custom themes, QA modules, and release modules remain
 trusted executable code. These controls harden Markdown and assets; they do not
@@ -110,3 +110,6 @@ version reached the registry, restore consumers to a known-good exact version
 and publish any correction under a new version number. Treat GitHub Release
 assets the same way: keep the historical release intact and create a new,
 verified corrective release.
+
+After upgrading to 0.3.0, settings omitted from `security` use the secure values
+in the table above and the 0.2.1 compatibility warning is no longer emitted.

@@ -1,6 +1,7 @@
 import { existsSync, realpathSync, statSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { createSecurityDefaults } from './defaults.mjs';
 import { sanitizeInlineMarkup } from './html.mjs';
 import { normalizeNetworkPolicy } from './network.mjs';
 import { outputComparisonIdentity, resolveContainedOutput } from './paths.mjs';
@@ -68,20 +69,6 @@ function resolveConfigFile(configRoot, value, fallback) {
   return resolve(configRoot, value ?? fallback);
 }
 
-function compatibilityDiagnostics(raw) {
-  const security = raw.security ?? {};
-  const missing = ['rawHtml', 'network', 'diagnostics', 'strictConfig']
-    .filter((key) => security[key] === undefined)
-    .map((key) => `security.${key}`);
-  if (!missing.length) return [];
-  return [{
-    code: 'SECURITY_DEFAULTS_DEPRECATED',
-    severity: 'warning',
-    promoteInStrict: false,
-    detail: `Compatibility defaults are active for ${missing.join(', ')}; set them explicitly before upgrading to 0.3.0.`,
-  }];
-}
-
 export async function loadConfig(configFile = 'readme-press.config.mjs', cwd = process.cwd()) {
   const absoluteConfig = resolve(cwd, configFile);
   if (!existsSync(absoluteConfig)) throw new Error(`README Press config not found: ${absoluteConfig}`);
@@ -90,8 +77,9 @@ export async function loadConfig(configFile = 'readme-press.config.mjs', cwd = p
   if (!candidate || typeof candidate !== 'object') {
     throw new Error('README Press config must export a default object.');
   }
+  const securityDefaults = createSecurityDefaults();
   const validation = validateConfig(candidate, {
-    strict: candidate.security?.strictConfig ?? false,
+    strict: candidate.security?.strictConfig ?? securityDefaults.strictConfig,
   });
   const raw = validation.config;
 
@@ -111,15 +99,15 @@ export async function loadConfig(configFile = 'readme-press.config.mjs', cwd = p
     : resolve(PACKAGE_ROOT, 'themes', themeName ?? 'lapis-rtl');
   const repositoryUrl = requiredHttpUrl(raw.repository?.url, 'repository.url').replace(/\/$/, '');
   const repositoryDisplay = raw.repository?.display ?? repositoryUrl.replace(/^https?:\/\//, '');
-  const rawHtmlMode = raw.security?.rawHtml ?? 'trusted';
+  const rawHtmlMode = raw.security?.rawHtml ?? securityDefaults.rawHtml;
   if (!['trusted', 'safe', 'deny'].includes(rawHtmlMode)) {
     throw new Error(`security.rawHtml must be trusted, safe, or deny; received ${rawHtmlMode}.`);
   }
   const networkPolicy = normalizeNetworkPolicy(
-    raw.security?.network,
+    raw.security?.network ?? securityDefaults.network,
     raw.security?.allowHosts ?? [],
   );
-  const diagnosticsMode = raw.security?.diagnostics ?? 'warn';
+  const diagnosticsMode = raw.security?.diagnostics ?? securityDefaults.diagnostics;
   if (!['warn', 'strict'].includes(diagnosticsMode)) {
     throw new Error(`security.diagnostics must be warn or strict; received ${diagnosticsMode}.`);
   }
@@ -138,10 +126,7 @@ export async function loadConfig(configFile = 'readme-press.config.mjs', cwd = p
     projectRoot: configRoot,
     contentRoot: canonicalContentRoot,
     packageRoot: PACKAGE_ROOT,
-    validationDiagnostics: [
-      ...validation.diagnostics,
-      ...compatibilityDiagnostics(raw),
-    ],
+    validationDiagnostics: validation.diagnostics,
     sourcePath,
     outputDir: resolveConfigFile(configRoot, raw.outputDir, 'dist'),
     themeRoot,
@@ -240,6 +225,7 @@ export async function loadConfig(configFile = 'readme-press.config.mjs', cwd = p
       rawHtml: rawHtmlMode,
       network: networkPolicy,
       diagnostics: diagnosticsMode,
+      strictConfig: raw.security?.strictConfig ?? securityDefaults.strictConfig,
     },
     qa: {
       ...(raw.qa ?? {}),

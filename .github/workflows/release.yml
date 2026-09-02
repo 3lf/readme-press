@@ -8,7 +8,7 @@ on:
         description: Semantic version matching package.json
         required: true
         type: string
-        default: v0.2.1
+        default: v0.3.0
 
 concurrency:
   group: readme-press-release

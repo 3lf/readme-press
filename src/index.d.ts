@@ -6,6 +6,7 @@ import type {
   QaOptions,
   ReadmePressConfig,
   ReleaseResult,
+  TransformReadmeConfig,
   TransformResult,
 } from './types.d.ts';
 
@@ -65,7 +66,7 @@ export declare function selectBook(tree: unknown, structure: ReadmePressConfig['
 /** Transform Markdown into README Press's structured multi-edition document model. */
 export declare function transformReadme(
   markdown: string,
-  config: LoadedConfig,
+  config: LoadedConfig | TransformReadmeConfig,
   context?: Record<string, unknown>,
 ): Promise<TransformResult>;
 /** Escape text and isolate Latin runs for safe RTL HTML rendering. */
