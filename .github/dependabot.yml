@@ -1,16 +1,31 @@
 version: 2
+
 updates:
   - package-ecosystem: npm
     directory: /
     schedule:
-      interval: weekly
-    open-pull-requests-limit: 10
+      interval: monthly
+    open-pull-requests-limit: 3
     groups:
+      # Routine runtime updates ride along with the next release; one review each.
+      runtime:
+        dependency-type: production
+        update-types:
+          - minor
+          - patch
       development-tooling:
         dependency-type: development
+        update-types:
+          - minor
+          - patch
+    # Major updates stay ungrouped so each one gets its own review.
 
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: weekly
-    open-pull-requests-limit: 10
+      interval: monthly
+    open-pull-requests-limit: 3
+    groups:
+      actions:
+        patterns:
+          - "*"
