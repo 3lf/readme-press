@@ -112,6 +112,18 @@ test('bidi analysis preserves logical order and classifies structured text', () 
       { text: ' متن', direction: null },
     ], `technical token must remain in one directional isolate: ${token}`);
   }
+  for (const [persian, latin] of [
+    ['نقش', 'Context'],
+    ['اپ', 'IDE'],
+    ['وب', 'PDF/RAG'],
+    ['جست‌وجو', 'RAG'],
+    ['روتینگ', 'Auto'],
+    ['نقش', 'GPT-5'],
+  ]) {
+    assert.deepEqual(segmentBidiText(`${persian}/${latin}`), [
+      { text: `${persian}/${latin}`, direction: null },
+    ], `slash must stay at the authored Persian/Latin boundary: ${persian}/${latin}`);
+  }
   assert.deepEqual(segmentBidiText('مهندسی LLM'), [
     { text: 'مهندسی ', direction: null },
     { text: 'LLM', direction: 'ltr' },
@@ -165,6 +177,23 @@ test('Persian time and assignment tokens remain intact in examples, prose, and t
   assert.match(html, /<td><bdi dir="ltr"[^>]*>۱۳:۳۰<\/bdi><\/td>/u);
   assert.match(html, /<td><bdi dir="ltr"[^>]*>temperature=0\.7<\/bdi><\/td>/u);
   assert.doesNotMatch(html, /<bdi[^>]*>۹<\/bdi>:<bdi[^>]*>۴۵<\/bdi>/u);
+});
+
+test('authored slashes stay between Persian and Latin runs in rendered prose', async () => {
+  const markdown = `# مقدمه\n\nمتن.\n\n# فهرست\n\n- فصل\n\n# فصل\n\n1. **نقش/Context:** مثال.\n\nهر اپ/IDE یک مسیر دارد.\n\n- داده وب/PDF/RAG وارد می‌شود.\n- جست‌وجو/RAG برای دانش روز است.\n\nحالت روتینگ/Auto فعال است.\n`;
+  const result = await transformReadme(markdown, transformConfig());
+  const html = result.chapters.map((chapter) => chapter.html).join('\n');
+
+  for (const [persian, latin] of [
+    ['نقش', 'Context'],
+    ['اپ', 'IDE'],
+    ['وب', 'PDF/RAG'],
+    ['جست‌وجو', 'RAG'],
+    ['روتینگ', 'Auto'],
+  ]) {
+    assert.ok(html.includes(`${persian}/${latin}`), `expected intact authored boundary: ${persian}/${latin}`);
+    assert.doesNotMatch(html, new RegExp(`${persian}/<bdi dir="ltr"[^>]*>${latin}<\\/bdi>`, 'u'));
+  }
 });
 
 test('text fences distinguish formulas from Persian mixed prose without prompt styling', async () => {

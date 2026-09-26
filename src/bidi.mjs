@@ -5,6 +5,7 @@
 // Algorithm in the browser to perform the final visual layout.
 
 const ARABIC_LETTER_RE = /(?=\p{Script=Arabic})\p{Letter}/u;
+const ARABIC_SLASH_BOUNDARY_RE = /(?=\p{Script=Arabic})\p{Letter}\/$/u;
 const LATIN_RE = /[A-Za-z]/u;
 const DIGIT_RE = /[0-9\u06F0-\u06F9]/u;
 const STRUCTURED_RE = /[\[\]{}()=+*/×÷−<>≤≥≈:.,٫٬%٪]/u;
@@ -14,7 +15,9 @@ const STRUCTURED_RE = /[\[\]{}()=+*/×÷−<>≤≥≈:.,٫٬%٪]/u;
 // so the engine never needs to inject invisible controls.
 export const BIDI_CONTROL_RE = /[\u202A-\u202E\u2066-\u2069]/u;
 
-const LATIN_TOKEN_SOURCE = String.raw`(?:[A-Za-z][A-Za-z0-9+.-]*://|--|[/\\])?(?:[A-Za-z][A-Za-z0-9۰-۹./+#&_%\-]*|[0-9۰-۹][A-Za-z0-9۰-۹./+#&_%\-]*[A-Za-z][A-Za-z0-9۰-۹./+#&_%\-]*)`;
+// A leading slash belongs to a path only at a token boundary. In Persian
+// prose such as نقش/Context it is the authored separator, not part of Context.
+const LATIN_TOKEN_SOURCE = String.raw`(?:[A-Za-z][A-Za-z0-9+.-]*://|--|(?<![\p{L}\p{N}])[/\\])?(?:[A-Za-z][A-Za-z0-9۰-۹./+#&_%\-]*|[0-9۰-۹][A-Za-z0-9۰-۹./+#&_%\-]*[A-Za-z][A-Za-z0-9۰-۹./+#&_%\-]*)`;
 const LATIN_RUN_SOURCE = String.raw`${LATIN_TOKEN_SOURCE}(?:[ \t]+[A-Za-z0-9۰-۹./+#&_%\-]+)*`;
 const CALL_SOURCE = String.raw`${LATIN_TOKEN_SOURCE}\([^()\n]*\)`;
 const PAREN_TECH_SOURCE = String.raw`\([^()\n]*[A-Za-z0-9۰-۹][^()\n]*\)`;
@@ -62,8 +65,17 @@ export function segmentBidiText(value) {
   const text = String(value ?? '');
   const segments = [];
   let last = 0;
+  let keepNativeUntil = 0;
   for (const match of technicalMatches(text)) {
+    if (match.index < keepNativeUntil) continue;
     if (match.index < last) continue;
+    // A slash joining Persian and Latin is author punctuation. Browser bidi
+    // keeps it between scripts only when the following Latin run stays native;
+    // an adjacent <bdi> pulls the neutral slash to the run's left edge.
+    if (ARABIC_SLASH_BOUNDARY_RE.test(text.slice(0, match.index))) {
+      keepNativeUntil = match.end;
+      continue;
+    }
     if (match.index > last) {
       segments.push({ text: text.slice(last, match.index), direction: null });
     }
