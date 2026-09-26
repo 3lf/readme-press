@@ -130,8 +130,23 @@ function gitStatusExcludingGenerated(repositoryRoot, generatedDirectories) {
       ? [`:(exclude)${rel}`]
       : [];
   });
-  return commandVersion('git', [
-    '-C', repositoryRoot, 'status', '--porcelain', '--untracked-files=all', '--', '.', ...exclusions,
+  const status = (args) => {
+    try {
+      return execFileSync('git', ['-C', repositoryRoot, 'status', '--porcelain', ...args], {
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+        maxBuffer: 16 * 1024 * 1024,
+      }).trim();
+    } catch (error) {
+      const detail = error.code === 'ENOBUFS' ? 'too many changed paths' : error.message;
+      throw new Error(`Could not verify release Git status: ${detail}.`, { cause: error });
+    }
+  };
+  const tracked = status(['--untracked-files=no', '--', '.', ...exclusions]);
+  if (tracked) return tracked;
+  return status([
+    '--untracked-files=normal', '--', '.', ...exclusions,
+    ':(exclude,glob)**/node_modules/**',
   ]);
 }
 

@@ -493,6 +493,11 @@ test('release preparation permits generated output and Mermaid cache in a clean 
     mkdirSync(dist);
     mkdirSync(cacheDir);
     writeFileSync(join(cacheDir, 'diagram.svg'), '<svg/>');
+    const dependency = join(project, 'node_modules/dependency');
+    mkdirSync(dependency, { recursive: true });
+    for (let index = 0; index < 6000; index += 1) {
+      writeFileSync(join(dependency, `${String(index).padStart(4, '0')}-${'x'.repeat(180)}.js`), 'module');
+    }
     const bytes = Buffer.from('test pdf');
     const outputs = {};
     for (const [quality, pdf] of [['normal', 'book.pdf'], ['high', 'book-high.pdf']]) {
@@ -509,6 +514,27 @@ test('release preparation permits generated output and Mermaid cache in a clean 
       repository: { url: 'https://github.com/example/book' },
     }));
     assert.equal(prepareRelease({ version: 'v1.0.0', manifestPath, outputDir: dist }).sourceCommit, commit);
+
+    const theme = join(project, 'theme.css');
+    writeFileSync(theme, 'body { color: black; }');
+    const dirtyInputs = {
+      ...renderInputs,
+      cacheDir,
+      files: [
+        ...renderInputs.files,
+        { path: theme, sha256: createHash('sha256').update(readFileSync(theme)).digest('hex') },
+      ],
+    };
+    dirtyInputs.sha256 = fingerprintDigest(dirtyInputs);
+    writeFileSync(manifestPath, JSON.stringify({
+      releaseVersion: 'v1.0.0', sourceCommit: commit, source,
+      renderInputs: dirtyInputs, outputs,
+      repository: { url: 'https://github.com/example/book' },
+    }));
+    assert.throws(
+      () => prepareRelease({ version: 'v1.0.0', manifestPath, outputDir: dist }),
+      /clean source Git checkout/u,
+    );
   } finally {
     rmSync(temporary, { recursive: true, force: true });
   }
