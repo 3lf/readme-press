@@ -145,6 +145,10 @@
   --font-mono: 'JetBrains Mono', 'SF Mono', ui-monospace, Consolas, monospace;
 }
 
+/* Poppler splits English display words with Estedad's glyph spacing. Keep the
+   Persian display face and use Vazirmatn for English headings and furniture. */
+html:lang(en) { --font-display: 'Vazirmatn', sans-serif; }
+
 @counter-style persian {
   system: numeric;
   symbols: '\6F0' '\6F1' '\6F2' '\6F3' '\6F4' '\6F5' '\6F6' '\6F7' '\6F8' '\6F9';
@@ -570,6 +574,9 @@ img.emoji {
 .chapter-opener bdi { white-space: nowrap; }
 .chapter-body :is(h2, h3, h4) bdi,
 .chapter-body :is(td, th) a bdi { white-space: nowrap; }
+/* An English heading may be one long bidi span. Let it wrap at word spaces. */
+html:lang(en) .chapter-opener bdi,
+html:lang(en) .chapter-body :is(h2, h3, h4) bdi { white-space: normal; }
 .heading-mixed-term {
   display: inline-block;
   direction: rtl;

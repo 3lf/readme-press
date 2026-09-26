@@ -7,6 +7,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const outputs = [
   resolve(here, 'fixtures/basic/figure.png'),
   resolve(here, 'fixtures/persian/figure.png'),
+  resolve(here, 'fixtures/stress/figure.png'),
 ];
 
 const figure = await sharp({

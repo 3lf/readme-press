@@ -36,8 +36,13 @@ export default defineConfig({
     minPages: 3,
     maxPages: 12,
     minimumDestinations: 4,
-    fontFamilies: ['Estedad', 'Vazirmatn', 'JetBrainsMono'],
-    extractablePhrases: ['README Press', 'Test the artifact'],
+    fontFamilies: ['Vazirmatn', 'JetBrainsMono'],
+    extractablePhrases: [
+      'README Press',
+      'Introduction',
+      'Building a reliable book',
+      'Test the artifact, not only the source',
+    ],
     expectedLinks: ['https://github.com/3lf/readme-press'],
   },
 });

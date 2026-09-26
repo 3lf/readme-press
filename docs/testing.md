@@ -28,10 +28,20 @@ requests, output containment, failed publication, and manifest-owned cleanup.
 
 ### Artifact contracts
 
-`npm run verify:artifacts` builds English LTR and Persian RTL fixtures in
-normal, print, and high-quality editions. QA inspects PDF containers, page
-geometry, fonts, searchable text, links, named destinations, bookmarks,
-lossless figures, print backgrounds, and cross-edition text alignment.
+`npm run verify:artifacts` builds English LTR, Persian RTL, and a compact
+pagination-stress fixture in normal, print, and high-quality editions. The
+stress book exercises a dense TOC, long headings, part transitions, code and
+table continuations, a figure, Mermaid, links, and mixed RTL/LTR text. QA
+inspects PDF containers, page geometry, fonts, exact extracted phrases, links,
+named destinations, bookmarks, lossless figures, and cross-edition text
+alignment. The print-background assertion samples page edges; visual review
+must also check the interior paper and content panels.
+
+The cover is a raster image with a repository-link annotation. Its visible
+title is not extractable as text from the cover page. PDF title metadata and
+extractable body text are separate checks. The `Tagged: yes` PDF flag alone
+does not establish reading order, useful alternatives, screen-reader behavior,
+or PDF/UA conformance.
 
 The package smoke test packs the exact npm artifact, installs it into an empty
 project, imports the runtime API, compiles a strict TypeScript consumer, audits
