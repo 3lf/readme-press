@@ -14,14 +14,18 @@ const STRUCTURED_RE = /[\[\]{}()=+*/×÷−<>≤≥≈:.,٫٬%٪]/u;
 // so the engine never needs to inject invisible controls.
 export const BIDI_CONTROL_RE = /[\u202A-\u202E\u2066-\u2069]/u;
 
-const LATIN_TOKEN_SOURCE = String.raw`(?:[A-Za-z][A-Za-z0-9۰-۹./+#&_%\-]*|[0-9۰-۹][A-Za-z0-9۰-۹./+#&_%\-]*[A-Za-z][A-Za-z0-9۰-۹./+#&_%\-]*)`;
+const LATIN_TOKEN_SOURCE = String.raw`(?:[A-Za-z][A-Za-z0-9+.-]*://|--|[/\\])?(?:[A-Za-z][A-Za-z0-9۰-۹./+#&_%\-]*|[0-9۰-۹][A-Za-z0-9۰-۹./+#&_%\-]*[A-Za-z][A-Za-z0-9۰-۹./+#&_%\-]*)`;
 const LATIN_RUN_SOURCE = String.raw`${LATIN_TOKEN_SOURCE}(?:[ \t]+[A-Za-z0-9۰-۹./+#&_%\-]+)*`;
+const CALL_SOURCE = String.raw`${LATIN_TOKEN_SOURCE}\([^()\n]*\)`;
 const PAREN_TECH_SOURCE = String.raw`\([^()\n]*[A-Za-z0-9۰-۹][^()\n]*\)`;
 const BRACKET_TECH_SOURCE = String.raw`(?:\[[^\]\n]*[A-Za-z0-9۰-۹][^\]\n]*\]|\{[^}\n]*[A-Za-z0-9۰-۹][^}\n]*\})`;
-const NUMBER_SOURCE = String.raw`(?:[=≈<>≤≥+*/×÷−-][ \t]*)?\$?[+\-−]?[0-9۰-۹]+(?:[.,٫٬][0-9۰-۹]+)*(?:[%٪])?`;
+const NUMBER_SOURCE = String.raw`(?:[=≈<>≤≥+*/×÷−-][ \t]*)?\$?[+\-−]?[0-9۰-۹]+(?:[.,٫٬:][0-9۰-۹]+)*(?:[%٪])?`;
+const ASSIGNMENT_SOURCE = String.raw`${LATIN_TOKEN_SOURCE}[ \t]*=[ \t]*(?:\$?[+\-−]?[0-9۰-۹]+(?:[.,٫٬:][0-9۰-۹]+)*(?:[%٪])?|${LATIN_TOKEN_SOURCE})`;
 const TECHNICAL_PATTERNS = [
+  { source: CALL_SOURCE, whole: true },
   { source: PAREN_TECH_SOURCE, whole: true },
   { source: BRACKET_TECH_SOURCE, whole: true },
+  { source: ASSIGNMENT_SOURCE, whole: false },
   { source: LATIN_RUN_SOURCE, whole: false },
   { source: NUMBER_SOURCE, whole: false },
 ];

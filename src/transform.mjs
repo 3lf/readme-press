@@ -71,7 +71,10 @@ function renderMixedBidiLines(value, documentDirection) {
       context: 'text-fence-line',
       documentDirection,
     });
-    const content = bidi.direction === 'rtl' ? wrapLatinHtml(line) : escapeHtmlText(line);
+    // Keep mixed RTL examples in source order. Splitting each number or code
+    // fragment into separate isolates reverses adjacent operators and time
+    // punctuation in Vivliostyle; the browser handles the intact line well.
+    const content = escapeHtmlText(line);
     const empty = line ? '' : ' bidi-line--empty';
     return `<span class="bidi-line${empty}" dir="${bidi.direction}" data-bidi-kind="${bidi.kind}">${content}</span>`;
   }).join('');

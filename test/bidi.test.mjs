@@ -60,6 +60,52 @@ test('bidi analysis preserves logical order and classifies structured text', () 
   assert.deepEqual(segmentBidiText('$30.00'), [
     { text: '$30.00', direction: 'ltr' },
   ]);
+  assert.deepEqual(segmentBidiText('ساعت ۸:۱۵ و ۹:۴۵؛ جواب ۱۴:۱۵'), [
+    { text: 'ساعت ', direction: null },
+    { text: '۸:۱۵', direction: 'ltr' },
+    { text: ' و ', direction: null },
+    { text: '۹:۴۵', direction: 'ltr' },
+    { text: '؛ جواب ', direction: null },
+    { text: '۱۴:۱۵', direction: 'ltr' },
+  ]);
+  assert.deepEqual(segmentBidiText('ساعت 9:45 و 14:15'), [
+    { text: 'ساعت ', direction: null },
+    { text: '9:45', direction: 'ltr' },
+    { text: ' و ', direction: null },
+    { text: '14:15', direction: 'ltr' },
+  ]);
+  assert.deepEqual(segmentBidiText('با temperature=0.7 پرسیده می‌شود'), [
+    { text: 'با ', direction: null },
+    { text: 'temperature=0.7', direction: 'ltr' },
+    { text: ' پرسیده می‌شود', direction: null },
+  ]);
+  assert.deepEqual(segmentBidiText('تابع len(numbers) و get_price("BTC")'), [
+    { text: 'تابع ', direction: null },
+    { text: 'len(numbers)', direction: 'ltr' },
+    { text: ' و ', direction: null },
+    { text: 'get_price("BTC")', direction: 'ltr' },
+  ]);
+  assert.deepEqual(segmentBidiText('مسیر /legacy را باز کن'), [
+    { text: 'مسیر ', direction: null },
+    { text: '/legacy', direction: 'ltr' },
+    { text: ' را باز کن', direction: null },
+  ]);
+  for (const token of [
+    'https://example.com/path',
+    '/legacy/v1',
+    '--quality=print',
+    'v1.2.3',
+    '$30.00',
+    'get_price("BTC")',
+    'temperature=0.7',
+    '۱۴:۱۵',
+  ]) {
+    assert.deepEqual(segmentBidiText(`متن ${token} متن`), [
+      { text: 'متن ', direction: null },
+      { text: token, direction: 'ltr' },
+      { text: ' متن', direction: null },
+    ], `technical token must remain in one directional isolate: ${token}`);
+  }
   assert.deepEqual(segmentBidiText('مهندسی LLM'), [
     { text: 'مهندسی ', direction: null },
     { text: 'LLM', direction: 'ltr' },
@@ -89,6 +135,29 @@ test('currency keeps its prefix in RTL table cells and highlighted output commen
   assert.match(html, /<td><bdi dir="ltr"[^>]*>\$30\.00<\/bdi><\/td>/u);
   assert.match(html, /<bdi dir="ltr"[^>]*>\$0\.0050<\/bdi>/u);
   assert.match(html, /<bdi dir="ltr"[^>]*>\$0\.0200<\/bdi>/u);
+});
+
+test('Persian time and assignment tokens remain intact in examples, prose, and tables', async () => {
+  const markdown = `# مقدمه\n\nمتن.\n\n# فهرست\n\n- فصل\n\n# فصل\n\nساعت ۹:۴۵ تا ۱۴:۱۵ و temperature=0.7. تابع len(numbers) را ببینید و مسیر /legacy را باز کنید.\n\n| ساعت | تنظیم |\n|------|-------|\n| ۱۳:۳۰ | temperature=0.7 |\n\n\`\`\`text\nساعت ۸:۱۵ و ۹:۴۵ یعنی ۱۴:۱۵؛ گاهی ۱۲:۴۵.\nبا temperature=0.7 پرسیده می‌شود.\n۳ * ۱۲۰۰۰ = ۳۶۰۰۰ تومان\n۶ / ۲ = ۳\nابزار get_exchange_rate("USD") را صدا می‌زند.\n\`\`\`\n`;
+  const result = await transformReadme(markdown, transformConfig());
+  const html = result.chapters.map((chapter) => chapter.html).join('\n');
+
+  for (const token of ['۹:۴۵', '۱۴:۱۵', '۱۳:۳۰', 'temperature=0.7', 'len(numbers)', '/legacy']) {
+    const occurrences = html.match(new RegExp(`<bdi dir="ltr"[^>]*>${token.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')}<\\/bdi>`, 'gu')) ?? [];
+    assert.ok(occurrences.length > 0, `expected isolated ${token} in transformed HTML`);
+  }
+  for (const line of [
+    'ساعت ۸:۱۵ و ۹:۴۵ یعنی ۱۴:۱۵؛ گاهی ۱۲:۴۵.',
+    'با temperature=0.7 پرسیده می‌شود.',
+    '۳ * ۱۲۰۰۰ = ۳۶۰۰۰ تومان',
+    '۶ / ۲ = ۳',
+    'ابزار get_exchange_rate("USD") را صدا می‌زند.',
+  ]) {
+    assert.ok(html.includes(`>${line}</span>`), `expected intact RTL example line: ${line}`);
+  }
+  assert.match(html, /<td><bdi dir="ltr"[^>]*>۱۳:۳۰<\/bdi><\/td>/u);
+  assert.match(html, /<td><bdi dir="ltr"[^>]*>temperature=0\.7<\/bdi><\/td>/u);
+  assert.doesNotMatch(html, /<bdi[^>]*>۹<\/bdi>:<bdi[^>]*>۴۵<\/bdi>/u);
 });
 
 test('text fences distinguish formulas from Persian mixed prose without prompt styling', async () => {
@@ -131,15 +200,15 @@ exp(z - 2.0) = [1.0000, 0.3679]
   );
   assert.match(
     html,
-    /<pre class="example" dir="rtl" data-bidi-kind="mixed"><span class="bidi-line" dir="rtl" data-bidi-kind="mixed">مجموع <bdi dir="ltr"[^>]*>= 1\.7904<\/bdi><\/span><\/pre>/u,
+    /<pre class="example" dir="rtl" data-bidi-kind="mixed"><span class="bidi-line" dir="rtl" data-bidi-kind="mixed">مجموع = 1\.7904<\/span><\/pre>/u,
   );
   assert.match(
     html,
-    /<span class="bidi-line" dir="rtl" data-bidi-kind="mixed">امروز → <bdi dir="ltr"[^>]*>\[0\.21, -0\.05, 1\.33, \.\.\.\]<\/bdi><\/span>/u,
+    /<span class="bidi-line" dir="rtl" data-bidi-kind="mixed">امروز → \[0\.21, -0\.05, 1\.33, \.\.\.\]<\/span>/u,
   );
   assert.match(
     html,
-    /<span class="bidi-line" dir="ltr" data-bidi-kind="formula">exp\(z - 2\.0\) = \[1\.0000, 0\.3679\]<\/span><span class="bidi-line" dir="rtl" data-bidi-kind="mixed">مجموع {8}<bdi dir="ltr"[^>]*>= 1\.7904<\/bdi><\/span>/u,
+    /<span class="bidi-line" dir="ltr" data-bidi-kind="formula">exp\(z - 2\.0\) = \[1\.0000, 0\.3679\]<\/span><span class="bidi-line" dir="rtl" data-bidi-kind="mixed">مجموع {8}= 1\.7904<\/span>/u,
   );
   assert.doesNotMatch(html, /promptblock|PROMPT/u);
 });
