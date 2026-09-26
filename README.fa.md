@@ -71,7 +71,7 @@ QA ساختار PDF، فونت‌ها، لینک‌ها، مقصدها، ابع�
 
 ## ساخت در GitHub Actions و دریافت فایل
 
-`README.md` و `readme-press.config.mjs` رو در مخزن خودت commit کن و [فایل workflow نمونه](./examples/starter/book.yml) رو به‌نام `.github/workflows/book.yml` اضافه کن. این فایل از مسیر `readme-press.config.mjs` استفاده می‌کنه، `pipeline` رو اجرا می‌کنه و با `actions/upload-artifact` سه PDF، manifest، هش‌ها و یادداشت‌های نامزد انتشار رو نگه می‌داره.
+`README.md` و `readme-press.config.mjs` رو در مخزن خودت commit کن و [فایل workflow نمونه](./examples/starter/book.yml) رو به‌نام `.github/workflows/book.yml` اضافه کن. اگر از دستورهای نمونه بالا استفاده کردی، `package.json` و `package-lock.json` رو هم commit کن یا آگاهانه در `.gitignore` بذار. آماده‌سازی انتشار فایل‌های ثبت‌نشده رو بررسی می‌کنه؛ `node_modules/` و `dist/` می‌تونن بدون commit بمونن. این workflow از مسیر `readme-press.config.mjs` استفاده می‌کنه، `pipeline` رو اجرا می‌کنه و با `actions/upload-artifact` سه PDF، manifest، هش‌ها و یادداشت‌های نامزد انتشار رو نگه می‌داره.
 
 این workflow فعلاً به Action منتشرشده `v0.3.0` اشاره می‌کنه که اصلاحات انگلیسی نامزد فعلی رو نداره. پیش از استفاده برای انتشار بعدی، pin فایل نمونه و مخزن خودت رو به تگ بررسی‌شده نسخه جدید تغییر بده.
 

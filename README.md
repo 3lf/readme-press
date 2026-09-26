@@ -78,7 +78,7 @@ File size depends on the source images and page backgrounds; the text-only start
 
 ## Build in GitHub Actions and download the result
 
-Commit `README.md` and `readme-press.config.mjs` to your own repository, then add [this workflow](./examples/starter/book.yml) as `.github/workflows/book.yml`:
+Commit `README.md` and `readme-press.config.mjs` to your own repository, then add [this workflow](./examples/starter/book.yml) as `.github/workflows/book.yml`. If you used the local starter commands above, also commit `package.json` and `package-lock.json`, or deliberately ignore them. Release preparation checks for uncommitted files; `node_modules/` and `dist/` may stay untracked.
 
 > The workflow below pins the currently published `v0.3.0` Action. That release predates the candidate English locale fixes. Before using this workflow for the next release, replace the pin in both the example and your repository with that release's reviewed tag.
 
