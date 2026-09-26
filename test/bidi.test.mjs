@@ -90,9 +90,15 @@ test('bidi analysis preserves logical order and classifies structured text', () 
     { text: '/legacy', direction: 'ltr' },
     { text: ' را باز کن', direction: null },
   ]);
+  assert.deepEqual(segmentBidiText('به پوشه legacy/ دست نزن'), [
+    { text: 'به پوشه ', direction: null },
+    { text: 'legacy/', direction: 'ltr' },
+    { text: ' دست نزن', direction: null },
+  ]);
   for (const token of [
     'https://example.com/path',
     '/legacy/v1',
+    'legacy/',
     '--quality=print',
     'v1.2.3',
     '$30.00',
@@ -138,11 +144,11 @@ test('currency keeps its prefix in RTL table cells and highlighted output commen
 });
 
 test('Persian time and assignment tokens remain intact in examples, prose, and tables', async () => {
-  const markdown = `# مقدمه\n\nمتن.\n\n# فهرست\n\n- فصل\n\n# فصل\n\nساعت ۹:۴۵ تا ۱۴:۱۵ و temperature=0.7. تابع len(numbers) را ببینید و مسیر /legacy را باز کنید.\n\n| ساعت | تنظیم |\n|------|-------|\n| ۱۳:۳۰ | temperature=0.7 |\n\n\`\`\`text\nساعت ۸:۱۵ و ۹:۴۵ یعنی ۱۴:۱۵؛ گاهی ۱۲:۴۵.\nبا temperature=0.7 پرسیده می‌شود.\n۳ * ۱۲۰۰۰ = ۳۶۰۰۰ تومان\n۶ / ۲ = ۳\nابزار get_exchange_rate("USD") را صدا می‌زند.\n\`\`\`\n`;
+  const markdown = `# مقدمه\n\nمتن.\n\n# فهرست\n\n- فصل\n\n# فصل\n\nساعت ۹:۴۵ تا ۱۴:۱۵ و temperature=0.7. تابع len(numbers) را ببینید و پوشه legacy/ را باز کنید.\n\n| ساعت | تنظیم |\n|------|-------|\n| ۱۳:۳۰ | temperature=0.7 |\n\n\`\`\`text\nساعت ۸:۱۵ و ۹:۴۵ یعنی ۱۴:۱۵؛ گاهی ۱۲:۴۵.\nبا temperature=0.7 پرسیده می‌شود.\n۳ * ۱۲۰۰۰ = ۳۶۰۰۰ تومان\n۶ / ۲ = ۳\nابزار get_exchange_rate("USD") را صدا می‌زند.\n- به پوشه \`legacy/\` دست نزن\n\`\`\`\n`;
   const result = await transformReadme(markdown, transformConfig());
   const html = result.chapters.map((chapter) => chapter.html).join('\n');
 
-  for (const token of ['۹:۴۵', '۱۴:۱۵', '۱۳:۳۰', 'temperature=0.7', 'len(numbers)', '/legacy']) {
+  for (const token of ['۹:۴۵', '۱۴:۱۵', '۱۳:۳۰', 'temperature=0.7', 'len(numbers)', 'legacy/']) {
     const occurrences = html.match(new RegExp(`<bdi dir="ltr"[^>]*>${token.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')}<\\/bdi>`, 'gu')) ?? [];
     assert.ok(occurrences.length > 0, `expected isolated ${token} in transformed HTML`);
   }
@@ -155,6 +161,7 @@ test('Persian time and assignment tokens remain intact in examples, prose, and t
   ]) {
     assert.ok(html.includes(`>${line}</span>`), `expected intact RTL example line: ${line}`);
   }
+  assert.match(html, /<span class="bidi-line" dir="rtl"[^>]*>- به پوشه <bdi dir="ltr"[^>]*>`legacy\/`<\/bdi> دست نزن<\/span>/u);
   assert.match(html, /<td><bdi dir="ltr"[^>]*>۱۳:۳۰<\/bdi><\/td>/u);
   assert.match(html, /<td><bdi dir="ltr"[^>]*>temperature=0\.7<\/bdi><\/td>/u);
   assert.doesNotMatch(html, /<bdi[^>]*>۹<\/bdi>:<bdi[^>]*>۴۵<\/bdi>/u);

@@ -71,10 +71,19 @@ function renderMixedBidiLines(value, documentDirection) {
       context: 'text-fence-line',
       documentDirection,
     });
-    // Keep mixed RTL examples in source order. Splitting each number or code
-    // fragment into separate isolates reverses adjacent operators and time
-    // punctuation in Vivliostyle; the browser handles the intact line well.
-    const content = escapeHtmlText(line);
+    // Keep mixed RTL examples in source order. Splitting every technical run
+    // reverses adjacent operators and times. A single-token backtick span is
+    // an explicit code unit, though, and needs isolation for trailing slashes.
+    const content = bidi.direction === 'rtl'
+      ? line.split(/(`[^`\n]+`)/u).map((part) => {
+        if (!/^`[^`\s]+`$/u.test(part)) return escapeHtmlText(part);
+        const token = part.slice(1, -1);
+        const segments = segmentBidiText(token);
+        return segments.length === 1 && segments[0].direction === 'ltr'
+          ? `<bdi dir="ltr" class="${bidiClasses(part).join(' ')}">${escapeHtmlText(part)}</bdi>`
+          : escapeHtmlText(part);
+      }).join('')
+      : escapeHtmlText(line);
     const empty = line ? '' : ' bidi-line--empty';
     return `<span class="bidi-line${empty}" dir="${bidi.direction}" data-bidi-kind="${bidi.kind}">${content}</span>`;
   }).join('');
