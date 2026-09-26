@@ -151,7 +151,24 @@ test('cover uses semantic RTL layout and isolates only the LLM token', async () 
       applyBidiSpecToElement,
       spec,
     );
+    await page.$eval(
+      '[data-readme-press="series"]',
+      applyBidiSpecToElement,
+      createBidiSpec('کتاب‌های README Press', {
+        context: 'cover',
+        documentDirection: 'rtl',
+      }),
+    );
     await page.evaluate(() => document.fonts.ready);
+
+    const series = await page.$eval('.series', (element) => ({
+      text: element.textContent,
+      height: element.getBoundingClientRect().height,
+      childCount: element.children.length,
+    }));
+    assert.equal(series.text, 'کتاب‌های README Press');
+    assert.equal(series.childCount, 1);
+    assert.ok(series.height < 30, `expected a single series line: ${JSON.stringify(series)}`);
 
     const result = await page.$eval('[data-readme-press="title-prefix"]', (element) => {
       const persian = element.firstChild;

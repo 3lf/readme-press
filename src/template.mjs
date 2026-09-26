@@ -18,6 +18,27 @@ const formatNumber = (n, config) => config.metadata.numerals === 'persian'
 
 const editionHtml = (edition) => wrapLatinHtml(edition);
 
+function cssString(value) {
+  return `"${[...String(value)].map((character) => (
+    /["\\<>\u0000-\u001f\u007f]/u.test(character)
+      ? `\\${character.codePointAt(0).toString(16)} `
+      : character
+  )).join('')}"`;
+}
+
+function generatedLocaleStyle(config) {
+  const numeralStyle = config.metadata.numerals === 'persian' ? 'persian' : 'decimal';
+  return `<style>
+@page :right { @bottom-right { content: counter(page, ${numeralStyle}) '  ◆'; } }
+@page :left { @bottom-left { content: '◆  ' counter(page, ${numeralStyle}); } }
+@page toc { @top-center { content: ${cssString(config.labels.tocTitle)}; } }
+.toc-part-head::after,
+.toc-chapter-head::after,
+.toc-section a::after { content: target-counter(attr(href), page, ${numeralStyle}); }
+.chapter-body ol { list-style-type: ${numeralStyle}; }
+</style>`;
+}
+
 function contentSecurityPolicy(config) {
   if (!['safe', 'deny'].includes(config.security?.rawHtml)) return '';
   const policy = config.security.network;
@@ -144,7 +165,7 @@ ${chapterHtml}
   }
   const transition = ch.isPartStart
     ? `<div class="part-transition" id="part-${part.number}">
-    <div class="part-transition-meta"><span>${escapeHtmlText(config.labels.part)} ${formatNumber(part.number, config)} از ${formatNumber(partCount, config)}</span><i></i><span>${formatNumber(part.chapterNumbers.length, config)} ${escapeHtmlText(config.labels.chapter)}</span></div>
+    <div class="part-transition-meta"><span>${escapeHtmlText(config.labels.part)} ${formatNumber(part.number, config)} ${escapeHtmlText(config.labels.partOf)} ${formatNumber(partCount, config)}</span><i></i><span>${formatNumber(part.chapterNumbers.length, config)} ${escapeHtmlText(config.labels.chapter)}</span></div>
     <strong>${wrapLatinHtml(part.title)}</strong>
   </div>`
     : '';
@@ -178,9 +199,10 @@ export function buildDocument({ parts, chapters }, config) {
 <head>
 <meta charset="utf-8">
 ${contentSecurityPolicy(config)}
-<title>${escapeHtmlText(config.metadata.title)}؛ ${escapeHtmlText(config.metadata.edition)}${config.releaseVersion ? `؛ ${escapeHtmlText(config.releaseVersion)}` : ''}</title>
+<title>${escapeHtmlText(config.metadata.title)}${escapeHtmlText(config.labels.metadataSeparator)} ${escapeHtmlText(config.metadata.edition)}${config.releaseVersion ? `${escapeHtmlText(config.labels.metadataSeparator)} ${escapeHtmlText(config.releaseVersion)}` : ''}</title>
 <meta name="author" content="${escapeHtmlAttribute(config.metadata.author)}">
 <link rel="stylesheet" href="book.css">
+${generatedLocaleStyle(config)}
 </head>
 <body>
 ${buildToc(parts, chapters, config)}

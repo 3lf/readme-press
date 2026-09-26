@@ -167,7 +167,7 @@
     color: var(--tala);
   }
   @bottom-right {
-    content: counter(page, persian) '  ◆';
+    content: counter(page, decimal) '  ◆';
     font-family: var(--font-display);
     font-weight: 700;
     font-size: 8.5pt;
@@ -184,7 +184,7 @@
     color: var(--tala);
   }
   @bottom-left {
-    content: '◆  ' counter(page, persian);
+    content: '◆  ' counter(page, decimal);
     font-family: var(--font-display);
     font-weight: 700;
     font-size: 8.5pt;
@@ -216,7 +216,7 @@
   @top-right { content: none; }
   @top-left { content: none; }
   @top-center {
-    content: 'فهرست مطالب';
+    content: none;
     font-family: var(--font-display);
     font-weight: 700;
     font-size: 7.2pt;
@@ -432,7 +432,7 @@ img.emoji {
 }
 .toc-part-head .dots { flex: 1; }
 .toc-part-head::after {
-  content: target-counter(attr(href), page, persian);
+  content: target-counter(attr(href), page, decimal);
   font-family: var(--font-display);
   font-weight: 800; font-size: 9pt; color: var(--tala);
   flex: none;
@@ -463,7 +463,7 @@ img.emoji {
 }
 .toc-chapter-head::after,
 .toc-section a::after {
-  content: target-counter(attr(href), page, persian);
+  content: target-counter(attr(href), page, decimal);
   font-family: var(--font-display);
   font-weight: 700; color: var(--tala); font-size: 8pt;
   flex: none;
@@ -503,6 +503,7 @@ img.emoji {
 
 .part-transition {
   position: relative;
+  direction: inherit;
   display: grid;
   grid-template-columns: auto 1fr;
   align-items: center;
@@ -715,7 +716,7 @@ img.emoji {
 .chapter-body li { break-inside: avoid; }
 .chapter-body li + li { margin-block-start: 1.4mm; }
 .chapter-body li::marker { color: var(--tala-bright); font-weight: 700; }
-.chapter-body ol { list-style-type: persian; }
+.chapter-body ol { list-style-type: decimal; }
 .chapter-body li > ul, .chapter-body li > ol { margin-block-start: 1.4mm; }
 
 .chapter-body code {
@@ -850,6 +851,7 @@ pre.example--long {
     linear-gradient(135deg, rgba(28, 63, 115, 0.04), transparent 48%),
     var(--surface);
 }
+html[dir='ltr'] .book-tree { direction: ltr; }
 .book-tree-root {
   padding: 2.4mm 3.2mm;
   border-inline-start: 1mm solid var(--tala-bright);

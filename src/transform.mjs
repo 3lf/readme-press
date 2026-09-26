@@ -478,7 +478,7 @@ function renderImages(root, ctx) {
       .map((rule) => ` ${rule.className}`)
       .join('');
     const dims = size ? ` width="${size.width}" height="${size.height}"` : '';
-    const alt = escapeHtmlAttribute(node.alt || 'تصویر');
+    const alt = escapeHtmlAttribute(node.alt || ctx.labels?.imageAlt || 'Image');
     parent.children[index] = {
       type: 'html',
       value: `<figure class="diagram${tall}${special}"><img src="${image.normalUrl}"${imageDataAttributes(image)}${dims} alt="${alt}"></figure>`,
@@ -499,7 +499,7 @@ async function renderCodeBlocks(root, ctx) {
       const tall = d.height / d.width > 1.4 ? ' diagram--tall' : '';
       parent.children[index] = {
         type: 'html',
-        value: `<figure class="diagram${tall}"><img src="assets/diagrams/${d.file}" data-readme-press-generated width="${d.width}" height="${d.height}" alt="دیاگرام"></figure>`,
+        value: `<figure class="diagram${tall}"><img src="assets/diagrams/${d.file}" data-readme-press-generated width="${d.width}" height="${d.height}" alt="${escapeHtmlAttribute(ctx.labels?.diagramAlt || 'Diagram')}"></figure>`,
       };
     } else if (['python', 'bash', 'json', 'js', 'javascript', 'yaml'].includes(lang)) {
       const html = await highlight(node.value, lang);
@@ -851,6 +851,7 @@ export async function transformReadme(markdown, config, ctxExtra = {}) {
     repository: config.repository,
     imageOptions: config.images,
     contentRules: config.contentRules,
+    labels: config.labels,
     documentDirection: config.metadata?.direction ?? 'rtl',
     mermaid: config.mermaid,
     projectRoot: config.contentRoot ?? config.projectRoot,

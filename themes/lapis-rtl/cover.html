@@ -89,6 +89,11 @@
       letter-spacing: 0.01em;
     }
 
+    .series > span {
+      white-space: nowrap;
+      unicode-bidi: isolate;
+    }
+
     .series::before,
     .series::after {
       content: "";
@@ -301,7 +306,7 @@
   <main class="cover classic-revised" aria-label="Book cover">
     <div class="frame-points" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
 
-    <header class="series" data-readme-press="series">README Press</header>
+    <header class="series"><span data-readme-press="series">README Press</span></header>
 
     <svg class="shamsa" viewBox="0 0 200 200" aria-hidden="true">
       <g fill="none" stroke="currentColor" stroke-linejoin="round">

@@ -17,7 +17,7 @@ const PIPELINE_PDF_NAMES = [
   'cover-print.pdf',
 ];
 
-const DEFAULT_LABELS = {
+const PERSIAN_LABELS = {
   colophon: 'شناسنامه',
   title: 'عنوان',
   subtitle: 'زیرعنوان',
@@ -38,6 +38,37 @@ const DEFAULT_LABELS = {
   introduction: 'پیش از شروع',
   coverSeries: 'کتاب‌های ساخته‌شده با README Press',
   coverRepositoryNote: 'آخرین نسخه را از <strong>GitHub</strong> بگیر.',
+  partOf: 'از',
+  metadataSeparator: '؛',
+  imageAlt: 'تصویر',
+  diagramAlt: 'دیاگرام',
+};
+
+const ENGLISH_LABELS = {
+  colophon: 'Colophon',
+  title: 'Title',
+  subtitle: 'Subtitle',
+  author: 'Author',
+  edition: 'Edition',
+  releaseVersion: 'Release',
+  source: 'Source',
+  license: 'License',
+  latestTitle: 'Get the latest edition',
+  latestBody: 'The latest release is available from the project repository:',
+  latestLink: 'Project on GitHub',
+  issueNote: 'Found a problem? Open an issue in the project repository.',
+  tocEyebrow: 'Reading map',
+  tocTitle: 'Contents',
+  tocDescription: 'Read from the beginning or jump to the chapter you need.',
+  part: 'Part',
+  chapter: 'Chapter',
+  introduction: 'Before you begin',
+  coverSeries: 'Books made with README Press',
+  coverRepositoryNote: 'Get the latest edition from <strong>GitHub</strong>.',
+  partOf: 'of',
+  metadataSeparator: ';',
+  imageAlt: 'Image',
+  diagramAlt: 'Diagram',
 };
 
 export function defineConfig(config) {
@@ -82,6 +113,10 @@ export async function loadConfig(configFile = 'readme-press.config.mjs', cwd = p
     strict: candidate.security?.strictConfig ?? securityDefaults.strictConfig,
   });
   const raw = validation.config;
+  const language = raw.metadata?.language ?? 'fa';
+  const isPersian = /^fa(?:-|$)/iu.test(language);
+  const defaultLabels = isPersian ? PERSIAN_LABELS : ENGLISH_LABELS;
+  const labels = { ...defaultLabels, ...(raw.labels ?? {}) };
 
   const configRoot = dirname(absoluteConfig);
   const sourcePath = resolveConfigFile(configRoot, raw.source, 'README.md');
@@ -151,12 +186,12 @@ export async function loadConfig(configFile = 'readme-press.config.mjs', cwd = p
       edition: required(raw.metadata?.edition, 'metadata.edition'),
       localDate: raw.metadata?.localDate ?? raw.metadata?.edition,
       latinDate: raw.metadata?.latinDate ?? '',
-      language: raw.metadata?.language ?? 'fa',
-      direction: raw.metadata?.direction ?? 'rtl',
+      language,
+      direction: raw.metadata?.direction ?? (isPersian ? 'rtl' : 'ltr'),
       license: raw.metadata?.license ?? '',
       subject: raw.metadata?.subject ?? raw.metadata?.subtitle ?? raw.metadata?.title,
       creator: raw.metadata?.creator ?? 'README Press',
-      numerals: raw.metadata?.numerals ?? (raw.metadata?.language === 'fa' ? 'persian' : 'latin'),
+      numerals: raw.metadata?.numerals ?? (isPersian ? 'persian' : 'latin'),
     },
     repository: {
       ...raw.repository,
@@ -164,7 +199,7 @@ export async function loadConfig(configFile = 'readme-press.config.mjs', cwd = p
       display: repositoryDisplay,
       branch: raw.repository?.branch ?? 'main',
     },
-    labels: { ...DEFAULT_LABELS, ...(raw.labels ?? {}) },
+    labels,
     page: {
       widthCm: raw.page?.widthCm ?? 17,
       heightCm: raw.page?.heightCm ?? 24,
@@ -185,14 +220,13 @@ export async function loadConfig(configFile = 'readme-press.config.mjs', cwd = p
       file: raw.cover?.file
         ? resolveConfigFile(configRoot, raw.cover.file)
         : resolve(themeRoot, 'cover.html'),
-      series: raw.cover?.series ?? raw.labels?.coverSeries ?? DEFAULT_LABELS.coverSeries,
+      series: raw.cover?.series ?? labels.coverSeries,
       titlePrefix: raw.cover?.titlePrefix ?? raw.metadata?.titlePrefix ?? '',
       title: raw.cover?.title ?? raw.metadata?.title,
       tagline: raw.cover?.tagline ?? raw.metadata?.tagline ?? '',
       repositoryNote: sanitizeInlineMarkup(
         raw.cover?.repositoryNote
-          ?? raw.labels?.coverRepositoryNote
-          ?? DEFAULT_LABELS.coverRepositoryNote,
+          ?? labels.coverRepositoryNote,
       ),
     },
     images: {
@@ -219,7 +253,8 @@ export async function loadConfig(configFile = 'readme-press.config.mjs', cwd = p
       paragraphClassRules: raw.contentRules?.paragraphClassRules ?? [],
       chapterClassRules: raw.contentRules?.chapterClassRules ?? [],
       tableClassRules: raw.contentRules?.tableClassRules ?? [],
-      treeAriaLabel: raw.contentRules?.treeAriaLabel ?? 'Document hierarchy',
+      treeAriaLabel: raw.contentRules?.treeAriaLabel
+        ?? (isPersian ? 'ساختار سند' : 'Document hierarchy'),
     },
     security: {
       ...(raw.security ?? {}),
