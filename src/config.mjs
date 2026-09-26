@@ -218,6 +218,7 @@ export async function loadConfig(configFile = 'readme-press.config.mjs', cwd = p
       calloutClassRules: raw.contentRules?.calloutClassRules ?? [],
       paragraphClassRules: raw.contentRules?.paragraphClassRules ?? [],
       chapterClassRules: raw.contentRules?.chapterClassRules ?? [],
+      tableClassRules: raw.contentRules?.tableClassRules ?? [],
       treeAriaLabel: raw.contentRules?.treeAriaLabel ?? 'Document hierarchy',
     },
     security: {

@@ -48,8 +48,8 @@ function colophon(config) {
     <div class="colophon-orn">${SHAMSA}</div>
     <p class="colophon-kicker">${escapeHtmlText(labels.colophon)}</p>
     <dl class="colophon-grid">
-      <dt>${escapeHtmlText(labels.title)}</dt><dd>${escapeHtmlText(metadata.title)}</dd>
-      ${metadata.subtitle ? `<dt>${escapeHtmlText(labels.subtitle)}</dt><dd>${escapeHtmlText(metadata.subtitle)}</dd>` : ''}
+      <dt>${escapeHtmlText(labels.title)}</dt><dd>${wrapLatinHtml(metadata.title)}</dd>
+      ${metadata.subtitle ? `<dt>${escapeHtmlText(labels.subtitle)}</dt><dd>${wrapLatinHtml(metadata.subtitle)}</dd>` : ''}
       <dt>${escapeHtmlText(labels.author)}</dt><dd><bdi>${escapeHtmlText(metadata.author)}</bdi></dd>
       <dt>${escapeHtmlText(labels.edition)}</dt><dd>${editionHtml(metadata.edition)}</dd>
       ${config.releaseVersion ? `<dt>${escapeHtmlText(labels.releaseVersion)}</dt><dd><bdi dir="ltr">${escapeHtmlText(config.releaseVersion)}</bdi></dd>` : ''}
@@ -100,7 +100,7 @@ ${sections}
         })
         .join('\n');
       return `    <li class="toc-part">
-      <a class="toc-part-head" href="#part-${escapeHtmlAttribute(part.number)}"><span class="pno">${escapeHtmlText(labels.part)} ${formatNumber(part.number, config)}</span><span class="pt">${escapeHtmlText(part.title)}</span><span class="dots"></span></a>
+      <a class="toc-part-head" href="#part-${escapeHtmlAttribute(part.number)}"><span class="pno">${escapeHtmlText(labels.part)} ${formatNumber(part.number, config)}</span><span class="pt">${wrapLatinHtml(part.title)}</span><span class="dots"></span></a>
       <ol>
 ${rows}
       </ol>
@@ -145,7 +145,7 @@ ${chapterHtml}
   const transition = ch.isPartStart
     ? `<div class="part-transition" id="part-${part.number}">
     <div class="part-transition-meta"><span>${escapeHtmlText(config.labels.part)} ${formatNumber(part.number, config)} از ${formatNumber(partCount, config)}</span><i></i><span>${formatNumber(part.chapterNumbers.length, config)} ${escapeHtmlText(config.labels.chapter)}</span></div>
-    <strong>${escapeHtmlText(part.title)}</strong>
+    <strong>${wrapLatinHtml(part.title)}</strong>
   </div>`
     : '';
   const configuredClasses = config.contentRules.chapterClassRules

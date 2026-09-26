@@ -126,28 +126,36 @@
       line-height: 1.13;
     }
 
-    .title-latin,
-    .title-fa {
+    .title-prefix,
+    .title-main {
       font-size: 42pt;
       font-variation-settings: "wght" 830;
       font-weight: 830;
     }
 
-    .title-latin {
-      direction: ltr;
-      unicode-bidi: isolate;
+    .title-prefix {
       color: var(--gold-bright);
       font-family: var(--display);
       font-size: 48pt;
       font-variation-settings: "wght" 900;
       font-weight: 900;
+      letter-spacing: -0.035em;
+      white-space: nowrap;
+    }
+
+    .title-prefix:dir(ltr),
+    .title-prefix bdi[dir='ltr'] {
       letter-spacing: 0.018em;
     }
 
-    .title-fa {
+    .title-main {
       color: var(--ivory);
       letter-spacing: -0.035em;
       white-space: nowrap;
+    }
+
+    .bidi-isolate {
+      unicode-bidi: isolate;
     }
 
     .title-divider {
@@ -306,10 +314,10 @@
       <circle cx="100" cy="100" r="6" fill="currentColor"/>
     </svg>
 
-    <section class="title-block" aria-labelledby="classic-title-fa">
+    <section class="title-block" aria-labelledby="classic-title">
       <h1>
-        <span class="title-latin" data-readme-press="title-prefix">README</span>
-        <span class="title-fa" id="classic-title-fa" data-readme-press="title">Press</span>
+        <span class="title-prefix" data-readme-press="title-prefix">README</span>
+        <span class="title-main" id="classic-title" data-readme-press="title">Press</span>
       </h1>
       <div class="title-divider" aria-hidden="true"><span></span></div>
       <p class="tagline" data-readme-press="tagline">Turn Markdown into a professionally typeset book</p>

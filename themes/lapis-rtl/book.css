@@ -777,6 +777,30 @@ pre.example {
   break-inside: avoid;
   margin-block: 4mm;
 }
+/* LTR equations in `text` fences keep their reading direction without the
+   copy-ready PROMPT treatment. */
+pre.example--ltr {
+  direction: ltr;
+  text-align: left;
+  unicode-bidi: isolate;
+  font-family: var(--font-mono);
+  font-size: 8.45pt;
+}
+.bidi-line {
+  display: block;
+  min-height: 1lh;
+  unicode-bidi: isolate;
+  white-space: pre-wrap;
+}
+.bidi-line[dir='ltr'] {
+  direction: ltr;
+  text-align: left;
+  font-family: var(--font-mono);
+}
+.bidi-line[dir='rtl'] {
+  direction: rtl;
+  text-align: right;
+}
 pre.example--long {
   font-size: 8.35pt;
   line-height: 1.72;
@@ -785,6 +809,33 @@ pre.example--long {
   box-decoration-break: slice;
   -webkit-box-decoration-break: slice;
 }
+
+/* `<details>` is interactive in the source README. In the book transform it
+   becomes `.answer-details`, so answer keys stay visible and never acquire
+   the browser's native "Details" continuation label. */
+.answer-details {
+  display: block;
+  break-inside: auto;
+  margin-block: 4.5mm;
+  padding: 3mm 3.6mm;
+  border: 0.35mm solid color-mix(in srgb, var(--lajvard) 18%, transparent);
+  border-inline-start: 0.85mm solid var(--lajvard);
+  border-radius: 7pt;
+  background: color-mix(in srgb, var(--surface) 92%, white);
+}
+.answer-summary {
+  margin-block: 0 2.5mm;
+  color: var(--tala);
+  font-family: var(--font-display);
+  font-size: 9.4pt;
+  font-weight: 750;
+  line-height: 1.6;
+}
+.answer-details > * + * { margin-block-start: 2.2mm; }
+.answer-details .promptblock,
+.answer-details pre.example,
+.answer-details table,
+.answer-details .table-wrap { break-inside: auto; }
 
 /* Fenced text trees stay monospace on GitHub and become a real tree here. */
 .book-tree {
@@ -882,6 +933,14 @@ pre.example--long {
   text-align: left;
   direction: ltr;
   tab-size: 2;
+}
+.promptblock[dir='rtl'],
+.promptblock[dir='rtl'] pre {
+  direction: rtl;
+  text-align: right;
+}
+.promptblock[dir='rtl'] pre {
+  font-family: var(--font-text);
 }
 .promptblock--long,
 .promptblock--long pre {
@@ -985,6 +1044,31 @@ tbody tr:last-child td { border-bottom: none; }
 tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--surface) 55%, transparent); }
 tbody td a { white-space: nowrap; }
 td code { font-size: 0.84em; }
+
+/* The architecture classification worksheet has many independent checkmark
+   columns. Keep the default table style unchanged and add separators only to
+   this explicitly marked table. */
+.table-wrap--classification table {
+  border: 0.25mm solid var(--line);
+  border-radius: 3pt;
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: hidden;
+}
+.table-wrap--classification th,
+.table-wrap--classification td {
+  border-inline-start: 0.22mm solid var(--line);
+}
+.table-wrap--classification th:first-child,
+.table-wrap--classification td:first-child {
+  border-inline-start: none;
+}
+.table-wrap--classification thead th {
+  border-bottom: 0.4mm solid var(--line-gold);
+}
+.table-wrap--classification tbody tr:last-child td {
+  border-bottom: none;
+}
 
 /* ---------------- diagrams (mermaid) ---------------- */
 

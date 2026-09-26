@@ -15,6 +15,7 @@ import rehypeStringify from 'rehype-stringify';
 import { visit, SKIP, EXIT } from 'unist-util-visit';
 import { toString as mdastToString } from 'mdast-util-to-string';
 import { createSecurityDefaults } from './defaults.mjs';
+import { analyzeBidiText, BIDI_CONTROL_RE, segmentBidiText } from './bidi.mjs';
 import { renderMermaid } from './mermaid.mjs';
 import { highlight } from './highlight.mjs';
 import { escapeHtmlAttribute, escapeHtmlText, sanitizeRawHtml } from './html.mjs';
@@ -48,64 +49,54 @@ export function twemojiFile(emoji) {
   return toCodePoint(cleaned) + '.svg';
 }
 
-/* ---------------- bidi helper: isolate Latin runs ---------------- */
+/* ---------------- bidi helper: isolate technical LTR runs ---------------- */
 
-// A mixed token may start with a digit (1M, 400K, 10M). Requiring the first
-// character to be Latin isolated only the suffix and made RTL layout reverse
-// the visible value. Every match must still contain at least one Latin letter,
-// so ordinary Persian/Latin digits are left in their surrounding direction.
-const LATIN_TOKEN_SOURCE = String.raw`(?:[A-Za-z][A-Za-z0-9۰-۹./+#&_-]*|[0-9۰-۹][A-Za-z0-9۰-۹./+#&_-]*[A-Za-z][A-Za-z0-9۰-۹./+#&_-]*)`;
-const LATIN_RUN_SOURCE = String.raw`${LATIN_TOKEN_SOURCE}(?:[ \t]+[A-Za-z0-9۰-۹./+#&_-]+)*`;
-// Parentheses belong to the isolated LTR phrase. Leaving them in the RTL
-// context makes Vivliostyle mirror or detach them when a heading wraps.
-const ISOLATED_LATIN_RE = new RegExp(
-  String.raw`\([ \t]*${LATIN_RUN_SOURCE}[ \t]*\)|${LATIN_RUN_SOURCE}`,
-  'g',
-);
-
-/** Wraps Latin phrases in <bdi> so RTL line-breaking can't scramble them
- *  (e.g. a heading wrapping inside «(Fine-tuning vs RAG)»). */
-export function wrapLatinHtml(text) {
-  const parts = [];
-  let last = 0;
-  ISOLATED_LATIN_RE.lastIndex = 0;
-  for (const match of String(text).matchAll(ISOLATED_LATIN_RE)) {
-    if (match.index > last) parts.push(escapeHtmlText(String(text).slice(last, match.index)));
-    const classes = match[0].includes(' ') ? 'latin-isolate' : 'latin-isolate latin-token';
-    parts.push(`<bdi dir="ltr" class="${classes}">${escapeHtmlText(match[0])}</bdi>`);
-    last = match.index + match[0].length;
-  }
-  if (last < String(text).length) parts.push(escapeHtmlText(String(text).slice(last)));
-  return parts.join('');
+function bidiClasses(value) {
+  return value.includes(' ')
+    ? ['bidi-isolate', 'latin-isolate']
+    : ['bidi-isolate', 'latin-isolate', 'latin-token'];
 }
 
-function wrapLatinInHastText(node) {
-  // splits a hast text node into text + bdi elements
-  const parts = [];
-  let last = 0;
-  ISOLATED_LATIN_RE.lastIndex = 0;
-  for (const m of node.value.matchAll(ISOLATED_LATIN_RE)) {
-    if (m.index > last) parts.push({ type: 'text', value: node.value.slice(last, m.index) });
-    parts.push({
+/** Wraps technical LTR phrases in <bdi> without changing source order. */
+export function wrapLatinHtml(text) {
+  return segmentBidiText(text).map((segment) => {
+    if (!segment.direction) return escapeHtmlText(segment.text);
+    return `<bdi dir="${segment.direction}" class="${bidiClasses(segment.text).join(' ')}">${escapeHtmlText(segment.text)}</bdi>`;
+  }).join('');
+}
+
+function renderMixedBidiLines(value, documentDirection) {
+  return String(value).split('\n').map((line) => {
+    const bidi = analyzeBidiText(line, {
+      context: 'text-fence-line',
+      documentDirection,
+    });
+    const content = bidi.direction === 'rtl' ? wrapLatinHtml(line) : escapeHtmlText(line);
+    const empty = line ? '' : ' bidi-line--empty';
+    return `<span class="bidi-line${empty}" dir="${bidi.direction}" data-bidi-kind="${bidi.kind}">${content}</span>`;
+  }).join('');
+}
+
+function wrapBidiInHastText(node) {
+  return segmentBidiText(node.value).map((segment) => {
+    if (!segment.direction) return { type: 'text', value: segment.text };
+    return {
       type: 'element', tagName: 'bdi',
       properties: {
-        dir: 'ltr',
-        className: m[0].includes(' ') ? ['latin-isolate'] : ['latin-isolate', 'latin-token'],
+        dir: segment.direction,
+        className: bidiClasses(segment.text),
       },
-      children: [{ type: 'text', value: m[0] }],
-    });
-    last = m.index + m[0].length;
-  }
-  if (last < node.value.length) parts.push({ type: 'text', value: node.value.slice(last) });
-  return parts.length ? parts : [node];
+      children: [{ type: 'text', value: segment.text }],
+    };
+  });
 }
 
-function isolateLatinDescendants(node) {
+function isolateBidiDescendants(node) {
   if (!node.children) return;
   const skip = new Set(['bdi', 'code', 'pre', 'svg', 'style', 'script']);
   node.children = node.children.flatMap((child) => {
-    if (child.type === 'text') return wrapLatinInHastText(child);
-    if (child.type === 'element' && !skip.has(child.tagName)) isolateLatinDescendants(child);
+    if (child.type === 'text') return wrapBidiInHastText(child);
+    if (child.type === 'element' && !skip.has(child.tagName)) isolateBidiDescendants(child);
     return [child];
   });
 }
@@ -114,6 +105,11 @@ function classNames(node) {
   const value = node?.properties?.className;
   if (Array.isArray(value)) return value.map(String);
   return value ? [String(value)] : [];
+}
+
+function hastText(node) {
+  if (node?.type === 'text') return node.value;
+  return (node?.children ?? []).map(hastText).join('');
 }
 
 function wrapHeadingTableGroups(parent) {
@@ -213,12 +209,6 @@ function isNoiseHtml(node) {
 
 function cleanTitle(text) {
   return text.replace(TRAILING_EMOJI_RE, '').trim();
-}
-
-function firstStrongDirection(text) {
-  const latin = text.search(/[A-Za-z]/u);
-  const persian = text.search(/\p{Script=Arabic}/u);
-  return latin !== -1 && (persian === -1 || latin < persian) ? 'ltr' : 'rtl';
 }
 
 function selectTocHeadings(title, headings, toc = {}) {
@@ -520,22 +510,41 @@ async function renderCodeBlocks(root, ctx) {
         value: `<div class="codeblock${long}" dir="ltr" data-lang="${lang}">${html}</div>`,
       };
     } else {
-      // Text fences can be Persian examples or copy-ready English prompts.
-      // Keep the raw text intact, but give long LTR prompts their own layout.
+      // Text fences can be Persian examples, equations, or copy-ready prompts.
+      // The engineering book uses `text` for equations and numeric worksheets;
+      // that language must never acquire the prompt label by accident. An
+      // explicit `prompt` fence, or an unlabeled/other LTR prose fence, keeps
+      // the prompt treatment used by the base book.
       const tree = renderTextTree(node.value, ctx.contentRules.treeAriaLabel);
       if (tree) {
         parent.children[index] = { type: 'html', value: tree };
         continue;
       }
-      const esc = escapeHtmlText(node.value);
-      const direction = firstStrongDirection(node.value);
-      if (direction === 'ltr') {
+      const bidi = analyzeBidiText(node.value, {
+        context: 'text-fence',
+        documentDirection: ctx.documentDirection,
+      });
+      const esc = bidi.kind === 'mixed'
+        ? renderMixedBidiLines(node.value, ctx.documentDirection)
+        : bidi.direction === 'rtl'
+          ? wrapLatinHtml(node.value)
+          : escapeHtmlText(node.value);
+      const isPromptFence = lang === 'prompt' || (bidi.kind === 'ltr-text' && lang !== 'text');
+      if (isPromptFence) {
         const long = node.value.split('\n').length > 18 || node.value.length > 900
           ? ' promptblock--long'
           : '';
         parent.children[index] = {
           type: 'html',
-          value: `<div class="promptblock${long}" dir="ltr"><pre>${esc}</pre></div>`,
+          value: `<div class="promptblock${long}" dir="${bidi.direction}" data-bidi-kind="${bidi.kind}"><pre>${esc}</pre></div>`,
+        };
+      } else if (bidi.direction === 'ltr') {
+        const long = node.value.split('\n').length > 11 || node.value.length > 340
+          ? ' example--long'
+          : '';
+        parent.children[index] = {
+          type: 'html',
+          value: `<pre class="example example--ltr${long}" dir="ltr" data-bidi-kind="${bidi.kind}">${esc}</pre>`,
         };
       } else {
         const long = node.value.split('\n').length > 11 || node.value.length > 340
@@ -543,7 +552,7 @@ async function renderCodeBlocks(root, ctx) {
           : '';
         parent.children[index] = {
           type: 'html',
-          value: `<pre class="example${long}" dir="rtl">${esc}</pre>`,
+          value: `<pre class="example${long}" dir="rtl" data-bidi-kind="${bidi.kind}">${esc}</pre>`,
         };
       }
     }
@@ -564,7 +573,29 @@ const ICONS = {
 /* ---------------- hast-level passes ---------------- */
 
 function hastPasses(tree, ctx) {
-  // 0) callouts: wrap children into icon + content columns
+  // 0) answer disclosures are useful on GitHub, but native <details> is
+  // collapsed by print engines and can emit a stray "Details" continuation
+  // label when its contents cross a page. Turn it into an ordinary printable
+  // block while retaining the source README's interactive form.
+  visit(tree, 'element', (node) => {
+    if (node.tagName !== 'details') return;
+    node.tagName = 'div';
+    node.properties = {
+      ...(node.properties ?? {}),
+      className: [...classNames(node), 'answer-details'],
+    };
+    for (const child of node.children ?? []) {
+      if (child.type !== 'element' || child.tagName !== 'summary') continue;
+      child.tagName = 'div';
+      child.properties = {
+        ...(child.properties ?? {}),
+        className: [...classNames(child), 'answer-summary'],
+      };
+    }
+    return SKIP;
+  });
+
+  // 1) callouts: wrap children into icon + content columns
   visit(tree, 'element', (node) => {
     if (node.tagName !== 'aside') return;
     const cls = node.properties?.className ?? [];
@@ -587,7 +618,7 @@ function hastPasses(tree, ctx) {
     delete node.properties['data-icon'];
     return SKIP;
   });
-  // 1) internal links: keep if target exists in the sliced book, else unwrap.
+  // 2) internal links: keep if target exists in the sliced book, else unwrap.
   // Repository-relative document links must become public URLs before the PDF
   // renderer resolves them against its localhost build server.
   visit(tree, 'element', (node, index, parent) => {
@@ -614,17 +645,17 @@ function hastPasses(tree, ctx) {
     }
   });
 
-  // 1.5) Prose, headings, and table cells: isolate mixed-script runs. Single
+  // 2.5) Prose, headings, and table cells: isolate mixed-script runs. Single
   // tokens also receive a no-break class, so names such as Persian-Phi and
   // values such as 400K stay intact without forcing long phrases onto one line.
   visit(tree, 'element', (node) => {
     if (!['p', 'li', 'dt', 'dd', 'figcaption', 'h2', 'h3', 'h4', 'td', 'th'].includes(node.tagName)) return;
     if (['h2', 'h3', 'h4'].includes(node.tagName)) groupMixedHeadingTerm(node);
-    isolateLatinDescendants(node);
+    isolateBidiDescendants(node);
     return SKIP;
   });
 
-  // 2) tables: wrap for overflow control; long tables may break across pages
+  // 3) tables: wrap for overflow control; long tables may break across pages
   visit(tree, 'element', (node, index, parent) => {
     if (node.tagName !== 'table' || !parent) return;
     if (parent.tagName === 'div' && parent.properties?.className?.includes('table-wrap')) return;
@@ -632,7 +663,15 @@ function hastPasses(tree, ctx) {
       (sum, c) => sum + ((c.tagName === 'tbody' || c.tagName === 'thead') ? (c.children?.length ?? 0) : 0),
       0,
     );
-    const cls = ['table-wrap'];
+    const headerRow = node.children
+      ?.find((child) => child.type === 'element' && child.tagName === 'thead')
+      ?.children
+      ?.find((child) => child.type === 'element' && child.tagName === 'tr');
+    const headerText = (headerRow?.children ?? []).map(hastText).join(' | ');
+    const configuredClasses = (ctx.contentRules.tableClassRules ?? [])
+      .filter((rule) => headerText.includes(String(rule.headerContains ?? '')))
+      .flatMap((rule) => String(rule.className ?? '').split(/\s+/u).filter(Boolean));
+    const cls = ['table-wrap', ...new Set(configuredClasses)];
     if (rowCount > 12) cls.push('table-wrap--long');
     parent.children[index] = {
       type: 'element', tagName: 'div',
@@ -642,12 +681,12 @@ function hastPasses(tree, ctx) {
     return SKIP;
   });
 
-  // 2.5) A short table is already atomic in paged media. Keep its heading in
+  // 3.5) A short table is already atomic in paged media. Keep its heading in
   // the same atomic wrapper so Vivliostyle never starts the mixed RTL/LTR
   // heading, rolls the table to the next page, and leaves a stale fragment.
   wrapHeadingTableGroups(tree);
 
-  // 3) inline code inside RTL prose: isolate LTR
+  // 4) inline code inside RTL prose: isolate LTR
   visit(tree, 'element', (node) => {
     if (node.tagName === 'code') {
       const cls = node.properties.className;
@@ -656,7 +695,7 @@ function hastPasses(tree, ctx) {
     }
   });
 
-  // 4) emoji in text → local twemoji SVG imgs (skip code/pre/svg subtrees)
+  // 5) emoji in text → local twemoji SVG imgs (skip code/pre/svg subtrees)
   const SKIP_TAGS = new Set(['pre', 'code', 'svg', 'style', 'script']);
   const walk = (node) => {
     if (node.type === 'element' && SKIP_TAGS.has(node.tagName)) return;
@@ -812,6 +851,7 @@ export async function transformReadme(markdown, config, ctxExtra = {}) {
     repository: config.repository,
     imageOptions: config.images,
     contentRules: config.contentRules,
+    documentDirection: config.metadata?.direction ?? 'rtl',
     mermaid: config.mermaid,
     projectRoot: config.contentRoot ?? config.projectRoot,
     rawHtml: config.security?.rawHtml ?? securityDefaults.rawHtml,
@@ -821,6 +861,13 @@ export async function transformReadme(markdown, config, ctxExtra = {}) {
     ),
     ...ctxExtra,
   };
+
+  if (BIDI_CONTROL_RE.test(markdown)) {
+    ctx.diagnostics.push({
+      code: 'SOURCE_BIDI_CONTROL',
+      detail: 'Source Markdown contains an invisible bidi control; keep logical text order and let README Press isolate mixed runs.',
+    });
+  }
 
   const mdast = unified().use(remarkParse).use(remarkGfm).parse(markdown);
   const { parts, chapters } = selectBook(mdast, config.structure);
