@@ -1,16 +1,12 @@
 <p align="center">
-  <img src="docs/assets/readme-press-hero.png" alt="A Markdown document passing through a precise typesetting press and becoming release-ready PDF book editions" width="100%">
+  <img src="docs/assets/readme-press-hero.png" alt="A Markdown book becoming checked PDF editions" width="100%">
 </p>
 
 <h1 align="center">README Press</h1>
 
-<p align="center">
-  <strong>Turn the README you already maintain into a release-ready PDF book.</strong>
-</p>
+<p align="center"><strong>Turn one book-shaped Markdown source into repeatable, checked PDF editions.</strong></p>
 
-<p align="center">
-  <strong>English</strong> · <a href="./README.fa.md">فارسی</a>
-</p>
+<p align="center"><strong>English</strong> · <a href="./README.fa.md">فارسی</a></p>
 
 <p align="center">
   <a href="https://github.com/3lf/readme-press/actions/workflows/ci.yml"><img alt="CI status" src="https://github.com/3lf/readme-press/actions/workflows/ci.yml/badge.svg"></a>
@@ -19,217 +15,126 @@
   <img alt="Node.js 22 or 24" src="https://img.shields.io/badge/node-22%20%7C%2024-17365D">
 </p>
 
-<p align="center">
-  <a href="#quick-start">Quick start</a> ·
-  <a href="#see-the-output">PDF examples</a> ·
-  <a href="./action.yml">Action reference</a> ·
-  <a href="https://github.com/3lf/readme-press/releases/latest">Latest release</a>
-</p>
+README Press is for technical authors who keep a long, structured guide in one README or Markdown file. It builds normal, print, and high-quality PDFs with a cover, generated contents, bookmarks, internal links, local fonts, and repeatable QA. Your Markdown remains the source of truth.
 
-README Press is for projects where one long Markdown file remains the canonical source. It keeps the source pleasant to read on GitHub while moving page structure, typography, covers, image quality, and release checks into configuration.
+## Is your README book-shaped?
 
-Its first production use was a Persian, RTL-first book. That origin shaped the engine's handling of bidirectional text, local fonts, mixed scripts, and page-by-page visual QA. The same pipeline now supports LTR, RTL, and mixed-script books.
+Check this before installing:
 
-## See the output
+- It has a level-one introduction heading, then a level-one hand-written GitHub contents heading, then level-one chapter headings.
+- You can name the introduction, contents, and first chapter of each part in a small config file. These names must match the source headings exactly.
+- It is a guide or book that benefits from chapters and PDF pagination. A short project README with only an install section is outside the current source contract.
 
-<p align="center">
-  <a href="https://github.com/3lf/readme-press/releases/latest">
-    <img src="docs/assets/readme-press-preview.png" alt="Real English and Persian PDF pages built by README Press" width="92%">
-  </a>
-</p>
+```text
+# Introduction          <- structure.introHeading
+# Contents              <- structure.githubTocHeading
+# The first chapter     <- structure.parts[0].startHeading
+## A section
+# The second chapter
+```
 
-<p align="center"><sub>Real pages rendered by the English and Persian integration pipelines, not an illustrative mockup.</sub></p>
+The [complete starter source](./examples/starter/README.md) shows this shape. It includes GitHub links in its hand-written contents; README Press builds its own PDF contents from the same headings. For more than one part, give each part a `startHeading` that matches a chapter heading.
 
-| Example | Standard edition | Print edition | High-quality edition |
-|---|---|---|---|
-| English, LTR | [Download PDF](https://github.com/3lf/readme-press/releases/latest/download/readme-press-example.pdf) | [Download PDF](https://github.com/3lf/readme-press/releases/latest/download/readme-press-example-print.pdf) | [Download PDF](https://github.com/3lf/readme-press/releases/latest/download/readme-press-example-high-quality.pdf) |
-| Persian, RTL | [Download PDF](https://github.com/3lf/readme-press/releases/latest/download/readme-press-example-fa.pdf) | [Download PDF](https://github.com/3lf/readme-press/releases/latest/download/readme-press-example-fa-print.pdf) | [Download PDF](https://github.com/3lf/readme-press/releases/latest/download/readme-press-example-fa-high-quality.pdf) |
+## See a real page
 
-## How it works
+<p align="center"><img src="docs/assets/starter-page.png" alt="Readable body page from the starter book PDF, with a table and chapter text" width="88%"></p>
 
-<table>
-  <tr>
-    <td width="33%"><strong>1. Keep writing Markdown</strong><br>Your README stays useful on GitHub and remains the only content source.</td>
-    <td width="33%"><strong>2. Describe the book</strong><br>A small config defines metadata, chapters, theme, outputs, and project-specific checks.</td>
-    <td width="33%"><strong>3. Build, verify, release</strong><br>One pipeline produces every configured edition, renders every page, and prepares checksums and release notes.</td>
-  </tr>
-</table>
+This is one rendered page from the starter PDF. The [latest release](https://github.com/3lf/readme-press/releases/latest) also has downloadable English and Persian examples in all three editions.
 
-The built-in pipeline provides:
+## Get your first PDF
 
-- GitHub-flavored Markdown with stable GitHub-compatible heading destinations
-- configurable introductions, parts, chapters, and table-of-contents depth
-- RTL and mixed-script isolation for Persian and other bidirectional documents
-- Shiki code highlighting, Mermaid diagrams, local emoji, tables, callouts, and figures
-- bookmarks, internal destinations, repository links, QR codes, and artifact footers
-- a standard JPEG-optimized edition, an optional ink-efficient print edition, and a lossless-image high-quality edition from the same source
-- PDF checks for geometry, fonts, links, destinations, image fidelity, white print backgrounds, full-page rendering, and edition parity
-- manifest-owned artifact inventories, SHA-256 checksums, and concise release notes
+> **Before the next release:** the checked-in starter is new in this candidate. Published `readme-press@0.3.0` does not contain `examples/starter`. For a candidate trial, pack this checkout with `npm pack` and install that tarball in place of `readme-press` below, or read the [starter files](./examples/starter/) directly. The commands below are the intended npm path after the next package release.
 
-README Press includes the production `lapis-rtl` theme. Projects can replace its stylesheet, cover, fonts, Mermaid configuration, or add content-specific QA without forking the engine.
+Use an empty directory for this trial so the starter cannot replace an existing README. You need Node.js 22 or 24, Python 3, `qpdf`, and Poppler. On macOS, install the external tools with `brew install python poppler qpdf`; on Ubuntu, use `sudo apt-get install -y python3 poppler-utils qpdf`. npm installs the browser renderer and Mermaid with README Press.
 
-## Quick start
+```bash
+mkdir starter-book && cd starter-book
+npm init -y
+npm install --save-dev readme-press
+cp node_modules/readme-press/examples/starter/README.md ./README.md
+cp node_modules/readme-press/examples/starter/readme-press.config.mjs ./readme-press.config.mjs
+npx readme-press build --config readme-press.config.mjs --quality all
+```
 
-Add a manual workflow to the repository that owns the source README:
+The last command creates `dist/starter-book.pdf`, `dist/starter-book-print.pdf`, and `dist/starter-book-high-quality.pdf`. Open `dist/starter-book.pdf` first. The starter's `repository.url` points to README Press as a working example; change it to your book's repository before sharing a PDF. Keep `README.md` and `readme-press.config.mjs` together when moving this pattern into your own project.
+
+Check all pages and editions after the build:
+
+```bash
+npx readme-press qa --config readme-press.config.mjs --quality all --render-all
+```
+
+The built-in QA checks PDF structure, fonts, links, destinations, geometry, source hashes, image fidelity, edition parity, and rendered pages. Review the pages yourself before sharing a book, especially after changing content, fonts, or the theme. The [testing strategy](./docs/testing.md) describes the manual production-book visual gate.
+
+## Choose an edition
+
+| Edition | Use it for | Image and file-size tradeoff |
+| --- | --- | --- |
+| **Normal** (`starter-book.pdf`) | Everyday reading, download, and online sharing | Optimizes eligible figures as JPEG; this often saves bytes in image-rich books. |
+| **Print** (`starter-book-print.pdf`) | Reviewing or printing on white paper | White page and panel backgrounds with lossless color figures. Check a sample with your printer. |
+| **High-quality** (`starter-book-high-quality.pdf`) | Local display or retaining source-image detail | Full-color layout with lossless source figures; image-rich books can be larger. |
+
+File size depends on the source images and page backgrounds; the text-only starter has no fixed smallest-to-largest order. The editions share content, pagination, links, and bookmarks. `outputs.print` is optional in a custom config. The print edition is not a claim of compliance with a particular print vendor's requirements.
+
+## Build in GitHub Actions and download the result
+
+Commit `README.md` and `readme-press.config.mjs` to your own repository, then add [this workflow](./examples/starter/book.yml) as `.github/workflows/book.yml`:
+
+> The workflow below pins the currently published `v0.3.0` Action. That release predates the candidate English locale fixes. Before using this workflow for the next release, replace the pin in both the example and your repository with that release's reviewed tag.
 
 ```yaml
-name: Release book
+name: Build book
 
 on:
   workflow_dispatch:
-    inputs:
-      version:
-        description: Release version, for example v1.0.0
-        required: true
-        type: string
+
+permissions:
+  contents: read
 
 jobs:
   book:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: 3lf/readme-press@v0.3.0
         with:
           command: pipeline
-          config: book/readme-press.config.mjs
-          release-version: ${{ inputs.version }}
+          config: readme-press.config.mjs
+          release-version: v0.0.0-preview.1
           source-commit: ${{ github.sha }}
           render-all: true
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: starter-book-pdfs
+          if-no-files-found: error
+          path: |
+            dist/starter-book.pdf
+            dist/starter-book-print.pdf
+            dist/starter-book-high-quality.pdf
+            dist/manifest.json
+            dist/SHA256SUMS.txt
+            dist/release-notes.md
 ```
 
-Pinning a release tag keeps local and CI builds on the same reviewed engine. The Action installs its locked dependencies, builds every configured PDF edition, runs generic and project-specific QA, and prepares release metadata.
+In your repository, open **Actions > Build book > Run workflow**. When the job finishes, open that run and download **starter-book-pdfs** from **Artifacts**. The ZIP contains the PDFs and their manifest, checksums, and candidate notes. Update the pinned `3lf/readme-press` tag when you intentionally upgrade the tool.
 
-## Minimal configuration
+`build` makes PDFs. `qa` checks an existing build. `pipeline` builds all configured editions, runs QA, and prepares local checksums and release notes. The example version is only a candidate label. Uploading an Actions artifact makes the files downloadable from that run; neither README Press nor this workflow publishes your GitHub or npm release.
 
-Create `readme-press.config.mjs` next to the source README:
+## When the first run fails
 
-```javascript
-export default {
-  source: "README.md",
-  outputDir: "dist",
-  metadata: {
-    title: "My Book",
-    subtitle: "A practical guide",
-    author: "Example Author",
-    edition: "First edition · 2026",
-    language: "en",
-    direction: "ltr"
-  },
-  repository: {
-    url: "https://github.com/example/my-book"
-  },
-  structure: {
-    introHeading: "Introduction",
-    githubTocHeading: "Contents",
-    parts: [
-      { title: "Foundations", startHeading: "First chapter" }
-    ]
-  },
-  outputs: {
-    normal: "my-book.pdf",
-    print: "my-book-print.pdf",
-    high: "my-book-high-quality.pdf"
-  }
-};
-```
+| Message or symptom | Check |
+| --- | --- |
+| `README Press config not found` | Run from the directory containing `readme-press.config.mjs`, or pass its actual path to `--config`. Source and output paths are relative to that file. |
+| `intro chapter not found`, `GitHub TOC heading not found`, or `part starts not found` | Match the level-one source headings exactly to `structure.introHeading`, `structure.githubTocHeading`, and each part's `startHeading`. Keep them in that order. |
+| `Required tool "qpdf"` or a missing Poppler command | Install `qpdf` and Poppler, then make sure their commands are on `PATH`. Python 3 is required by QA. |
+| `Chromium for Puppeteer was not found` | Run `npx puppeteer browsers install chrome` in the project and retry. If npm blocks install scripts, approve Puppeteer's browser-install script. |
+| `Mermaid CLI was not found` | Reinstall the project's npm dependencies so the package's Mermaid CLI is present. |
+| QA reports a source or artifact mismatch | Run `build` again after changing the source or render inputs, then rerun `qa`. |
 
-The source convention is deliberately small: one introduction heading, one hand-written GitHub contents heading, and level-one chapter headings after the contents. The configured start heading for each part controls the printed structure.
+## Scope and further use
 
-Set the optional `projectRoot` to the existing directory that owns source images when it differs from the README directory. Local assets must remain inside that root, including after symbolic links are resolved.
+The bundled `lapis-rtl` theme handles English LTR, Persian RTL, and mixed-script books. You can supply local CSS, cover, fonts, Mermaid settings, and project-specific QA through the config. Local image files must stay inside the configured `projectRoot` (the source directory by default), including after symlinks are resolved. The [programmatic API](./docs/programmatic-api.md), [0.3 migration guide](./docs/migration-0.3.md), [testing strategy](./docs/testing.md), [security policy](./SECURITY.md), and [contribution guide](./CONTRIBUTING.md) cover advanced use.
 
-`outputs.print` is optional. Omit it to keep the original two-edition pipeline. The bundled theme's print edition keeps lossless color figures while replacing page, cover, code-panel, table, and callout fills with white.
+The cover is rasterized: its visible title is in PDF metadata and body pages, but ordinary cover-page text extraction does not recover that title. README Press does not claim PDF/UA or screen-reader conformance. It does not convert arbitrary short project READMEs, publish releases for consumers, or guarantee print-vendor acceptance.
 
-## Run locally
-
-Install the stable package from npm:
-
-```bash
-npm install --save-dev readme-press
-npx readme-press version
-```
-
-Build one edition or every configured edition:
-
-```bash
-npx readme-press build --config readme-press.config.mjs --quality normal
-npx readme-press build --config readme-press.config.mjs --quality print
-npx readme-press build --config readme-press.config.mjs --quality high
-npx readme-press build --config readme-press.config.mjs --quality all
-```
-
-System requirements:
-
-- Node.js 22 or 24; Node.js 22 is the canonical PDF rendering environment
-- Python 3 for source-block QA
-- `qpdf` for linearized release PDFs
-- Poppler tools for full QA: `pdfinfo`, `pdffonts`, `pdftotext`, `pdfimages`, and `pdftoppm`
-- Chromium installed by Puppeteer and Mermaid CLI installed with README Press
-
-Install the external tools on Ubuntu with `sudo apt-get install -y python3 poppler-utils qpdf`, or on macOS with `brew install python poppler qpdf`. Restore Chromium with `npx puppeteer browsers install chrome` if its managed browser is missing.
-
-npm 11 may ask you to review Puppeteer's browser-install script. If your project enforces a strict install-script policy, approve the installed Puppeteer dependency with `npm install-scripts approve puppeteer` before building.
-
-## Verify and prepare a release
-
-Run the full pipeline for an exact source commit:
-
-```bash
-node .readme-press/bin/readme-press.mjs pipeline \
-  --config book/readme-press.config.mjs \
-  --release-version v1.0.0 \
-  --commit FULL_GIT_COMMIT \
-  --render-all
-```
-
-`--render-all` asks Poppler to rasterize every page of every configured edition. QA fails on broken rendering, image mismatches, non-white print page backgrounds, invalid PDF structure, missing links or fonts, different pagination, or project assertions.
-
-Projects can add source-specific checks without changing the engine:
-
-```javascript
-export default defineConfig({
-  // ...
-  qa: {
-    script: "book/qa.mjs",
-    minPages: 100,
-    maxPages: 400,
-    fontFamilies: ["Estedad", "Vazirmatn", "JetBrainsMono"],
-    extractablePhrases: ["A phrase that must remain searchable"]
-  }
-});
-```
-
-The QA module exports a default function receiving `{ config, manifest, check }`. Keep PDF container and rendering checks in README Press; use the project module for editorial rules, terminology, chapter counts, or pagination contracts.
-
-## Theme contract
-
-Select a custom theme and cover in configuration:
-
-```javascript
-theme: {
-  directory: "book/theme",
-  stylesheet: "book.css"
-},
-cover: {
-  file: "book/theme/cover.html"
-}
-```
-
-The theme directory may contain fonts, `mermaid.config.json`, and `puppeteer-ci.json`. A cover must expose a `.cover` element. Optional `data-readme-press` fields let the engine inject the series, title, subtitle, author, dates, repository note, and repository URL. Body and cover documents expose `data-readme-press-variant="print"` on the root element so custom themes can provide their own ink-efficient palette.
-
-The bundled theme includes Estedad, Vazirmatn, and JetBrains Mono under the SIL Open Font License. README Press itself is released under the [MIT License](./LICENSE).
-
-## Development
-
-```bash
-npm ci
-npm run verify:source
-npm run verify:artifacts
-npm run verify:publish
-go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 .github/workflows/*.yml
-```
-
-The integration suite builds and fully renders standard, print, and high-quality English and Persian fixtures, checks their PDF containers and links, verifies white print backgrounds, compares lossless image pixels, and validates release metadata. The package smoke test then packs the exact npm artifact, installs it in a clean project, audits the consumer dependency tree, and builds and verifies all three PDF editions through the installed CLI.
-
-See the [programmatic API](./docs/programmatic-api.md), [0.3 migration guide](./docs/migration-0.3.md), [testing strategy](./docs/testing.md), [contribution guide](./CONTRIBUTING.md), [security policy](./SECURITY.md), and [changelog](./CHANGELOG.md) for the complete maintenance contracts.
+For development in this repository, run `npm ci`, then `npm run verify:publish` and the workflow lint command in [the testing strategy](./docs/testing.md). The bundled fonts use the SIL Open Font License; README Press uses the [MIT License](./LICENSE).

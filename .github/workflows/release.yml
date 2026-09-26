@@ -67,7 +67,7 @@ jobs:
         run: |
           npm ci
           npm run verify:publish
-          go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 .github/workflows/*.yml
+          go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 .github/workflows/*.yml examples/starter/book.yml
 
       - name: Prepare the release fixture
         run: npm run fixture:prepare

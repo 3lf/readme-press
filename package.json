@@ -34,6 +34,7 @@
     "docs/assets/",
     "docs/migration-0.3.md",
     "docs/programmatic-api.md",
+    "examples/starter/",
     "src/",
     "themes/",
     "npm-shrinkwrap.json",
