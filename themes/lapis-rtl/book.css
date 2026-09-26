@@ -810,6 +810,11 @@ pre.example--long {
   box-decoration-break: slice;
   -webkit-box-decoration-break: slice;
 }
+/* Keep the opening of a mixed-script example together. Chromium otherwise
+   starts a bordered box with one line at the foot of a page. */
+pre.example--long .bidi-line:nth-child(-n+3) {
+  break-after: avoid;
+}
 
 /* `<details>` is interactive in the source README. In the book transform it
    becomes `.answer-details`, so answer keys stay visible and never acquire

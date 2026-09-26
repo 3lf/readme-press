@@ -77,6 +77,11 @@ function renderMixedBidiLines(value, documentDirection) {
   }).join('');
 }
 
+function startsWithLatinProse(value) {
+  const firstLine = String(value).split('\n').find((line) => line.trim())?.trim() ?? '';
+  return /^[A-Za-z][A-Za-z'’-]*(?:[ \t]+[A-Za-z][A-Za-z'’-]*){3,}(?:[ \t]|[.,:;!?]|$)/u.test(firstLine);
+}
+
 function wrapBidiInHastText(node) {
   return segmentBidiText(node.value).map((segment) => {
     if (!segment.direction) return { type: 'text', value: segment.text };
@@ -511,10 +516,10 @@ async function renderCodeBlocks(root, ctx) {
       };
     } else {
       // Text fences can be Persian examples, equations, or copy-ready prompts.
-      // The engineering book uses `text` for equations and numeric worksheets;
-      // that language must never acquire the prompt label by accident. An
-      // explicit `prompt` fence, or an unlabeled/other LTR prose fence, keeps
-      // the prompt treatment used by the base book.
+      // The engineering book uses `text` for equations, numeric worksheets,
+      // and English prose prompts. Classify from the opening line rather than
+      // the whole fence: later numbers must not turn a prose prompt into a
+      // formula or give a numeric worksheet prompt styling.
       const tree = renderTextTree(node.value, ctx.contentRules.treeAriaLabel);
       if (tree) {
         parent.children[index] = { type: 'html', value: tree };
@@ -529,7 +534,10 @@ async function renderCodeBlocks(root, ctx) {
         : bidi.direction === 'rtl'
           ? wrapLatinHtml(node.value)
           : escapeHtmlText(node.value);
-      const isPromptFence = lang === 'prompt' || (bidi.kind === 'ltr-text' && lang !== 'text');
+      const isPromptFence = lang === 'prompt'
+        || (bidi.direction === 'ltr' && (lang === 'text'
+          ? startsWithLatinProse(node.value)
+          : bidi.kind === 'ltr-text'));
       if (isPromptFence) {
         const long = node.value.split('\n').length > 18 || node.value.length > 900
           ? ' promptblock--long'

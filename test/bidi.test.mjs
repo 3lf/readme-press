@@ -131,6 +131,16 @@ exp(z - 2.0) = [1.0000, 0.3679]
   assert.doesNotMatch(html, /promptblock|PROMPT/u);
 });
 
+test('English prose in a text fence keeps prompt treatment even when later lines contain numbers', async () => {
+  const markdown = `# مقدمه\n\nمتن.\n\n# فهرست\n\n- فصل\n\n# فصل\n\n\`\`\`text\nYou are an expert prompt engineer. Write a detailed system prompt for this task.\n1. Include three examples.\n2. Check the result.\n\`\`\`\n\n\`\`\`text\nexp(z - 2.0) = [1.0000, 0.3679]\n\`\`\`\n\n\`\`\`text\nx = y\n\`\`\`\n`;
+  const result = await transformReadme(markdown, transformConfig());
+  const html = result.chapters.map((chapter) => chapter.html).join('\n');
+
+  assert.match(html, /<div class="promptblock" dir="ltr" data-bidi-kind="formula"><pre>You are an expert prompt engineer/u);
+  assert.match(html, /<pre class="example example--ltr" dir="ltr" data-bidi-kind="formula">exp\(z - 2\.0\)/u);
+  assert.match(html, /<pre class="example example--ltr" dir="ltr" data-bidi-kind="ltr-text">x = y<\/pre>/u);
+});
+
 test('cover uses semantic RTL layout and isolates only the LLM token', async () => {
   const browser = await puppeteer.launch({
     headless: true,
