@@ -38,6 +38,20 @@ project, imports the runtime API, compiles a strict TypeScript consumer, audits
 the installed dependency tree, and builds and verifies all three editions with
 the installed CLI.
 
+Each build manifest records a versioned render-input fingerprint. QA recalculates
+it before inspecting PDFs and reports `stale build: render inputs changed` if
+the source, effective render config, local figures, theme assets, fonts,
+Mermaid inputs, package renderer code, or relevant tool versions differ. A
+change to QA-only settings does not make a PDF stale. Rebuild after an input
+change, then run QA again. The Mermaid SVG cache also includes its font bytes,
+family, configuration, and renderer identity.
+
+Release preparation requires the fingerprinted files to remain current and the
+source checkout to be clean at the recorded commit. It excludes the generated
+PDF output and Mermaid cache from that Git check. Local `build` and `qa` remain
+usable with uncommitted work; prepare release metadata only after committing
+the relevant inputs and rebuilding.
+
 ### Workflow contracts
 
 `action-validator` checks `action.yml`. `actionlint` checks workflow syntax,

@@ -20,9 +20,29 @@ import remarkParse from 'remark-parse';
 import { loadConfig } from '../src/config.mjs';
 import { captureStableScreenshot } from '../src/cover.mjs';
 import { normalizeReleaseVersion, prepareRelease, verifyRenderedPages } from '../src/release.mjs';
+import { fingerprintDigest } from '../src/render-inputs.mjs';
 import { selectBook, transformReadme } from '../src/transform.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+
+function releaseSourceFixture(temporary) {
+  const project = join(temporary, 'source-project');
+  mkdirSync(project);
+  const source = join(project, 'README.md');
+  writeFileSync(source, '# Example book\n');
+  execFileSync('git', ['init', '-q', project]);
+  execFileSync('git', ['-C', project, 'add', 'README.md']);
+  execFileSync('git', ['-C', project, '-c', 'user.name=Test', '-c', 'user.email=test@example.com', 'commit', '-qm', 'Source']);
+  const commit = execFileSync('git', ['-C', project, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+  const renderInputs = {
+    version: 1,
+    configSha256: 'test-config',
+    renderer: { test: true },
+    files: [{ path: source, sha256: createHash('sha256').update(readFileSync(source)).digest('hex') }],
+  };
+  renderInputs.sha256 = fingerprintDigest(renderInputs);
+  return { source, commit, renderInputs };
+}
 
 test('reports the package version through every supported CLI form', () => {
   const cli = join(root, 'bin/readme-press.mjs');
@@ -325,11 +345,13 @@ test('prepares checksums and neutral release notes from verified outputs', () =>
         sha256: createHash('sha256').update(bytes).digest('hex'),
       };
     }
-    const commit = 'a'.repeat(40);
+    const { source, commit, renderInputs } = releaseSourceFixture(temporary);
     const manifestPath = join(dist, 'manifest.json');
     writeFileSync(manifestPath, JSON.stringify({
       releaseVersion: 'v1.0.0',
       sourceCommit: commit,
+      source,
+      renderInputs,
       metadata: { title: 'Example book' },
       repository: { url: 'https://github.com/example/book' },
       outputs,
@@ -367,6 +389,23 @@ test('prepares checksums and neutral release notes from verified outputs', () =>
       outputDir: dist,
       commit: 'b'.repeat(40),
     }), /does not match release commit/);
+    writeFileSync(source, '# Changed after build\n');
+    assert.throws(() => prepareRelease({
+      version: 'v1.0.0', manifestPath, outputDir: dist, commit,
+    }), /stale build: render inputs changed/u);
+    const dirtyInputs = {
+      ...renderInputs,
+      files: [{ path: source, sha256: createHash('sha256').update(readFileSync(source)).digest('hex') }],
+    };
+    dirtyInputs.sha256 = fingerprintDigest(dirtyInputs);
+    writeFileSync(manifestPath, JSON.stringify({
+      releaseVersion: 'v1.0.0', sourceCommit: commit, source,
+      renderInputs: dirtyInputs, outputs,
+    }));
+    const dirtyOutput = join(temporary, 'dirty-release');
+    assert.throws(() => prepareRelease({
+      version: 'v1.0.0', manifestPath, outputDir: dirtyOutput, commit,
+    }), /clean source Git checkout/u);
   } finally {
     rmSync(temporary, { recursive: true, force: true });
   }
@@ -378,7 +417,7 @@ test('release preparation rejects unsafe manifest PDF paths and accepts nested P
     const dist = join(temporary, 'dist');
     const releaseOutput = join(temporary, 'release');
     mkdirSync(dist);
-    const commit = 'a'.repeat(40);
+    const { source, commit, renderInputs } = releaseSourceFixture(temporary);
     const outside = join(temporary, 'outside.pdf');
     writeFileSync(outside, 'outside pdf');
     symlinkSync(outside, join(dist, 'linked.pdf'));
@@ -402,6 +441,8 @@ test('release preparation rejects unsafe manifest PDF paths and accepts nested P
     const writeManifest = (normal) => writeFileSync(manifestPath, JSON.stringify({
       releaseVersion: 'v1.0.0',
       sourceCommit: commit,
+      source,
+      renderInputs,
       repository: { url: 'https://github.com/example/book' },
       outputs: { normal, high },
     }));
@@ -437,6 +478,37 @@ test('release preparation rejects unsafe manifest PDF paths and accepts nested P
       version: 'v1.0.0', manifestPath, outputDir: releaseOutput, commit,
     });
     assert.equal(result.normal.path, join(dist, 'nested/book.pdf'));
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
+test('release preparation permits generated output and Mermaid cache in a clean checkout', () => {
+  const temporary = mkdtempSync(join(tmpdir(), 'readme-press-release-generated-'));
+  try {
+    const { source, commit, renderInputs } = releaseSourceFixture(temporary);
+    const project = dirname(source);
+    const dist = join(project, 'dist');
+    const cacheDir = join(project, '.readme-press-cache');
+    mkdirSync(dist);
+    mkdirSync(cacheDir);
+    writeFileSync(join(cacheDir, 'diagram.svg'), '<svg/>');
+    const bytes = Buffer.from('test pdf');
+    const outputs = {};
+    for (const [quality, pdf] of [['normal', 'book.pdf'], ['high', 'book-high.pdf']]) {
+      writeFileSync(join(dist, pdf), bytes);
+      outputs[quality] = {
+        pdf, pageCount: 1, bytes: bytes.length,
+        sha256: createHash('sha256').update(bytes).digest('hex'),
+      };
+    }
+    const manifestPath = join(dist, 'manifest.json');
+    writeFileSync(manifestPath, JSON.stringify({
+      releaseVersion: 'v1.0.0', sourceCommit: commit, source,
+      renderInputs: { ...renderInputs, cacheDir }, outputs,
+      repository: { url: 'https://github.com/example/book' },
+    }));
+    assert.equal(prepareRelease({ version: 'v1.0.0', manifestPath, outputDir: dist }).sourceCommit, commit);
   } finally {
     rmSync(temporary, { recursive: true, force: true });
   }

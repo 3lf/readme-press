@@ -9,8 +9,10 @@ import {
   writeFileSync,
 } from 'fs';
 import { dirname, resolve } from 'path';
+import { fileURLToPath } from 'node:url';
 import { addGeneratedOwnership } from './artifacts.mjs';
 import { resolveManifestPdfPath } from './manifest.mjs';
+import { assertReleaseInputProvenance } from './render-inputs.mjs';
 
 const VERSION_RE = /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/;
 
@@ -76,7 +78,7 @@ function requireOutput(manifest, quality, dist) {
   return { ...output, path: pdfPath, bytes, sha256 };
 }
 
-export function prepareRelease({ version: rawVersion, manifestPath, outputDir, commit, release = {} }) {
+export function prepareRelease({ version: rawVersion, manifestPath, outputDir, commit, release = {}, config }) {
   const version = normalizeReleaseVersion(rawVersion);
   const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
   if (manifest.releaseVersion !== version) {
@@ -104,6 +106,11 @@ export function prepareRelease({ version: rawVersion, manifestPath, outputDir, c
   if (manifest.sourceCommit?.toLowerCase() !== sourceCommit.toLowerCase()) {
     throw new Error(`Manifest source commit ${manifest.sourceCommit ?? '(missing)'} does not match release commit ${sourceCommit}.`);
   }
+  assertReleaseInputProvenance(
+    manifest,
+    config?.packageRoot ?? resolve(dirname(fileURLToPath(import.meta.url)), '..'),
+    dist,
+  );
 
   mkdirSync(outputDir, { recursive: true });
   const checksums = Object.values(outputs)
