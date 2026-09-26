@@ -22,7 +22,9 @@ const LATIN_RUN_SOURCE = String.raw`${LATIN_TOKEN_SOURCE}(?:[ \t]+[A-Za-z0-9۰-�
 const CALL_SOURCE = String.raw`${LATIN_TOKEN_SOURCE}\([^()\n]*\)`;
 const PAREN_TECH_SOURCE = String.raw`\([^()\n]*[A-Za-z0-9۰-۹][^()\n]*\)`;
 const BRACKET_TECH_SOURCE = String.raw`(?:\[[^\]\n]*[A-Za-z0-9۰-۹][^\]\n]*\]|\{[^}\n]*[A-Za-z0-9۰-۹][^}\n]*\})`;
-const NUMBER_SOURCE = String.raw`(?:[=≈<>≤≥+*/×÷−-][ \t]*)?\$?[+\-−]?[0-9۰-۹]+(?:[.,٫٬:][0-9۰-۹]+)*(?:[%٪])?`;
+// Keep unspaced numeric ranges in one isolate. Separate isolates for ۲ and
+// -۳ reverse their authored order inside RTL prose.
+const NUMBER_SOURCE = String.raw`(?:[=≈<>≤≥+*/×÷−-][ \t]*)?\$?[+\-−]?[0-9۰-۹]+(?:[.,٫٬:][0-9۰-۹]+)*(?:[%٪])?(?:[-−][0-9۰-۹]+(?:[.,٫٬:][0-9۰-۹]+)*(?:[%٪])?)*`;
 const ASSIGNMENT_SOURCE = String.raw`${LATIN_TOKEN_SOURCE}[ \t]*=[ \t]*(?:\$?[+\-−]?[0-9۰-۹]+(?:[.,٫٬:][0-9۰-۹]+)*(?:[%٪])?|${LATIN_TOKEN_SOURCE})`;
 const TECHNICAL_PATTERNS = [
   { source: CALL_SOURCE, whole: true },

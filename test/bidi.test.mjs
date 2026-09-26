@@ -196,6 +196,27 @@ test('authored slashes stay between Persian and Latin runs in rendered prose', a
   }
 });
 
+test('Persian numeral ranges stay intact in RTL prose and tables', async () => {
+  for (const [phrase, range] of [
+    ['فقط ۲-۳ تا از محتمل‌ترین دستورات', '۲-۳'],
+    ['۳-۴ بار تکرار کن', '۳-۴'],
+  ]) {
+    assert.deepEqual(segmentBidiText(phrase), [
+      { text: phrase.slice(0, phrase.indexOf(range)), direction: null },
+      { text: range, direction: 'ltr' },
+      { text: phrase.slice(phrase.indexOf(range) + range.length), direction: null },
+    ].filter(({ text }) => text), `range must be one isolate: ${range}`);
+  }
+
+  const markdown = `# مقدمه\n\nمتن.\n\n# فهرست\n\n- فصل\n\n# فصل\n\nفقط ۲-۳ تا از محتمل‌ترین دستورات را پیشنهاد بده.\n\n| کار | روش |\n|---|---|\n| اصلاح | ۳-۴ بار تکرار کن. |\n`;
+  const result = await transformReadme(markdown, transformConfig());
+  const html = result.chapters.map((chapter) => chapter.html).join('\n');
+  for (const range of ['۲-۳', '۳-۴']) {
+    assert.match(html, new RegExp(`<bdi dir="ltr"[^>]*>${range}<\\/bdi>`, 'u'));
+    assert.doesNotMatch(html, new RegExp(`<bdi dir="ltr"[^>]*>${range[0]}<\\/bdi><bdi dir="ltr"[^>]*>-${range[2]}<\\/bdi>`, 'u'));
+  }
+});
+
 test('text fences distinguish formulas from Persian mixed prose without prompt styling', async () => {
   const result = await transformReadme(`# مقدمه
 
