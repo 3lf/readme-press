@@ -134,9 +134,9 @@ export function prepareRelease({ version: rawVersion, manifestPath, outputDir, c
       : 'The text, pagination, links, and document structure are identical. Only the image encoding differs.',
     validationTitle: 'Validation',
     validation: [
-      'Every PDF passed README Press QA and `qpdf --check`.',
+      'Every PDF passed README Press QA and qpdf --check.',
       'Lossless image inventories were compared with the source files.',
-      '`SHA256SUMS.txt` is included for download verification.',
+      'SHA256SUMS.txt is included for download verification.',
     ],
     sourceCommit: 'Source commit',
     version: 'Version',

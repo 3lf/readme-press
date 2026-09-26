@@ -365,6 +365,17 @@ test('prepares checksums and neutral release notes from verified outputs', () =>
     assert.match(readFileSync(join(dist, 'release-notes.md'), 'utf8'), /Example book/);
     assert.match(readFileSync(join(dist, 'release-notes.md'), 'utf8'), /Print edition/);
     assert.match(readFileSync(join(dist, 'release-notes.md'), 'utf8'), /github\.com\/example\/book\/commit/);
+    const notesTree = unified().use(remarkParse).parse(readFileSync(join(dist, 'release-notes.md'), 'utf8'));
+    const validationText = notesTree.children.find((node) => node.type === 'list').children
+      .slice(0, 3)
+      .map((item) => item.children[0].children
+        .filter((node) => node.type === 'text')
+        .map((node) => node.value)
+        .join(''))
+      .join('\n');
+    assert.match(validationText, /qpdf --check/u);
+    assert.match(validationText, /SHA256SUMS\.txt/u);
+    assert.doesNotMatch(validationText, /`/u);
     prepareRelease({
       version: 'v1.0.0',
       manifestPath,
