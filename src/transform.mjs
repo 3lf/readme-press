@@ -96,6 +96,25 @@ function wrapBidiInHastText(node) {
   });
 }
 
+function isolateCurrencyInHast(node) {
+  if (!node.children) return;
+  node.children = node.children.flatMap((child) => {
+    if (child.type === 'text' && child.value.includes('$')) {
+      return segmentBidiText(child.value).map((segment) => (
+        segment.direction === 'ltr' && segment.text.startsWith('$')
+          ? {
+            type: 'element', tagName: 'bdi',
+            properties: { dir: 'ltr', className: ['bidi-isolate'] },
+            children: [{ type: 'text', value: segment.text }],
+          }
+          : { type: 'text', value: segment.text }
+      ));
+    }
+    if (child.type === 'element') isolateCurrencyInHast(child);
+    return [child];
+  });
+}
+
 function isolateBidiDescendants(node) {
   if (!node.children) return;
   const skip = new Set(['bdi', 'code', 'pre', 'svg', 'style', 'script']);
@@ -660,6 +679,14 @@ function hastPasses(tree, ctx) {
     if (!['p', 'li', 'dt', 'dd', 'figcaption', 'h2', 'h3', 'h4', 'td', 'th'].includes(node.tagName)) return;
     if (['h2', 'h3', 'h4'].includes(node.tagName)) groupMixedHeadingTerm(node);
     isolateBidiDescendants(node);
+    return SKIP;
+  });
+
+  // Highlighted code has its own spans, so the prose pass above cannot reach
+  // a Persian output comment. Keep currency and its number in one LTR run.
+  visit(tree, 'element', (node) => {
+    if (!classNames(node).includes('codeblock')) return;
+    isolateCurrencyInHast(node);
     return SKIP;
   });
 

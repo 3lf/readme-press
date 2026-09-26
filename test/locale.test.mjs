@@ -75,6 +75,27 @@ English body text.
     assert.match(html, /@page toc \{ @top-center \{ content: "Contents";/u);
     assert.doesNotMatch(html, /\p{Script=Arabic}/u);
 
+    writeFileSync(join(directory, 'README.md'), `# Introduction\n\nAn English introduction.\n\n# Contents\n\n- [First chapter](#first-chapter)\n- [Second chapter](#second-chapter)\n\n# First chapter\n\nFirst body.\n\n# Second chapter\n\nSecond body.\n`);
+    const twoChapters = await transformReadme(readFileSync(config.sourcePath, 'utf8'), config, {
+      sourceDir: dirname(config.sourcePath),
+    });
+    const twoChapterHtml = buildDocument(twoChapters, config);
+    assert.match(twoChapterHtml, /<b>1<\/b> Part/u);
+    assert.match(twoChapterHtml, /<b>2<\/b> Chapters/u);
+    assert.match(twoChapterHtml, /Part 1 of 1<\/span><i><\/i><span>2 Chapters/u);
+    assert.doesNotMatch(twoChapterHtml, /2 Chapter<\/span>/u);
+
+    const overriddenText = readFileSync(join(directory, 'readme-press.config.mjs'), 'utf8')
+      .replace('  outputs:', '  labels: { chapter: "Section", chapterPlural: "Sections" },\n  outputs:');
+    writeFileSync(join(directory, 'override.config.mjs'), overriddenText);
+    const overridden = await loadConfig('override.config.mjs', directory);
+    assert.equal(overridden.labels.chapter, 'Section');
+    assert.equal(overridden.labels.chapterPlural, 'Sections');
+    assert.match(buildDocument(twoChapters, overridden), /2 Sections/u);
+    writeFileSync(join(directory, 'singular-override.config.mjs'), overriddenText.replace(', chapterPlural: "Sections"', ''));
+    const singularOverride = await loadConfig('singular-override.config.mjs', directory);
+    assert.equal(singularOverride.labels.chapterPlural, 'Section');
+
     const regionalConfig = readFileSync(join(directory, 'readme-press.config.mjs'), 'utf8')
       .replace('language: "en",\n    direction: "ltr"', 'language: "fa-IR"');
     writeFileSync(join(directory, 'regional.config.mjs'), regionalConfig);
@@ -95,6 +116,7 @@ test('Persian defaults and explicit overrides control generated text without rew
     assert.equal(persian.labels.imageAlt, 'تصویر');
     assert.equal(persian.labels.metadataSeparator, '؛');
     assert.equal(persian.metadata.numerals, 'persian');
+    assert.equal(persian.labels.chapterPlural, 'فصل');
 
     const english = await loadConfig('test/fixtures/basic/readme-press.config.mjs', root);
     const overridden = {

@@ -15,6 +15,9 @@ const PERSIAN_DIGITS = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '�
 const formatNumber = (n, config) => config.metadata.numerals === 'persian'
   ? String(n).replace(/\d/g, (d) => PERSIAN_DIGITS[d])
   : String(n);
+const countLabel = (unit, count, config) => escapeHtmlText(
+  count === 1 ? config.labels[unit] : (config.labels[`${unit}Plural`] ?? config.labels[unit]),
+);
 
 const editionHtml = (edition) => wrapLatinHtml(edition);
 
@@ -137,8 +140,8 @@ ${rows}
     <div class="toc-rule"><span class="seg"></span><span class="dia"></span><span class="seg"></span></div>
     <p class="toc-deck">${escapeHtmlText(labels.tocDescription)}</p>
     <div class="toc-stats">
-      <span><b>${formatNumber(parts.length, config)}</b> ${escapeHtmlText(labels.part)}</span>
-      <span><b>${formatNumber(numberedChapterCount, config)}</b> ${escapeHtmlText(labels.chapter)}</span>
+      <span><b>${formatNumber(parts.length, config)}</b> ${countLabel('part', parts.length, config)}</span>
+      <span><b>${formatNumber(numberedChapterCount, config)}</b> ${countLabel('chapter', numberedChapterCount, config)}</span>
     </div>
   </header>
   <ol class="toc-root">
@@ -165,7 +168,7 @@ ${chapterHtml}
   }
   const transition = ch.isPartStart
     ? `<div class="part-transition" id="part-${part.number}">
-    <div class="part-transition-meta"><span>${escapeHtmlText(config.labels.part)} ${formatNumber(part.number, config)} ${escapeHtmlText(config.labels.partOf)} ${formatNumber(partCount, config)}</span><i></i><span>${formatNumber(part.chapterNumbers.length, config)} ${escapeHtmlText(config.labels.chapter)}</span></div>
+    <div class="part-transition-meta"><span>${escapeHtmlText(config.labels.part)} ${formatNumber(part.number, config)} ${escapeHtmlText(config.labels.partOf)} ${formatNumber(partCount, config)}</span><i></i><span>${formatNumber(part.chapterNumbers.length, config)} ${countLabel('chapter', part.chapterNumbers.length, config)}</span></div>
     <strong>${wrapLatinHtml(part.title)}</strong>
   </div>`
     : '';

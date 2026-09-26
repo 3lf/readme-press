@@ -18,7 +18,7 @@ const LATIN_TOKEN_SOURCE = String.raw`(?:[A-Za-z][A-Za-z0-9۰-۹./+#&_%\-]*|[0-9
 const LATIN_RUN_SOURCE = String.raw`${LATIN_TOKEN_SOURCE}(?:[ \t]+[A-Za-z0-9۰-۹./+#&_%\-]+)*`;
 const PAREN_TECH_SOURCE = String.raw`\([^()\n]*[A-Za-z0-9۰-۹][^()\n]*\)`;
 const BRACKET_TECH_SOURCE = String.raw`(?:\[[^\]\n]*[A-Za-z0-9۰-۹][^\]\n]*\]|\{[^}\n]*[A-Za-z0-9۰-۹][^}\n]*\})`;
-const NUMBER_SOURCE = String.raw`(?:[=≈<>≤≥+*/×÷−-][ \t]*)?[+\-−]?[0-9۰-۹]+(?:[.,٫٬][0-9۰-۹]+)*(?:[%٪])?`;
+const NUMBER_SOURCE = String.raw`(?:[=≈<>≤≥+*/×÷−-][ \t]*)?\$?[+\-−]?[0-9۰-۹]+(?:[.,٫٬][0-9۰-۹]+)*(?:[%٪])?`;
 const TECHNICAL_PATTERNS = [
   { source: PAREN_TECH_SOURCE, whole: true },
   { source: BRACKET_TECH_SOURCE, whole: true },

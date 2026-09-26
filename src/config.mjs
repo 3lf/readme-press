@@ -34,7 +34,9 @@ const PERSIAN_LABELS = {
   tocTitle: 'فهرست مطالب',
   tocDescription: 'اگه دنبال یه موضوع مشخصی می‌گردی، از همین فهرست بپر همون‌جا. اگه هم تازه شروع کردی، از اول بیا جلو؛ ترتیب فصل‌ها طوری چیده شده که قدم‌به‌قدم پیش بری.',
   part: 'بخش',
+  partPlural: 'بخش',
   chapter: 'فصل',
+  chapterPlural: 'فصل',
   introduction: 'پیش از شروع',
   coverSeries: 'کتاب‌های ساخته‌شده با README Press',
   coverRepositoryNote: 'آخرین نسخه را از <strong>GitHub</strong> بگیر.',
@@ -61,7 +63,9 @@ const ENGLISH_LABELS = {
   tocTitle: 'Contents',
   tocDescription: 'Read from the beginning or jump to the chapter you need.',
   part: 'Part',
+  partPlural: 'Parts',
   chapter: 'Chapter',
+  chapterPlural: 'Chapters',
   introduction: 'Before you begin',
   coverSeries: 'Books made with README Press',
   coverRepositoryNote: 'Get the latest edition from <strong>GitHub</strong>.',
@@ -117,6 +121,11 @@ export async function loadConfig(configFile = 'readme-press.config.mjs', cwd = p
   const isPersian = /^fa(?:-|$)/iu.test(language);
   const defaultLabels = isPersian ? PERSIAN_LABELS : ENGLISH_LABELS;
   const labels = { ...defaultLabels, ...(raw.labels ?? {}) };
+  for (const unit of ['part', 'chapter']) {
+    if (raw.labels?.[unit] !== undefined && raw.labels?.[`${unit}Plural`] === undefined) {
+      labels[`${unit}Plural`] = raw.labels[unit];
+    }
+  }
 
   const configRoot = dirname(absoluteConfig);
   const sourcePath = resolveConfigFile(configRoot, raw.source, 'README.md');

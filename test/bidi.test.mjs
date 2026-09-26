@@ -57,6 +57,9 @@ test('bidi analysis preserves logical order and classifies structured text', () 
     { text: 'مجموع ', direction: null },
     { text: '= 1.7904', direction: 'ltr' },
   ]);
+  assert.deepEqual(segmentBidiText('$30.00'), [
+    { text: '$30.00', direction: 'ltr' },
+  ]);
   assert.deepEqual(segmentBidiText('مهندسی LLM'), [
     { text: 'مهندسی ', direction: null },
     { text: 'LLM', direction: 'ltr' },
@@ -76,6 +79,16 @@ test('bidi analysis preserves logical order and classifies structured text', () 
     analyzeBidiText(`متن${String.fromCodePoint(0x202e)}`, { documentDirection: 'rtl' }).hasSourceControls,
     true,
   );
+});
+
+test('currency keeps its prefix in RTL table cells and highlighted output comments', async () => {
+  const markdown = `# مقدمه\n\nمتن.\n\n# فهرست\n\n- فصل\n\n# فصل\n\n| مدل | هزینه |\n|-----|-------|\n| نمونه | $30.00 |\n\n\`\`\`python\n# خروجی: ورودی: $0.0050 | کل: $0.0200\n\`\`\`\n`;
+  const result = await transformReadme(markdown, transformConfig());
+  const html = result.chapters.map((chapter) => chapter.html).join('\n');
+
+  assert.match(html, /<td><bdi dir="ltr"[^>]*>\$30\.00<\/bdi><\/td>/u);
+  assert.match(html, /<bdi dir="ltr"[^>]*>\$0\.0050<\/bdi>/u);
+  assert.match(html, /<bdi dir="ltr"[^>]*>\$0\.0200<\/bdi>/u);
 });
 
 test('text fences distinguish formulas from Persian mixed prose without prompt styling', async () => {
