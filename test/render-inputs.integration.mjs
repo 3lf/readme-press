@@ -7,7 +7,9 @@ import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import sharp from 'sharp';
 import { runBuild } from '../src/build.mjs';
+import { loadConfig } from '../src/config.mjs';
 import { runQa } from '../src/qa.mjs';
+import { createRenderInputs } from '../src/render-inputs.mjs';
 
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
 
@@ -96,12 +98,18 @@ test('themes without Mermaid assets build and pass QA until a diagram uses them'
   const previousCi = process.env.CI;
   try {
     const configFile = saveConfig(temporary, minimalBook(temporary));
+    delete process.env.CI;
+    const ordinaryInputs = await createRenderInputs(await loadConfig(configFile));
     for (const ci of [undefined, 'true']) {
+      // CI runners need Chromium's CI launch flags. Check the ordinary
+      // fingerprint there without attempting a sandboxed browser launch.
+      if (ci === undefined && previousCi) continue;
       if (ci === undefined) delete process.env.CI;
       else process.env.CI = ci;
       await runBuild({ configFile, quality: 'normal' });
       await runQa({ configFile, quality: 'normal' });
       const manifest = JSON.parse(readFileSync(join(temporary, 'dist/manifest.json')));
+      assert.equal(manifest.renderInputs.sha256, ordinaryInputs.sha256);
       assert.equal(manifest.renderInputs.renderer.ciMermaidConfig, false);
       assert.ok(!manifest.renderInputs.files.some(({ path }) => /mermaid.config.json|puppeteer-ci.json|Vazirmatn-Variable.woff2/u.test(path)));
     }
