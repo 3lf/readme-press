@@ -46,7 +46,8 @@ or PDF/UA conformance.
 The package smoke test packs the exact npm artifact, installs it into an empty
 project, imports the runtime API, compiles a strict TypeScript consumer, audits
 the installed dependency tree, and builds and verifies all three editions with
-the installed CLI.
+the installed CLI. It also copies the packaged starter source and config into
+a fresh directory, then builds and QA-checks all three documented filenames.
 
 Each build manifest records a versioned render-input fingerprint. QA recalculates
 it before inspecting PDFs and reports `stale build: render inputs changed` if
@@ -65,9 +66,10 @@ the relevant inputs and rebuilding.
 ### Workflow contracts
 
 `action-validator` checks `action.yml`. `actionlint` checks workflow syntax,
-expressions, and embedded shell. CI then invokes the repository's composite
-Action against both integration fixtures so the published Action entrypoint is
-covered in addition to direct CLI execution.
+expressions, and embedded shell, including the consumer starter workflow. CI
+then invokes the repository's composite Action against both integration
+fixtures so the published Action entrypoint is covered in addition to direct
+CLI execution.
 
 ### Release visual regression
 
@@ -90,3 +92,8 @@ Do not commit generated PDFs or caches. Release pull requests must additionally
 record the source tag and commit used for the real-book baseline and candidate,
 and attach or link the all-page hash comparison result. A green CI run does not
 substitute for this manual evidence.
+
+Before the next package release, update the starter workflow and both README
+Action examples to the reviewed release tag. Package smoke checks that the
+starter workflow pin matches `package.json`, and a clean consumer run must
+confirm that the published tarball contains the starter files.

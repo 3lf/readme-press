@@ -53,7 +53,7 @@ jobs:
         run: npm run verify:artifacts
 
       - name: Validate GitHub workflows
-        run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 .github/workflows/*.yml
+        run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 .github/workflows/*.yml examples/starter/book.yml
 
       - name: Prepare the integration fixture
         run: npm run fixture:prepare

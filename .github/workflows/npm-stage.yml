@@ -78,7 +78,7 @@ jobs:
         run: npm run verify:publish
 
       - name: Validate GitHub workflows
-        run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 .github/workflows/*.yml
+        run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 .github/workflows/*.yml examples/starter/book.yml
 
       - name: Stage the package on npm
         run: npm stage publish --tag "${{ inputs.tag }}"

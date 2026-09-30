@@ -66,6 +66,9 @@ try {
     'bin/readme-press.mjs',
     'docs/migration-0.3.md',
     'docs/programmatic-api.md',
+    'examples/starter/README.md',
+    'examples/starter/readme-press.config.mjs',
+    'examples/starter/book.yml',
     'src/config.d.ts',
     'src/index.d.ts',
     'src/render.mjs',
@@ -220,6 +223,29 @@ export default defineConfig({
     '--render-all',
   ]);
   requirePackedBuild('dist');
+
+  const starter = join(temporary, 'starter-book');
+  const installedStarter = join(consumer, 'node_modules/readme-press/examples/starter');
+  const starterWorkflow = readFileSync(join(installedStarter, 'book.yml'), 'utf8');
+  requireFile(starterWorkflow.includes(`uses: 3lf/readme-press@v${packageJson.version}`),
+    'Starter Action pin must match the package version.');
+  mkdirSync(starter);
+  for (const file of ['README.md', 'readme-press.config.mjs']) {
+    writeFileSync(join(starter, file), readFileSync(join(installedStarter, file)));
+  }
+  run(process.execPath, [
+    cli, 'build', '--config', 'readme-press.config.mjs', '--quality', 'all',
+  ], starter);
+  run(process.execPath, [
+    cli, 'qa', '--config', 'readme-press.config.mjs', '--quality', 'all', '--render-all',
+  ], starter);
+  for (const file of [
+    'starter-book.pdf',
+    'starter-book-print.pdf',
+    'starter-book-high-quality.pdf',
+  ]) {
+    requireFile(existsSync(join(starter, 'dist', file)), `Packaged starter did not build ${file}.`);
+  }
 
   console.log(`Package smoke test passed: ${packed.entryCount} files, ${packed.size} packed bytes.`);
 } finally {
