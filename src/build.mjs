@@ -37,6 +37,7 @@ import { renderCover } from './cover.mjs';
 import { assertNoDiagnosticErrors, normalizeDiagnostics } from './diagnostics.mjs';
 import { preflightBuild } from './preflight.mjs';
 import { renderPagedHtml } from './render.mjs';
+import { addCoverRenderInputs, createRenderInputs } from './render-inputs.mjs';
 import { assertContainedOutputSink } from './paths.mjs';
 import { normalizeReleaseVersion } from './release.mjs';
 import { buildDocument } from './template.mjs';
@@ -384,6 +385,13 @@ export async function runBuild({ configFile, quality = 'normal', releaseVersion:
   }
   result.diagnostics = normalizeDiagnostics(result.diagnostics, config.security.diagnostics);
   assertNoDiagnosticErrors(result.diagnostics);
+  const renderAssets = {
+    images: [...result.images.values()].map((image) => image.source),
+    emoji: [...result.usedEmoji],
+    mermaid: result.diagrams.size > 0,
+    releaseVersion,
+  };
+  let renderInputs = await createRenderInputs(config, renderAssets);
   for (const [file, path] of result.diagrams) {
     cpSync(path, resolve(outputDir, 'assets/diagrams', file));
   }
@@ -419,6 +427,7 @@ export async function runBuild({ configFile, quality = 'normal', releaseVersion:
         { ...documentConfig, outputVariant: 'normal' },
       );
       coverDiagnostics.push(...coverResult.diagnostics);
+      renderInputs = addCoverRenderInputs(renderInputs, coverResult.localDependencies);
       for (const variant of qualities.filter((value) => value !== 'print')) {
         coverPdfs.set(variant, coverPdf);
         coverRequests.set(variant, coverResult.externalRequests);
@@ -432,10 +441,12 @@ export async function runBuild({ configFile, quality = 'normal', releaseVersion:
         { ...documentConfig, outputVariant: 'print' },
       );
       coverDiagnostics.push(...coverResult.diagnostics);
+      renderInputs = addCoverRenderInputs(renderInputs, coverResult.localDependencies);
       coverPdfs.set('print', printCoverPdf);
       coverRequests.set('print', coverResult.externalRequests);
     }
   }
+  renderAssets.cover = renderInputs.assets.cover;
   if (coverDiagnostics.length) {
     result.diagnostics.push(...coverDiagnostics);
     result.diagnostics = normalizeDiagnostics(result.diagnostics, config.security.diagnostics);
@@ -481,12 +492,16 @@ export async function runBuild({ configFile, quality = 'normal', releaseVersion:
   }
 
   const packageJson = JSON.parse(readFileSync(resolve(config.packageRoot, 'package.json'), 'utf8'));
+  if ((await createRenderInputs(config, renderAssets)).sha256 !== renderInputs.sha256) {
+    throw new Error('Render inputs changed during build. Retry from a stable source tree.');
+  }
   const primaryQuality = qualities.includes('normal') ? 'normal' : qualities[0];
   const manifest = {
     engine: { name: packageJson.name, version: packageJson.version },
     configFile: config.configFile,
     source: config.sourcePath,
     sourceSha256,
+    renderInputs,
     sourceCommit: sourceCommit(dirname(config.sourcePath)),
     releaseVersion,
     requestedQuality: quality,
