@@ -2,8 +2,10 @@
 // PDF. Rasterizing only the cover avoids Apple PDFKit compositing bugs while
 // the book body stays vector, searchable, tagged, and linkable.
 
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { readFile, writeFile } from 'node:fs/promises';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { PDFArray, PDFDocument, PDFHexString, PDFName, PDFString } from 'pdf-lib';
 import puppeteer from 'puppeteer';
 import { applyBidiSpecToElement, createBidiSpec } from './bidi.mjs';
@@ -90,6 +92,30 @@ export async function renderCover(htmlPath, outPath, config) {
     repository: createBidiSpec(config.repository.display, { ...bidiOptions, context: 'cover' }),
   };
   let captureData = null;
+  const localDependencies = new Map();
+  const localErrors = [];
+  const unreadableRequests = new WeakMap();
+  const observeLocalRequest = (request) => {
+    if (!request.url().startsWith('file:')) return;
+    try {
+      const path = fileURLToPath(new URL(request.url()));
+      const hash = createHash('sha256').update(readFileSync(path)).digest('hex');
+      if (localDependencies.has(path) && localDependencies.get(path) !== hash) {
+        localErrors.push(new Error(`Render inputs changed during build: ${path}.`));
+      } else {
+        localDependencies.set(path, hash);
+      }
+    } catch (error) {
+      // Missing optional assets may fail in Chromium too. Only a consumed
+      // resource without a snapshot makes the fingerprint incomplete.
+      unreadableRequests.set(request, error);
+    }
+  };
+  const finishLocalRequest = (request) => {
+    const error = unreadableRequests.get(request);
+    if (error) localErrors.push(new Error(`Cannot fingerprint cover input: ${request.url()}`, { cause: error }));
+  };
+  let observedPage;
   const browser = await puppeteer.launch({
     headless: true,
     args: [
@@ -101,6 +127,11 @@ export async function renderCover(htmlPath, outPath, config) {
 
   try {
     const page = await browser.newPage();
+    observedPage = page;
+    // Observe before the policy listener continues file requests, so bytes
+    // are captured before Chromium consumes them.
+    page.on('request', observeLocalRequest);
+    page.on('requestfinished', finishLocalRequest);
     const networkPolicy = normalizeNetworkPolicy(
       config.security?.network ?? createSecurityDefaults().network,
       config.security?.allowHosts ?? [],
@@ -187,7 +218,10 @@ export async function renderCover(htmlPath, outPath, config) {
     if (captureData.blockedRequests.length) {
       throw new Error(`Network policy blocked cover request: ${captureData.blockedRequests.join(', ')}`);
     }
+    if (localErrors.length) throw localErrors[0];
   } finally {
+    observedPage?.off('request', observeLocalRequest);
+    observedPage?.off('requestfinished', finishLocalRequest);
     await browser.close();
   }
 
@@ -239,6 +273,8 @@ export async function renderCover(htmlPath, outPath, config) {
     }]
     : [];
   return {
+    localDependencies: [...localDependencies].sort(([a], [b]) => a.localeCompare(b))
+      .map(([path, hash]) => ({ path, sha256: hash })),
     externalRequests: stableRequestInventory(captureData.externalRequests),
     blockedRequests: stableRequestInventory(captureData.blockedRequests),
     diagnostics,

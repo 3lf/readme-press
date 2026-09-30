@@ -12,6 +12,7 @@ import { createHash } from 'crypto';
 import { execFileSync } from 'child_process';
 import { mkdirSync, existsSync, readFileSync, writeFileSync } from 'fs';
 import { resolve } from 'path';
+import { installedPackageVersion } from './render-inputs.mjs';
 
 const EMOJI_RE =
   /[\u{1F1E6}-\u{1F1FF}]{2}|(?:\p{Extended_Pictographic}️?(?:\p{Emoji_Modifier})?)(?:‍\p{Extended_Pictographic}️?(?:\p{Emoji_Modifier})?)*/gu;
@@ -29,16 +30,30 @@ function cleanSource(source) {
     .replace(/ +<br\/>/g, '<br/>');
 }
 
-const fontFaceCache = new Map();
-function getFontFace(fontPath, fontFamily) {
-  if (!fontFaceCache.has(fontPath)) {
-    const b64 = readFileSync(fontPath).toString('base64');
-    fontFaceCache.set(fontPath,
-      `@font-face{font-family:'Vazirmatn';` +
-      `src:url(data:font/woff2;base64,${b64}) format('woff2');` +
-      `font-weight:100 900;}`.replace('Vazirmatn', fontFamily));
+function getFontFace(fontBytes, fontFamily) {
+  return `@font-face{font-family:${JSON.stringify(fontFamily)};` +
+    `src:url(data:font/woff2;base64,${fontBytes.toString('base64')}) format('woff2');` +
+    'font-weight:100 900;}';
+}
+
+export function mermaidCacheKey(source, options) {
+  const clean = cleanSource(source);
+  const hash = createHash('sha256');
+  for (const item of [
+    'mermaid-svg-v3',
+    clean,
+    readFileSync(options.configPath),
+    readFileSync(options.fontPath),
+    options.fontFamily ?? 'Vazirmatn',
+    readFileSync(options.mmdcPath),
+    installedPackageVersion('@mermaid-js/mermaid-cli'),
+    process.env.CI && options.puppeteerConfig ? readFileSync(options.puppeteerConfig) : '',
+    Boolean(process.env.CI && options.puppeteerConfig),
+  ]) {
+    const bytes = Buffer.isBuffer(item) ? item : Buffer.from(String(item));
+    hash.update(`${bytes.length}:`).update(bytes);
   }
-  return fontFaceCache.get(fontPath);
+  return hash.digest('hex').slice(0, 24);
 }
 
 /** Renders a mermaid source; returns { file, width, height } (file inside cache). */
@@ -53,8 +68,7 @@ export async function renderMermaid(source, options) {
   } = options;
   mkdirSync(cacheDir, { recursive: true });
   const clean = cleanSource(source);
-  const themeHash = createHash('sha1').update(readFileSync(configPath)).digest('hex').slice(0, 8);
-  const hash = createHash('sha1').update(clean).update(themeHash).update('v2').digest('hex').slice(0, 16);
+  const hash = mermaidCacheKey(source, options);
   const svgPath = resolve(cacheDir, `${hash}.svg`);
 
   if (!existsSync(svgPath)) {
@@ -79,7 +93,7 @@ export async function renderMermaid(source, options) {
       .replace(/width="100%"/, `width="${w}" height="${h}"`)
       .replace(/max-width:\s*[\d.]+px;/, '');
     // embed the Persian font so the isolated SVG image shapes text correctly
-    svg = svg.replace(/(<svg[^>]*>)/, `$1<style>${getFontFace(fontPath, fontFamily)}</style>`);
+    svg = svg.replace(/(<svg[^>]*>)/, `$1<style>${getFontFace(readFileSync(fontPath), fontFamily)}</style>`);
     writeFileSync(svgPath, svg, 'utf8');
   }
 

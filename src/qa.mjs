@@ -10,6 +10,7 @@ import { loadConfig } from './config.mjs';
 import { preflightQa } from './preflight.mjs';
 import { normalizeReleaseVersion } from './release.mjs';
 import { resolveManifestPdfPath } from './manifest.mjs';
+import { createRenderInputs } from './render-inputs.mjs';
 
 function runTool(command, args, options = {}) {
   try {
@@ -139,6 +140,22 @@ export async function runQa({
   preflightQa();
   const manifestPath = resolve(config.outputDir, 'manifest.json');
   const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+  let currentInputs;
+  try {
+    currentInputs = await createRenderInputs(config, {
+      images: manifest.renderInputs?.assets?.images ?? [],
+      emoji: manifest.renderInputs?.assets?.emoji ?? [],
+      cover: manifest.renderInputs?.assets?.cover ?? [],
+      mermaid: (manifest.diagrams?.length ?? 0) > 0,
+      releaseVersion: manifest.releaseVersion ?? null,
+    });
+  } catch (error) {
+    throw new Error(`stale build: render inputs changed or disappeared. Rebuild the PDFs. ${error.message}`, { cause: error });
+  }
+  if (manifest.renderInputs?.version !== currentInputs.version
+    || manifest.renderInputs.sha256 !== currentInputs.sha256) {
+    throw new Error('stale build: render inputs changed. Rebuild the PDFs before QA.');
+  }
   const requestedQuality = quality ?? manifest.requestedQuality ?? 'normal';
   if (!['normal', 'high', 'print', 'all'].includes(requestedQuality)) {
     throw new Error(`Unknown quality: ${requestedQuality}. Use normal, high, print, or all.`);
