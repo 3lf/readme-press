@@ -90,6 +90,7 @@ export interface ReadmePressConfig {
     calloutClassRules?: Array<{ contains?: string; startsWith?: string; className: string }>;
     paragraphClassRules?: Array<{ contains?: string; startsWith?: string; className: string }>;
     chapterClassRules?: Array<{ titleStartsWith: string; className: string }>;
+    tableClassRules?: Array<{ headerContains: string; className: string; label?: string }>;
     treeAriaLabel?: string;
   };
   security?: {
@@ -163,7 +164,9 @@ export interface TransformReadmeConfig {
   structure: ReadmePressConfig['structure'];
   toc?: ReadmePressConfig['toc'];
   images: Required<NonNullable<ReadmePressConfig['images']>>;
-  contentRules: Required<NonNullable<ReadmePressConfig['contentRules']>>;
+  contentRules: Omit<Required<NonNullable<ReadmePressConfig['contentRules']>>, 'tableClassRules'> & {
+    tableClassRules?: NonNullable<ReadmePressConfig['contentRules']>['tableClassRules'];
+  };
   mermaid: Partial<LoadedConfig['mermaid']>;
   contentRoot?: string;
   projectRoot?: string;

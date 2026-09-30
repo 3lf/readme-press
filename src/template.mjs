@@ -15,8 +15,32 @@ const PERSIAN_DIGITS = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '�
 const formatNumber = (n, config) => config.metadata.numerals === 'persian'
   ? String(n).replace(/\d/g, (d) => PERSIAN_DIGITS[d])
   : String(n);
+const countLabel = (unit, count, config) => escapeHtmlText(
+  count === 1 ? config.labels[unit] : (config.labels[`${unit}Plural`] ?? config.labels[unit]),
+);
 
 const editionHtml = (edition) => wrapLatinHtml(edition);
+
+function cssString(value) {
+  return `"${[...String(value)].map((character) => (
+    /["\\<>\u0000-\u001f\u007f]/u.test(character)
+      ? `\\${character.codePointAt(0).toString(16)} `
+      : character
+  )).join('')}"`;
+}
+
+function generatedLocaleStyle(config) {
+  const numeralStyle = config.metadata.numerals === 'persian' ? 'persian' : 'decimal';
+  return `<style>
+@page :right { @bottom-right { content: counter(page, ${numeralStyle}) '  ◆'; } }
+@page :left { @bottom-left { content: '◆  ' counter(page, ${numeralStyle}); } }
+@page toc { @top-center { content: ${cssString(config.labels.tocTitle)}; } }
+.toc-part-head::after,
+.toc-chapter-head::after,
+.toc-section a::after { content: target-counter(attr(href), page, ${numeralStyle}); }
+.chapter-body ol { list-style-type: ${numeralStyle}; }
+</style>`;
+}
 
 function contentSecurityPolicy(config) {
   if (!['safe', 'deny'].includes(config.security?.rawHtml)) return '';
@@ -48,8 +72,8 @@ function colophon(config) {
     <div class="colophon-orn">${SHAMSA}</div>
     <p class="colophon-kicker">${escapeHtmlText(labels.colophon)}</p>
     <dl class="colophon-grid">
-      <dt>${escapeHtmlText(labels.title)}</dt><dd>${escapeHtmlText(metadata.title)}</dd>
-      ${metadata.subtitle ? `<dt>${escapeHtmlText(labels.subtitle)}</dt><dd>${escapeHtmlText(metadata.subtitle)}</dd>` : ''}
+      <dt>${escapeHtmlText(labels.title)}</dt><dd>${wrapLatinHtml(metadata.title)}</dd>
+      ${metadata.subtitle ? `<dt>${escapeHtmlText(labels.subtitle)}</dt><dd>${wrapLatinHtml(metadata.subtitle)}</dd>` : ''}
       <dt>${escapeHtmlText(labels.author)}</dt><dd><bdi>${escapeHtmlText(metadata.author)}</bdi></dd>
       <dt>${escapeHtmlText(labels.edition)}</dt><dd>${editionHtml(metadata.edition)}</dd>
       ${config.releaseVersion ? `<dt>${escapeHtmlText(labels.releaseVersion)}</dt><dd><bdi dir="ltr">${escapeHtmlText(config.releaseVersion)}</bdi></dd>` : ''}
@@ -100,7 +124,7 @@ ${sections}
         })
         .join('\n');
       return `    <li class="toc-part">
-      <a class="toc-part-head" href="#part-${escapeHtmlAttribute(part.number)}"><span class="pno">${escapeHtmlText(labels.part)} ${formatNumber(part.number, config)}</span><span class="pt">${escapeHtmlText(part.title)}</span><span class="dots"></span></a>
+      <a class="toc-part-head" href="#part-${escapeHtmlAttribute(part.number)}"><span class="pno">${escapeHtmlText(labels.part)} ${formatNumber(part.number, config)}</span><span class="pt">${wrapLatinHtml(part.title)}</span><span class="dots"></span></a>
       <ol>
 ${rows}
       </ol>
@@ -116,8 +140,8 @@ ${rows}
     <div class="toc-rule"><span class="seg"></span><span class="dia"></span><span class="seg"></span></div>
     <p class="toc-deck">${escapeHtmlText(labels.tocDescription)}</p>
     <div class="toc-stats">
-      <span><b>${formatNumber(parts.length, config)}</b> ${escapeHtmlText(labels.part)}</span>
-      <span><b>${formatNumber(numberedChapterCount, config)}</b> ${escapeHtmlText(labels.chapter)}</span>
+      <span><b>${formatNumber(parts.length, config)}</b> ${countLabel('part', parts.length, config)}</span>
+      <span><b>${formatNumber(numberedChapterCount, config)}</b> ${countLabel('chapter', numberedChapterCount, config)}</span>
     </div>
   </header>
   <ol class="toc-root">
@@ -144,8 +168,8 @@ ${chapterHtml}
   }
   const transition = ch.isPartStart
     ? `<div class="part-transition" id="part-${part.number}">
-    <div class="part-transition-meta"><span>${escapeHtmlText(config.labels.part)} ${formatNumber(part.number, config)} از ${formatNumber(partCount, config)}</span><i></i><span>${formatNumber(part.chapterNumbers.length, config)} ${escapeHtmlText(config.labels.chapter)}</span></div>
-    <strong>${escapeHtmlText(part.title)}</strong>
+    <div class="part-transition-meta"><span>${escapeHtmlText(config.labels.part)} ${formatNumber(part.number, config)} ${escapeHtmlText(config.labels.partOf)} ${formatNumber(partCount, config)}</span><i></i><span>${formatNumber(part.chapterNumbers.length, config)} ${countLabel('chapter', part.chapterNumbers.length, config)}</span></div>
+    <strong>${wrapLatinHtml(part.title)}</strong>
   </div>`
     : '';
   const configuredClasses = config.contentRules.chapterClassRules
@@ -178,9 +202,10 @@ export function buildDocument({ parts, chapters }, config) {
 <head>
 <meta charset="utf-8">
 ${contentSecurityPolicy(config)}
-<title>${escapeHtmlText(config.metadata.title)}؛ ${escapeHtmlText(config.metadata.edition)}${config.releaseVersion ? `؛ ${escapeHtmlText(config.releaseVersion)}` : ''}</title>
+<title>${escapeHtmlText(config.metadata.title)}${escapeHtmlText(config.labels.metadataSeparator)} ${escapeHtmlText(config.metadata.edition)}${config.releaseVersion ? `${escapeHtmlText(config.labels.metadataSeparator)} ${escapeHtmlText(config.releaseVersion)}` : ''}</title>
 <meta name="author" content="${escapeHtmlAttribute(config.metadata.author)}">
 <link rel="stylesheet" href="book.css">
+${generatedLocaleStyle(config)}
 </head>
 <body>
 ${buildToc(parts, chapters, config)}
