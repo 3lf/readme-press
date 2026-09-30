@@ -37,7 +37,7 @@ import { renderCover } from './cover.mjs';
 import { assertNoDiagnosticErrors, normalizeDiagnostics } from './diagnostics.mjs';
 import { preflightBuild } from './preflight.mjs';
 import { renderPagedHtml } from './render.mjs';
-import { createRenderInputs } from './render-inputs.mjs';
+import { addCoverRenderInputs, createRenderInputs } from './render-inputs.mjs';
 import { assertContainedOutputSink } from './paths.mjs';
 import { normalizeReleaseVersion } from './release.mjs';
 import { buildDocument } from './template.mjs';
@@ -387,9 +387,10 @@ export async function runBuild({ configFile, quality = 'normal', releaseVersion:
   const renderAssets = {
     images: [...result.images.values()].map((image) => image.source),
     emoji: [...result.usedEmoji],
+    mermaid: result.diagrams.size > 0,
     releaseVersion,
   };
-  const renderInputs = await createRenderInputs(config, renderAssets);
+  let renderInputs = await createRenderInputs(config, renderAssets);
   for (const [file, path] of result.diagrams) {
     cpSync(path, resolve(outputDir, 'assets/diagrams', file));
   }
@@ -425,6 +426,7 @@ export async function runBuild({ configFile, quality = 'normal', releaseVersion:
         { ...documentConfig, outputVariant: 'normal' },
       );
       coverDiagnostics.push(...coverResult.diagnostics);
+      renderInputs = addCoverRenderInputs(renderInputs, coverResult.localDependencies);
       for (const variant of qualities.filter((value) => value !== 'print')) {
         coverPdfs.set(variant, coverPdf);
         coverRequests.set(variant, coverResult.externalRequests);
@@ -438,10 +440,12 @@ export async function runBuild({ configFile, quality = 'normal', releaseVersion:
         { ...documentConfig, outputVariant: 'print' },
       );
       coverDiagnostics.push(...coverResult.diagnostics);
+      renderInputs = addCoverRenderInputs(renderInputs, coverResult.localDependencies);
       coverPdfs.set('print', printCoverPdf);
       coverRequests.set('print', coverResult.externalRequests);
     }
   }
+  renderAssets.cover = renderInputs.assets.cover;
   if (coverDiagnostics.length) {
     result.diagnostics.push(...coverDiagnostics);
     result.diagnostics = normalizeDiagnostics(result.diagnostics, config.security.diagnostics);

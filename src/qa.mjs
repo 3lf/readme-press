@@ -145,6 +145,8 @@ export async function runQa({
     currentInputs = await createRenderInputs(config, {
       images: manifest.renderInputs?.assets?.images ?? [],
       emoji: manifest.renderInputs?.assets?.emoji ?? [],
+      cover: manifest.renderInputs?.assets?.cover ?? [],
+      mermaid: (manifest.diagrams?.length ?? 0) > 0,
       releaseVersion: manifest.releaseVersion ?? null,
     });
   } catch (error) {

@@ -201,7 +201,26 @@ export function assertReleaseInputProvenance(manifest, packageRoot, outputDir) {
   }
 }
 
-export async function createRenderInputs(config, { images = [], emoji = [], releaseVersion = null } = {}) {
+export function addCoverRenderInputs(inputs, dependencies) {
+  const files = new Map(inputs.files.map((file) => [file.path, file.sha256]));
+  for (const { path, sha256: hash } of dependencies) {
+    if (files.has(path) && files.get(path) !== hash) {
+      throw new Error(`Render inputs changed during build: ${path}. Retry from a stable source tree.`);
+    }
+    files.set(path, hash);
+  }
+  const extended = {
+    ...inputs,
+    files: [...files.keys()].sort().map((path) => ({ path, sha256: files.get(path) })),
+    assets: {
+      ...inputs.assets,
+      cover: [...new Set([...(inputs.assets.cover ?? []), ...dependencies.map(({ path }) => path)])].sort(),
+    },
+  };
+  return { ...extended, sha256: fingerprintDigest(extended) };
+}
+
+export async function createRenderInputs(config, { images = [], emoji = [], cover = [], mermaid = false, releaseVersion = null } = {}) {
   const imagePaths = [...new Set(images.map((path) => resolve(path)))].sort();
   for (const path of imagePaths) assertContentFile(path, config.contentRoot);
   const twemojiRoot = dirname(require.resolve('@twemoji/svg/package.json'));
@@ -215,14 +234,14 @@ export async function createRenderInputs(config, { images = [], emoji = [], rele
     config.sourcePath,
     config.theme.stylesheet,
     ...(config.cover.enabled ? [config.cover.file] : []),
-    config.mermaid.configPath,
-    config.mermaid.fontPath,
-    ...(process.env.CI && config.mermaid.puppeteerConfig ? [config.mermaid.puppeteerConfig] : []),
+    ...(mermaid ? [config.mermaid.configPath, config.mermaid.fontPath] : []),
+    ...(mermaid && process.env.CI && config.mermaid.puppeteerConfig ? [config.mermaid.puppeteerConfig] : []),
     mmdcPath,
     ...treeFiles(config.themeRoot).filter((path) => /\.(?:css|html|json|woff2?|ttf|otf|svg|png|jpe?g|webp)$/iu.test(path)),
     ...treeFiles(resolve(config.packageRoot, 'src')).filter((path) => path.endsWith('.mjs')),
     ...emojiPaths,
     ...imagePaths,
+    ...cover,
   ];
   const unique = [...new Set(files.map((path) => resolve(path)))].sort();
   const renderer = {
@@ -231,14 +250,14 @@ export async function createRenderInputs(config, { images = [], emoji = [], rele
     chrome: commandVersion(await puppeteer.executablePath(), ['--version']),
     qpdf: commandVersion('qpdf', ['--version']),
     packages: Object.fromEntries(PACKAGES.map((name) => [name, installedPackageVersion(name)])),
-    ciMermaidConfig: Boolean(process.env.CI && config.mermaid.puppeteerConfig),
+    ciMermaidConfig: Boolean(mermaid && process.env.CI && config.mermaid.puppeteerConfig),
   };
   const inputs = {
     version: RENDER_INPUT_VERSION,
     configSha256: sha256(JSON.stringify(stable(renderConfig(config, releaseVersion)))),
     renderer,
     files: unique.map((path) => ({ path, sha256: sha256(readFileSync(path)) })),
-    assets: { images: imagePaths, emoji: [...new Set(emoji)].sort() },
+    assets: { images: imagePaths, emoji: [...new Set(emoji)].sort(), cover: [...new Set(cover)].sort() },
     cacheDir: config.mermaid.cacheDir,
   };
   return { ...inputs, sha256: fingerprintDigest(inputs) };
