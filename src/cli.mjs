@@ -203,6 +203,7 @@ export async function runCli(args = process.argv.slice(2), output = console) {
       outputDir: config.outputDir,
       commit: parsed.commit,
       release: config.release,
+      config,
     });
     output.log(`Prepared ${result.version} release candidate with ${result.normal.pageCount} pages per edition.`);
     return;
@@ -224,6 +225,7 @@ export async function runCli(args = process.argv.slice(2), output = console) {
       outputDir: config.outputDir,
       commit: parsed.commit,
       release: config.release,
+      config,
     });
     output.log(`Prepared ${result.version} release metadata for ${result.normal.pageCount} pages per edition.`);
     return;

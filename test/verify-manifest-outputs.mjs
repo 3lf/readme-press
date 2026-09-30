@@ -11,6 +11,7 @@ if (!manifests.length) {
   manifests.push(
     resolve(here, 'fixtures/basic/dist-test/manifest.json'),
     resolve(here, 'fixtures/persian/dist-test/manifest.json'),
+    resolve(here, 'fixtures/stress/dist-test/manifest.json'),
   );
 }
 
