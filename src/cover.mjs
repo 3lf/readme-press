@@ -8,6 +8,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { PDFArray, PDFDocument, PDFHexString, PDFName, PDFString } from 'pdf-lib';
 import puppeteer from 'puppeteer';
+import { applyBidiSpecToElement, createBidiSpec } from './bidi.mjs';
 import { createSecurityDefaults } from './defaults.mjs';
 import { normalizeNetworkPolicy, withRequestPolicy } from './network.mjs';
 
@@ -79,6 +80,17 @@ export async function renderCover(htmlPath, outPath, config) {
   const pageWidth = widthCm / 2.54 * 72;
   const pageHeight = heightCm / 2.54 * 72;
   const pngPath = pngPathFor(outPath);
+  const bidiOptions = { documentDirection: config.metadata.direction };
+  const bidiFields = {
+    series: createBidiSpec(config.cover.series, { ...bidiOptions, context: 'cover' }),
+    'title-prefix': createBidiSpec(config.cover.titlePrefix, { ...bidiOptions, context: 'cover' }),
+    title: createBidiSpec(config.cover.title, { ...bidiOptions, context: 'cover' }),
+    tagline: createBidiSpec(config.cover.tagline, { ...bidiOptions, context: 'cover' }),
+    author: createBidiSpec(config.metadata.author, { ...bidiOptions, context: 'cover' }),
+    'date-local': createBidiSpec(config.metadata.localDate, { ...bidiOptions, context: 'cover' }),
+    'date-latin': createBidiSpec(config.metadata.latinDate, { ...bidiOptions, context: 'cover' }),
+    repository: createBidiSpec(config.repository.display, { ...bidiOptions, context: 'cover' }),
+  };
   let captureData = null;
   const localDependencies = new Map();
   const localErrors = [];
@@ -147,38 +159,21 @@ export async function renderCover(htmlPath, outPath, config) {
             document.documentElement.dataset.readmePressVariant = data.variant;
             document.body.dataset.readmePressVariant = data.variant;
             document.body.style.direction = data.direction;
-            const values = {
-              series: data.series,
-              'title-prefix': data.titlePrefix,
-              title: data.title,
-              tagline: data.tagline,
-              author: data.author,
-              'date-local': data.localDate,
-              'date-latin': data.latinDate,
-              repository: data.repository,
-            };
-            for (const [name, value] of Object.entries(values)) {
-              const element = document.querySelector(`[data-readme-press="${name}"]`);
-              if (element) element.textContent = value ?? '';
-            }
             const note = document.querySelector('[data-readme-press="repository-note"]');
             if (note) note.innerHTML = data.repositoryNote;
             document.querySelector('.cover')?.setAttribute('aria-label', data.documentTitle);
         }, {
             documentTitle: config.metadata.title,
-            series: config.cover.series,
-            titlePrefix: config.cover.titlePrefix,
-            title: config.cover.title,
-            tagline: config.cover.tagline,
-            author: config.metadata.author,
-            localDate: config.metadata.localDate,
-            latinDate: config.metadata.latinDate,
-            repository: config.repository.display,
             repositoryNote: config.cover.repositoryNote,
             direction: config.metadata.direction,
             language: config.metadata.language,
             variant: config.outputVariant ?? 'normal',
         });
+        for (const [name, spec] of Object.entries(bidiFields)) {
+          const selector = `[data-readme-press="${name}"]`;
+          const exists = await page.$(selector);
+          if (exists) await page.$eval(selector, applyBidiSpecToElement, spec);
+        }
         await page.evaluate(() => document.fonts.ready);
         if (requests.blocked.length) {
           throw new Error(`Network policy blocked cover request: ${requests.blocked.join(', ')}`);

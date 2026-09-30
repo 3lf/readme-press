@@ -72,10 +72,14 @@ const proseRuleSchema = z.object({
 const chapterRuleSchema = z.object({
   titleStartsWith: z.string().min(1), className: z.string(), label: z.string().min(1).optional(),
 }).passthrough();
+const tableClassRuleSchema = z.object({
+  headerContains: z.string().min(1), className: z.string(), label: z.string().min(1).optional(),
+}).passthrough();
 const contentRulesSchema = z.object({
   calloutClassRules: z.array(proseRuleSchema).optional(),
   paragraphClassRules: z.array(proseRuleSchema).optional(),
   chapterClassRules: z.array(chapterRuleSchema).optional(),
+  tableClassRules: z.array(tableClassRuleSchema).optional(),
   treeAriaLabel: z.string().optional(),
 }).passthrough();
 const networkObjectSchema = z.object({
@@ -109,7 +113,8 @@ const CORE_SCHEMAS = new Map([
   ['images.classRules[]', imageClassRuleSchema], ['mermaid', mermaidSchema],
   ['contentRules', contentRulesSchema], ['contentRules.calloutClassRules[]', proseRuleSchema],
   ['contentRules.paragraphClassRules[]', proseRuleSchema],
-  ['contentRules.chapterClassRules[]', chapterRuleSchema], ['security', securitySchema],
+  ['contentRules.chapterClassRules[]', chapterRuleSchema],
+  ['contentRules.tableClassRules[]', tableClassRuleSchema], ['security', securitySchema],
   ['security.network', networkObjectSchema],
 ]);
 const CORE_KEYS = new Map(

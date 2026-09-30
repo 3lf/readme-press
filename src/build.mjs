@@ -269,11 +269,12 @@ async function finalizePdf(
     bodyDoc.insertPage(0, coverPage);
   }
 
-  const releaseLabel = config.releaseVersion ? `؛ ${config.releaseVersion}` : '';
-  bodyDoc.setTitle(`${config.metadata.title}؛ ${config.metadata.edition}${releaseLabel}`);
+  const separator = `${config.labels.metadataSeparator} `;
+  const releaseLabel = config.releaseVersion ? `${separator}${config.releaseVersion}` : '';
+  bodyDoc.setTitle(`${config.metadata.title}${separator}${config.metadata.edition}${releaseLabel}`);
   bodyDoc.setAuthor(config.metadata.author);
   bodyDoc.setSubject(config.releaseVersion
-    ? `${config.metadata.subject}; ${config.releaseVersion}`
+    ? `${config.metadata.subject}${separator}${config.releaseVersion}`
     : config.metadata.subject);
   bodyDoc.setLanguage(config.metadata.language);
   bodyDoc.setCreator(config.metadata.creator);

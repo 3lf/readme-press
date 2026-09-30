@@ -69,5 +69,5 @@ export declare function transformReadme(
   config: LoadedConfig | TransformReadmeConfig,
   context?: Record<string, unknown>,
 ): Promise<TransformResult>;
-/** Escape text and isolate Latin runs for safe RTL HTML rendering. */
+/** Escape text and isolate Latin, numeric, and mathematical runs for safe RTL HTML rendering. */
 export declare function wrapLatinHtml(text: string): string;

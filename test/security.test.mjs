@@ -12,6 +12,9 @@ import {
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
+import rehypeParse from 'rehype-parse';
+import { unified } from 'unified';
+import { visit } from 'unist-util-visit';
 import { loadConfig } from '../src/config.mjs';
 import { sanitizeInlineMarkup, sanitizeRawHtml } from '../src/html.mjs';
 import { installRequestPolicy, normalizeNetworkPolicy } from '../src/network.mjs';
@@ -366,7 +369,20 @@ test('safe and deny raw HTML modes are enforced during transformation', async ()
     ), safeConfig, { sourceDir: project });
     const html = safe.chapters.map((chapter) => chapter.html).join('\n');
     assert.match(html, /Visible/u);
-    assert.doesNotMatch(html, /onclick|style=|script|bad\(\)/iu);
+    const parsed = unified().use(rehypeParse, { fragment: true }).parse(html);
+    let inertScriptText = false;
+    visit(parsed, (node) => {
+      if (node.type === 'text' && node.value.includes('bad()')) inertScriptText = true;
+      if (node.type !== 'element') return;
+      assert.notEqual(node.tagName, 'script');
+      for (const name of Object.keys(node.properties ?? {})) {
+        assert.doesNotMatch(name, /^on/iu);
+        assert.notEqual(name, 'style');
+      }
+    });
+    // Inline script tags are removed. Their body remains inert text because
+    // Markdown parses the opening tag, body, and closing tag separately.
+    assert.equal(inertScriptText, true);
     assert.ok(safe.diagnostics.some((diagnostic) => diagnostic.code === 'RAW_HTML_SANITIZED'));
 
     await assert.rejects(
