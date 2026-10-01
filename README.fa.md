@@ -36,7 +36,7 @@ README Press برای نویسنده‌ایه که یک راهنمای بلند 
 
 ## اولین PDF را بساز
 
-> **پیش از انتشار بعدی:** فایل‌های نمونه تازه در همین نامزد اضافه شده‌اند و بسته منتشرشده `readme-press@0.3.0` پوشه `examples/starter` رو نداره. برای آزمایش نامزد، از این checkout با `npm pack` بسته بساز و tarball اون رو به‌جای `readme-press` در فرمان نصب پایین نصب کن؛ یا [فایل‌های نمونه](./examples/starter/) رو مستقیم ببین. فرمان‌های پایین مسیر نصب npm بعد از انتشار بسته بعدی هستن.
+> فایل‌های نمونه از نسخه `readme-press@0.4.0` در بسته قرار دارن. وضعیت انتشار رو در [صفحه بسته npm](https://www.npmjs.com/package/readme-press) ببین. هنگام آماده‌سازی این نسخه، با `npm pack` بسته بساز و tarball اون رو برای آزمایش محلی نصب کن.
 
 این تمرین رو در پوشه‌ای خالی انجام بده تا README موجودت جایگزین نشه. به Node.js نسخه ۲۲ یا ۲۴، Python 3، `qpdf` و Poppler نیاز داری. در macOS فرمان `brew install python poppler qpdf` و در Ubuntu فرمان `sudo apt-get install -y python3 poppler-utils qpdf` ابزارهای بیرونی رو نصب می‌کنه. npm مرورگر رندر و Mermaid رو همراه README Press نصب می‌کنه.
 
@@ -73,9 +73,9 @@ QA ساختار PDF، فونت‌ها، لینک‌ها، مقصدها، ابع�
 
 `README.md` و `readme-press.config.mjs` رو در مخزن خودت commit کن و [فایل workflow نمونه](./examples/starter/book.yml) رو به‌نام `.github/workflows/book.yml` اضافه کن. اگر از دستورهای نمونه بالا استفاده کردی، `package.json` و `package-lock.json` رو هم commit کن یا آگاهانه در `.gitignore` بذار. آماده‌سازی انتشار فایل‌های ثبت‌نشده رو بررسی می‌کنه؛ `node_modules/` و `dist/` می‌تونن بدون commit بمونن. این workflow از مسیر `readme-press.config.mjs` استفاده می‌کنه، `pipeline` رو اجرا می‌کنه و با `actions/upload-artifact` سه PDF، manifest، هش‌ها و یادداشت‌های نامزد انتشار رو نگه می‌داره.
 
-این workflow فعلاً به Action منتشرشده `v0.3.0` اشاره می‌کنه که اصلاحات انگلیسی نامزد فعلی رو نداره. پیش از استفاده برای انتشار بعدی، pin فایل نمونه و مخزن خودت رو به تگ بررسی‌شده نسخه جدید تغییر بده.
+این workflow به Action نسخه `v0.4.0` اشاره می‌کنه که اصلاحات انگلیسی رو هم داره. بعد از ظاهرشدن این تگ در [GitHub Releases](https://github.com/3lf/readme-press/releases) اجراش کن. هر وقت خواستی ابزار رو ارتقا بدی، pin مخزن خودت رو آگاهانه عوض کن.
 
-در مخزنت به **Actions > Build book > Run workflow** برو. بعد از پایان اجرا، صفحه همون run رو باز کن و **starter-book-pdfs** رو از بخش **Artifacts** دانلود کن. ZIP شامل فایل‌های PDF است. نسخه Action در workflow روی `v0.3.0` pin شده؛ هر وقت خواستی ابزار رو ارتقا بدی، تگ اون رو آگاهانه عوض کن.
+در مخزنت به **Actions > Build book > Run workflow** برو. بعد از پایان اجرا، صفحه همون run رو باز کن و **starter-book-pdfs** رو از بخش **Artifacts** دانلود کن. ZIP شامل فایل‌های PDF است. نسخه Action در workflow روی `v0.4.0` pin شده.
 
 `build` فقط PDF می‌سازه. `qa` خروجی موجود رو بررسی می‌کنه. `pipeline` همه نسخه‌های تنظیم‌شده رو می‌سازه، QA رو اجرا می‌کنه و هش و یادداشت محلی برای نامزد انتشار آماده می‌کنه. نسخه `v0.0.0-preview.1` در نمونه فقط یک برچسب نامزد است. آپلود artifact امکان دانلود فایل از run رو می‌ده؛ README Press و این workflow هیچ انتشار GitHub یا npm برای پروژه تو انجام نمی‌دن.
 

@@ -43,7 +43,7 @@ This is one rendered page from the starter PDF. The [latest release](https://git
 
 ## Get your first PDF
 
-> **Before the next release:** the checked-in starter is new in this candidate. Published `readme-press@0.3.0` does not contain `examples/starter`. For a candidate trial, pack this checkout with `npm pack` and install that tarball in place of `readme-press` below, or read the [starter files](./examples/starter/) directly. The commands below are the intended npm path after the next package release.
+> The starter files are included from `readme-press@0.4.0`. Check the [npm package](https://www.npmjs.com/package/readme-press) for publication status. While preparing this version, use `npm pack` and install the resulting tarball for a local trial.
 
 Use an empty directory for this trial so the starter cannot replace an existing README. You need Node.js 22 or 24, Python 3, `qpdf`, and Poppler. On macOS, install the external tools with `brew install python poppler qpdf`; on Ubuntu, use `sudo apt-get install -y python3 poppler-utils qpdf`. npm installs the browser renderer and Mermaid with README Press.
 
@@ -80,7 +80,7 @@ File size depends on the source images and page backgrounds; the text-only start
 
 Commit `README.md` and `readme-press.config.mjs` to your own repository, then add [this workflow](./examples/starter/book.yml) as `.github/workflows/book.yml`. If you used the local starter commands above, also commit `package.json` and `package-lock.json`, or deliberately ignore them. Release preparation checks for uncommitted files; `node_modules/` and `dist/` may stay untracked.
 
-> The workflow below pins the currently published `v0.3.0` Action. That release predates the candidate English locale fixes. Before using this workflow for the next release, replace the pin in both the example and your repository with that release's reviewed tag.
+> The workflow below pins `v0.4.0`, including the English locale fixes. Run it after that tag appears in [GitHub Releases](https://github.com/3lf/readme-press/releases). Update the pin in your repository when you intentionally upgrade.
 
 ```yaml
 name: Build book
@@ -96,7 +96,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - uses: 3lf/readme-press@v0.3.0
+      - uses: 3lf/readme-press@v0.4.0
         with:
           command: pipeline
           config: readme-press.config.mjs
