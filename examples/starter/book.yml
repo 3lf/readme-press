@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - uses: 3lf/readme-press@v0.3.0
+      - uses: 3lf/readme-press@v0.4.0
         with:
           command: pipeline
           config: readme-press.config.mjs

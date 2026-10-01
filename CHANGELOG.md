@@ -8,6 +8,30 @@ project follows semantic versioning within its pre-1.0 compatibility policy.
 
 Release-specific changes are added here by their release pull request.
 
+## [0.4.0] - 2026-10-01
+
+### Added
+
+- Explicit language, direction, and numeral settings for English, Persian, and
+  mixed-script books, with locale-aware covers and generated contents.
+- Render-input fingerprints that reject stale PDF QA and release preparation,
+  and Mermaid cache keys that include renderer, configuration, and font inputs.
+- A packaged starter book, matching GitHub Actions workflow, and English and
+  Persian onboarding instructions for a first three-edition PDF build.
+- A representative pagination-stress fixture and stronger PDF text, image,
+  font, link, bookmark, and cross-edition checks.
+
+### Fixed
+
+- Update the transitive DOMPurify dependency to 3.4.16 to address
+  [GHSA-p98j-92pf-mc4p](https://github.com/advisories/GHSA-p98j-92pf-mc4p).
+- Mixed-script token order, Persian numeric ranges, and English heading wrapping
+  and extraction.
+- Custom themes without Mermaid no longer require unused Mermaid assets.
+- Local cover dependencies outside the theme directory are fingerprinted,
+  including linked CSS, fonts, and images used during normal and print capture.
+  Input changes during a build stop publication and preserve the last good output.
+
 ## [0.3.0] - 2026-08-21
 
 ### Changed
@@ -66,7 +90,8 @@ Explicit 0.2.x compatibility settings remain supported. See the
 - A reusable composite GitHub Action and guarded release workflows.
 - Clean-install npm package smoke testing and expanded PDF QA.
 
-[Unreleased]: https://github.com/3lf/readme-press/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/3lf/readme-press/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/3lf/readme-press/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/3lf/readme-press/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/3lf/readme-press/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/3lf/readme-press/releases/tag/v0.2.0
