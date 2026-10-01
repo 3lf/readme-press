@@ -106,30 +106,34 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y poppler-utils qpdf
 
       - name: Verify the locked engine
+        env:
+          SOURCE_COMMIT: ${{ steps.source.outputs.source-commit }}
         run: |
-          npm run verify:publish
+          GITHUB_SHA="$SOURCE_COMMIT" npm run verify:publish
           go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 .github/workflows/*.yml examples/starter/book.yml
 
       - name: Prepare the release fixture
         run: npm run fixture:prepare
 
-      - name: Exercise the public action and build example PDFs
-        uses: ./
-        with:
-          command: pipeline
-          config: test/fixtures/basic/readme-press.config.mjs
-          release-version: ${{ steps.version.outputs.version }}
-          source-commit: ${{ steps.source.outputs.source-commit }}
-          render-all: true
+      - name: Build and verify the checked-source English example
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          SOURCE_COMMIT: ${{ steps.source.outputs.source-commit }}
+        run: |
+          set -euo pipefail
+          GITHUB_SHA="$SOURCE_COMMIT" node bin/readme-press.mjs pipeline \
+            --config test/fixtures/basic/readme-press.config.mjs \
+            --release-version "$VERSION" --commit "$SOURCE_COMMIT" --render-all
 
-      - name: Build and verify the Persian RTL example
-        uses: ./
-        with:
-          command: pipeline
-          config: test/fixtures/persian/readme-press.config.mjs
-          release-version: ${{ steps.version.outputs.version }}
-          source-commit: ${{ steps.source.outputs.source-commit }}
-          render-all: true
+      - name: Build and verify the checked-source Persian example
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          SOURCE_COMMIT: ${{ steps.source.outputs.source-commit }}
+        run: |
+          set -euo pipefail
+          GITHUB_SHA="$SOURCE_COMMIT" node bin/readme-press.mjs pipeline \
+            --config test/fixtures/persian/readme-press.config.mjs \
+            --release-version "$VERSION" --commit "$SOURCE_COMMIT" --render-all
 
       - name: Build and smoke-test the locked source archive
         env:
