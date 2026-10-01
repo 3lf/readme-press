@@ -63,7 +63,7 @@
     "prepublishOnly": "npm run verify:publish"
   },
   "dependencies": {
-    "@mermaid-js/mermaid-cli": "^11.16.0",
+    "@mermaid-js/mermaid-cli": "^12.0.0",
     "@twemoji/svg": "^15.0.0",
     "@vivliostyle/viewer": "^2.44.1",
     "mdast-util-to-string": "^4.0.0",
