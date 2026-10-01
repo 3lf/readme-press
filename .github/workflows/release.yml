@@ -9,6 +9,10 @@ on:
         required: true
         type: string
         default: v0.4.0
+      source-commit:
+        description: Full source commit SHA; empty uses the workflow commit
+        required: false
+        type: string
 
 concurrency:
   group: readme-press-release
@@ -22,22 +26,65 @@ jobs:
       contents: read
     outputs:
       version: ${{ steps.version.outputs.version }}
+      source-commit: ${{ steps.source.outputs.source-commit }}
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          fetch-depth: 0
-
-      - name: Validate main and package version
-        id: version
+      - name: Validate main and requested source
+        id: requested-source
         env:
-          GH_TOKEN: ${{ github.token }}
-          REQUESTED_VERSION: ${{ inputs.version }}
+          REQUESTED_SOURCE_COMMIT: ${{ inputs.source-commit }}
+          EVENT_COMMIT: ${{ github.sha }}
         run: |
           set -euo pipefail
           if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
             echo "Releases must run from main." >&2
             exit 1
           fi
+          source_commit="${REQUESTED_SOURCE_COMMIT:-$EVENT_COMMIT}"
+          if [[ ! "$source_commit" =~ ^[0-9a-fA-F]{40}$ ]]; then
+            echo "Source commit must be a full 40-character hexadecimal SHA." >&2
+            exit 1
+          fi
+          source_commit="$(printf '%s' "$source_commit" | tr 'A-F' 'a-f')"
+          echo "source-commit=$source_commit" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          ref: ${{ steps.requested-source.outputs.source-commit }}
+
+      - name: Verify checked source belongs to main
+        id: source
+        env:
+          SOURCE_COMMIT: ${{ steps.requested-source.outputs.source-commit }}
+        run: |
+          set -euo pipefail
+          actual="$(git rev-parse HEAD)"
+          if [[ "$actual" != "$SOURCE_COMMIT" ]]; then
+            echo "Checked source does not match the requested commit." >&2
+            exit 1
+          fi
+          git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
+          if ! git merge-base --is-ancestor "$actual" refs/remotes/origin/main; then
+            echo "Source commit must belong to main history." >&2
+            exit 1
+          fi
+          echo "source-commit=$actual" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install the locked engine
+        run: npm ci
+
+      - name: Validate package version and release availability
+        id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUESTED_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
           version="$(node bin/readme-press.mjs release validate "$REQUESTED_VERSION")"
           package_version="v$(node -p "require('./package.json').version")"
           if [[ "$version" != "$package_version" ]]; then
@@ -55,40 +102,38 @@ jobs:
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
-        with:
-          node-version: 22
-          cache: npm
-
       - name: Install PDF validation tools
         run: sudo apt-get update && sudo apt-get install -y poppler-utils qpdf
 
-      - name: Install and verify the locked engine
+      - name: Verify the locked engine
+        env:
+          SOURCE_COMMIT: ${{ steps.source.outputs.source-commit }}
         run: |
-          npm ci
-          npm run verify:publish
+          GITHUB_SHA="$SOURCE_COMMIT" npm run verify:publish
           go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 .github/workflows/*.yml examples/starter/book.yml
 
       - name: Prepare the release fixture
         run: npm run fixture:prepare
 
-      - name: Exercise the public action and build example PDFs
-        uses: ./
-        with:
-          command: pipeline
-          config: test/fixtures/basic/readme-press.config.mjs
-          release-version: ${{ steps.version.outputs.version }}
-          source-commit: ${{ github.sha }}
-          render-all: true
+      - name: Build and verify the checked-source English example
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          SOURCE_COMMIT: ${{ steps.source.outputs.source-commit }}
+        run: |
+          set -euo pipefail
+          GITHUB_SHA="$SOURCE_COMMIT" node bin/readme-press.mjs pipeline \
+            --config test/fixtures/basic/readme-press.config.mjs \
+            --release-version "$VERSION" --commit "$SOURCE_COMMIT" --render-all
 
-      - name: Build and verify the Persian RTL example
-        uses: ./
-        with:
-          command: pipeline
-          config: test/fixtures/persian/readme-press.config.mjs
-          release-version: ${{ steps.version.outputs.version }}
-          source-commit: ${{ github.sha }}
-          render-all: true
+      - name: Build and verify the checked-source Persian example
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          SOURCE_COMMIT: ${{ steps.source.outputs.source-commit }}
+        run: |
+          set -euo pipefail
+          GITHUB_SHA="$SOURCE_COMMIT" node bin/readme-press.mjs pipeline \
+            --config test/fixtures/persian/readme-press.config.mjs \
+            --release-version "$VERSION" --commit "$SOURCE_COMMIT" --render-all
 
       - name: Build and smoke-test the locked source archive
         env:
@@ -159,6 +204,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ needs.build.outputs.version }}
+          SOURCE_COMMIT: ${{ needs.build.outputs.source-commit }}
         run: |
           set -euo pipefail
           if gh release view "$VERSION" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
@@ -175,7 +221,7 @@ jobs:
             release-assets/readme-press-example-fa-high-quality.pdf \
             release-assets/SHA256SUMS.txt \
             --repo "$GITHUB_REPOSITORY" \
-            --target "$GITHUB_SHA" \
+            --target "$SOURCE_COMMIT" \
             --title "README Press $VERSION" \
             --draft \
             --generate-notes \
